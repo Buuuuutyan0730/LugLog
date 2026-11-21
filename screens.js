@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261122021804';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122021804';
-import { CONFIG } from './config.js?v=20261122021804';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122021804';
-import { POP_STYLES } from './pops.js?v=20261122021804';
-import { TITLES, titleChip } from './titles.js?v=20261122021804';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122021804';
-import { titleOf } from './titles.js?v=20261122021804';
+import { iconSvg, snapIcons } from './icons.js?v=20261122022401';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122022401';
+import { CONFIG } from './config.js?v=20261122022401';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122022401';
+import { POP_STYLES } from './pops.js?v=20261122022401';
+import { TITLES, titleChip } from './titles.js?v=20261122022401';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122022401';
+import { titleOf } from './titles.js?v=20261122022401';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122021804';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122022401';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122021804';
-import { iconArtSvg } from './iconart.js?v=20261122021804';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122021804';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122021804';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122022401';
+import { iconArtSvg } from './iconart.js?v=20261122022401';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122022401';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122022401';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -282,7 +282,7 @@ export const SCREENS = {
       const kinds = tab === 'enemy' ? ENEMY_KINDS : BOSS_KINDS, box = tab === 'enemy' ? Z.enemies : Z.bosses, icons = tab === 'enemy' ? ENEMY_ICONS : BOSS_ICONS;
       const names = (k) => (tab === 'enemy' ? CONFIG.enemies[k].name : BOSS_NAMES[k]);
       body = `<div class="ms-sec">${tab === 'enemy' ? '敵' : 'ボス'}<small>${kinds.filter((k) => box[k]).length}/${kinds.length}</small></div>
-        <div class="ms-zgrid ${tab}">${kinds.map((k) => { const seen = !!box[k]; return m(seen ? names(k) : `？（${names(k)}）`, seen ? `<span class="ms-zpic">${icons[k]}</span><small>${names(k)}</small>` : '<b>？</b><small>？？？</small>', `ms-zcell${seen ? '' : ' unseen'}`, 'button', seen ? act(`zitem:${tab}:${k}`) : ''); }).join('')}</div>`;
+        <div class="ms-zgrid z-${tab}">${kinds.map((k) => { const seen = !!box[k]; return m(seen ? names(k) : `？（${names(k)}）`, seen ? `<span class="ms-zpic">${icons[k]}</span><small>${names(k)}</small>` : '<b>？</b><small>？？？</small>', `ms-zcell${seen ? '' : ' unseen'}`, 'button', seen ? act(`zitem:${tab}:${k}`) : ''); }).join('')}</div>`;
     }
     return `
     <div class="ms-full ms-page">
@@ -532,12 +532,26 @@ Object.assign(SCREENS, {
     </div>`;
   },
   s_gacha: (st, d) => {
-    const ssr = GACHA_POOL.filter((x) => x.rarity === 'SSR').slice(0, 3);
-    const pity = d.pity ?? 62;
+    // 看板：まん中に光の玉、そのまわりを SSR の品（色のセット・背景・アイコン・エフェクト・枠）が回る
+    const SHOW = ['mono', 'galaxy', 'b_hunter', 'blackhole', 'f_ssr1'];
+    const ring = GACHA_POOL.filter((x) => x.rarity === 'SSR' && x.kind !== 'title');
+    const orbit = SHOW.map((id) => ring.find((x) => x.id === id)).filter(Boolean);
+    while (orbit.length < 5) orbit.push(ring.find((x) => !orbit.includes(x)));
+    const ttl = GACHA_POOL.find((x) => x.rarity === 'SSR' && x.kind === 'title');
+    const pity = d.pity ?? 62, total = GACHA_POOL.length, got = d.gachaGot ?? 37;
     return `
     <div class="ms-full ms-page">
       ${back('ガチャ', { ...d, coins: d.coins ?? 12480 })}
-      ${m('ガチャの看板', `<div class="ms-banner-t">ガチャ</div><div class="ms-banner-s">着せ替えの品が出る</div><div class="ms-banner-art">${ssr.map((it) => `<span class="ms-thumb ${it.kind}">${itemThumb(it)}</span>`).join('')}</div><div class="ms-banner-end">SSR ${GACHA.rates.SSR}%</div>`, 'ms-gbanner')}
+      ${m('ガチャの看板', `<div class="gb-rays"></div><div class="gb-stars"></div>
+        <div class="gb-head"><div class="gb-title">ガチャ</div><div class="gb-count">全<b>${total}</b>種</div></div>
+        <div class="gb-sub">色・背景・アイコン・エフェクト・称号・アイコン枠</div>
+        <div class="gb-stage">
+          <div class="gb-orb"><i></i></div>
+          <div class="gb-orbit">${orbit.map((it, i) => `<span class="gb-sat" style="--a:${i * 72}deg"><span class="gb-up"><span class="ms-thumb ${it.kind}">${itemThumb(it)}</span></span></span>`).join('')}</div>
+          ${ttl ? `<div class="gb-ttl">${titleChip(ttl)}</div>` : ''}
+        </div>
+        <div class="gb-rates">${['SSR', 'SR', 'R', 'N'].map((r) => `<span class="gb-rate ${RARE_CLS[r]}"><span class="ms-rare ${RARE_CLS[r]}">${r}</span><b>${GACHA.rates[r]}%</b></span>`).join('')}</div>`, 'ms-gbanner gb')}
+      ${m('集めた品', `<span>集めた品</span>${bar(got / total, 'cyan')}<b>${got}/${total}</b>`, 'ms-progress')}
       ${st.err ? m('コインが足りない', st.err, 'ms-err') : ''}
       ${m('天井（あと何回でSSR確定）', `<span>SSR確定まで</span>${bar(pity / GACHA.pity, 'gold')}<b>あと ${GACHA.pity - pity}回</b>`, 'ms-progress')}
       <div class="ms-gbtns">
