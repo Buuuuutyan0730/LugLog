@@ -2,7 +2,7 @@
 //   どの曲も、目立たず、落ち着いていて、でも体が揺れる感じ。盛り上げない（フェーズが進んでも変えない）。
 //   4曲は、楽器・リズム・拍子・調をそれぞれ別に作る（同じ曲の手直しにしない）。
 //   曲を切りかえるときは、前の曲を少しずつ小さく、次の曲を少しずつ大きくする。
-import { audioParts, onAudioReset } from './audio.js?v=20261122030658';
+import { audioParts, onAudioReset } from './audio.js?v=20261122030854';
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const vary = (v) => v * (0.88 + Math.random() * 0.24);
@@ -423,11 +423,12 @@ function loop() {
   if (!cur && !fading.size) { clearInterval(timer); timer = null; }
 }
 // 曲を流す。同じ曲なら何もしない。fade：切りかえにかける秒数
-export function playBgm(id, { fade = 2.5, force = false, fromBar = 0 } = {}) {
+// out：前の曲を消す秒数（決めなければ fade と同じ。0 に近いほど、すぐ止める）
+export function playBgm(id, { fade = 2.5, out = fade, force = false, fromBar = 0 } = {}) {
   if (cur && cur.id === id) return;
   const P = audioParts(force);
   if (!P) return;
-  stopBgm(fade);
+  stopBgm(out);
   if (!id || !SONGS[id]) return;
   cur = startSong(P, id, fade);
   cur.step = fromBar * SONGS[id].steps;   // 途中の小節から流す（確かめる用）
