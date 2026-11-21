@@ -111,9 +111,9 @@ export const CONFIG = {
   // 敵の種類。強さの違いは大きさ（＝体力）で表す。体力から半径が決まる。倒したときのスコア＝体力
   //   unlockPhase：出始めるフェーズ、weight：出やすさ、damage：触れた時のダメージの倍率
   enemies: {
-    drift:   { name: '漂い', hp: 15, sizeMul: 1.25, speed: 40, damage: 0,    unlockPhase: 1, weight: 3,
+    drift:   { name: '漂い', hp: 15, sizeMul: 1.25, speed: 40, damage: 0,    unlockPhase: 1, weight: 6,
                wander: [1.5, 3] },                              // 行き先を変えるまでの秒数（攻撃しない）
-    chaser:  { name: '追跡', hp: 20, sizeMul: 1.25, speed: 70, damage: 1.0,  unlockPhase: 1, weight: 6 },
+    chaser:  { name: '追跡', hp: 20, sizeMul: 1.25, speed: 70, damage: 1.0,  unlockPhase: 1, weight: 12 },
     shooter: { name: '射撃', hp: 30, sizeMul: 1.25, speed: 55, damage: 0.75, unlockPhase: 3, weight: 2,
                keepDistance: 170, fireInterval: 2.4, windup: 0.4 },
     swarm:   { name: '群れ', hp: 4,  speed: 85, damage: 0.4,  unlockPhase: 6, weight: 2,

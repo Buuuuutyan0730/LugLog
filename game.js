@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122030854';
-import { spawnPop, stepParticle } from './pops.js?v=20261122030854';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122030854';
+import { CONFIG } from './config.js?v=20261122031102';
+import { spawnPop, stepParticle } from './pops.js?v=20261122031102';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122031102';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -360,7 +360,8 @@ export function createGame() {
   function sfx(id, pitch = 1) { if (s.sfx && s.sfx.length < 48) s.sfx.push([id, pitch]); }
   const skSfx = (id) => sfx('sk_' + id);
 
-  function damageEnemy(e, amount, raw = false) {
+  // dot：毎フレーム少しずつ削るダメージ（毒・炎・雷の線など）。白く光らせない（光りっぱなしになるので）
+  function damageEnemy(e, amount, raw = false, dot = false) {
     e.lastSrc = s.dmgSrc || 'ghost';
     if (!raw) amount *= markMul(e) * lureMul(e);
     if (e.frostT > 0 && s.st.evo.frostpath) amount *= 1 + SK.frostpath.kiwamiDamage;   // 極霜の道
@@ -369,7 +370,7 @@ export function createGame() {
     // 圧縮：引力の中の敵が多いほど、受けるダメージ↑
     if (e.inPullT > 0 && skLv('compress')) amount *= 1 + Math.min(s.st.evo.compress ? SK.compress.kiwamiCap : SK.compress.cap, (s.pullCount || 0) * SK.compress.per);
     e.hp -= amount;
-    e.flash = 0.07;
+    if (!dot) e.flash = 0.07;
     // 死神の契約：当てるたびに、まれに即死。大きい敵ほど効きにくく、ボスには効かない
     if (s.st.curse.reaper && !e.boss && e.hp > 0 && Math.random() < CU.reaperChance * Math.min(1, CU.reaperRefHp / e.maxHp)) {
       e.hp = 0;
@@ -634,8 +635,8 @@ export function createGame() {
   // ---- 現象の道：雷の型 ----
   const avgGhostPower = () => (s.ghosts.length ? s.ghosts.reduce((a, g) => a + g.power, 0) / s.ghosts.length : P.power * s.st.ghostAttack);
   function bolt(x0, y0, x1, y1, life = 0.18) { s.bolts.push({ x0, y0, x1, y1, life, max: life }); }
-  function zap(e, dmg) {
-    damageEnemy(e, dmg);
+  function zap(e, dmg, dot = false) {
+    damageEnemy(e, dmg, false, dot);
     e.shockT = 0.25;
     // 帯電：痺れて一瞬止まる（同じ敵は少し間をあける）
     if (skLv('charged') && (e.chargeStopAt || -9) + SK.charged.again <= s.time) {
@@ -677,7 +678,7 @@ export function createGame() {
     for (const e of s.enemies) {
       if (e.hp <= 0) continue;
       for (const [a, b] of s.links) {
-        if (segDist(a.x, a.y, b.x, b.y, e.x, e.y) < e.r + w) { if ((e.zapSfx || 0) <= s.time) { e.zapSfx = s.time + 0.8; skSfx('thunder'); } zap(e, dps * DT); break; }
+        if (segDist(a.x, a.y, b.x, b.y, e.x, e.y) < e.r + w) { if ((e.zapSfx || 0) <= s.time) { e.zapSfx = s.time + 0.8; skSfx('thunder'); } zap(e, dps * DT, true); break; }
       }
     }
     // 落雷：雷の線の近くの敵へ
@@ -1196,7 +1197,7 @@ export function createGame() {
       if (!(e.poisonN > 0)) { if (e.status && e.status.poison) e.status.poison = false; continue; }
       e.poisonT -= DT;
       if (e.poisonT <= 0) { e.poisonN = 0; if (e.status) e.status.poison = false; continue; }
-      if (e.hp > 0 && skLv('poison')) damageEnemy(e, per * e.poisonN * DT);
+      if (e.hp > 0 && skLv('poison')) damageEnemy(e, per * e.poisonN * DT, false, true);
       (e.status || (e.status = {})).poison = true;
     }
     for (const f of s.fogs) f.life -= DT;
@@ -1257,7 +1258,7 @@ export function createGame() {
         e.inPullT = 0.1; s.pullCount++;
         if (d > g.r + e.r) drawTo(e, g.x, g.y, spd);
         // 特異点：中心近くの敵へ毎秒ダメージ
-        if (hole && d < g.r + P2.core * s.zoom + e.r) damageEnemy(e, g.power * P2.corePower * DT);
+        if (hole && d < g.r + P2.core * s.zoom + e.r) damageEnemy(e, g.power * P2.corePower * DT, false, true);
       }
     }
     // 斥力：本体の近くの敵を押し返す
@@ -1270,7 +1271,7 @@ export function createGame() {
         if ((e.repelSfx || 0) <= s.time) { e.repelSfx = s.time + 1.5; skSfx('repel'); }
         const m = SK.repel.speed * s.zoom * DT;
         e.x += dx / d * m; e.y += dy / d * m;
-        if (s.st.evo.repel) damageEnemy(e, avgGhostPower() * SK.repel.power * DT);
+        if (s.st.evo.repel) damageEnemy(e, avgGhostPower() * SK.repel.power * DT, false, true);
       }
       p.repel = R;
     } else s.player.repel = 0;
@@ -1345,7 +1346,7 @@ export function createGame() {
         if (f.kind === 'sea') touch = inPoly(f.poly, e.x, e.y);
         else for (const p of f.pts) { if (Math.hypot(p.x - e.x, p.y - e.y) < e.r + f.width) { touch = true; break; } }
         if (!touch) continue;
-        damageEnemy(e, f.dps * DT);
+        damageEnemy(e, f.dps * DT, false, true);
         burn(e, f.dps);
         if ((e.fireFx || 0) <= s.time) { sparks(e.x, e.y, 'white', 2, 90); e.fireFx = s.time + 0.25; }
       }
@@ -1383,7 +1384,7 @@ export function createGame() {
     for (const e of s.enemies) {
       if (!(e.burnT > 0) || e.hp <= 0) { if (e.status && e.status.burn) e.status.burn = false; continue; }
       e.burnT -= DT;
-      damageEnemy(e, e.burnDps * DT);
+      damageEnemy(e, e.burnDps * DT, false, true);
       (e.status || (e.status = {})).burn = e.burnT > 0;
       if (skLv('spread')) {
         const R = SK.spread.reach * s.zoom;
@@ -1541,7 +1542,7 @@ export function createGame() {
         if (e.hp <= 0) continue;
         const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
         if (d >= p.aura + e.r) continue;
-        damageEnemy(e, dps * DT);
+        damageEnemy(e, dps * DT, false, true);
         if ((e.auraFx || 0) <= s.time) { skSfx('aura'); sparks(e.x, e.y, 'player', 2, 110); e.auraFx = s.time + 0.2; }
         if (p.auraKw && d > 0) knock(e, dx, dy, BS.aura.push * DT * 6);
       }
@@ -2188,7 +2189,7 @@ export function createGame() {
         const dx = e.x - bg.x, dy = e.y - bg.y;
         const d = Math.hypot(dx, dy);
         if (d >= bg.r + e.r) continue;
-        damageEnemy(e, dps * DT);
+        damageEnemy(e, dps * DT, false, true);
         if ((e.crushFx || 0) <= s.time) { burst(e.x, e.y, 'ghost', 3, 120, bg.idx); e.crushFx = s.time + 0.15; skSfx('crush'); }
         if (kiwami && d > 0 && !e.boss) {
           const push = SK.crush.push * s.zoom * DT * 6;
