@@ -1910,3 +1910,22 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .ms-head-nav .ms-title { margin-left: 1cqw; }
 .ms-head-nav .ms-wallet { gap: 1.4cqw; }
 .ms-head-nav .ms-wallet span { margin: 0; }
+
+/* ---- 結果の画面：見出し・数字・ボス・スキル・コインを、それぞれ枠で区切る ---- */
+.ms-rhead { margin: -1cqw -1cqw 0; padding: 2.4cqw 2cqw 3cqw; border-radius: 2.4cqw; text-align: center;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 59, 92, 0.22), transparent 70%), rgba(10, 10, 20, 0.35); border: 0.5cqw solid rgba(255, 59, 92, 0.35); }
+.ms-rhead .ms-rscore small { display: block; font-family: 'Press Start 2P', monospace; font-size: 2.4cqw; color: var(--muted); letter-spacing: 0.6cqw; margin-top: 1cqw; }
+.ms-rsec { margin-top: 2.4cqw; padding: 2cqw 2.4cqw 2.4cqw; border-radius: 2cqw; background: rgba(10, 10, 20, 0.4); border: 0.5cqw solid #2a3270; }
+.ms-rsec-h { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 1.4cqw; margin-bottom: 2cqw; border-bottom: 0.4cqw dashed rgba(143, 155, 214, 0.3); font-size: 3cqw; color: var(--muted); }
+.ms-rsec-h b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 2.4cqw; color: var(--cyan); }
+.ms-rsec .ms-none { padding: 1cqw 0; }
+.ms-reward2 { display: flex; align-items: center; justify-content: space-between; margin-top: 2.4cqw; padding: 2.4cqw 3cqw; border-radius: 2cqw;
+  background: linear-gradient(90deg, rgba(255, 216, 74, 0.14), rgba(255, 216, 74, 0.04)); border: 0.5cqw solid rgba(255, 216, 74, 0.55); }
+.ms-rw-l { font-size: 3.2cqw; text-align: left; }
+.ms-rw-l small { display: block; font-size: 2.4cqw; color: var(--muted); margin-top: 0.4cqw; }
+.ms-rw-v { display: flex; align-items: center; gap: 1.4cqw; }
+.ms-rw-v .cur { width: 5cqw; height: 5cqw; }
+.ms-rw-v b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 4.4cqw; color: var(--gold); text-shadow: 0 0.6cqw 0 var(--ink); }
+.ms-rbtns { margin-top: 3cqw; padding-top: 3cqw; border-top: 0.4cqw solid rgba(143, 155, 214, 0.25); }
+.ms-rsec .ms-roads { flex-direction: row; flex-wrap: wrap; gap: 1.6cqw 3.6cqw; }
+.ms-rhead .ms-rscore b { margin: 1cqw 0 0; }
