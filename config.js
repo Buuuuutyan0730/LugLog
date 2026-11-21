@@ -46,7 +46,7 @@ export const CONFIG = {
     dragLimit: { label: '1回で描ける長さ', min: 100, max: 1200, step: 20, value: 400, unit: '' },
     trailBudget: { label: '軌跡の総量', min: 300, max: 4000, step: 100, value: 1000, unit: '' },
     ghostSpeed: { label: '分身の速さ', min: 40, max: 600, step: 10, value: 150, unit: '' },
-    moveSpeed: { label: '移動速度の上限', min: 200, max: 2000, step: 50, value: 450, unit: '' },   // 本体の最高速度（1秒に動ける距離）。動きに関わるスキルの基準
+    moveSpeed: { label: '移動速度の上限', min: 200, max: 2000, step: 50, value: 380, unit: '' },   // 本体の最高速度（450→380）（1秒に動ける距離）。動きに関わるスキルの基準
     sensitivity: { label: '指の感度（相対のとき）', min: 0.6, max: 2.5, step: 0.1, value: 1.0, unit: 'x' },
     touchOffset: { label: '指からのずらし（追従のとき）', min: 0, max: 100, step: 5, value: 45, unit: '' },
     contactDamage: { label: '敵に触れた時のダメージ', min: 5, max: 50, step: 5, value: 20, unit: '' },
@@ -62,7 +62,7 @@ export const CONFIG = {
   power: { sizeK: 2.2, minRadius: 4 },   // 攻撃力10→半径7、20→約10、80→約20
 
   player: {
-    stickAccelTime: 0.2,   // スティック：止まった状態から最高速度になるまでの秒数（急に速くならないように）
+    stickAccelTime: 0.35,  // スティック：止まった状態から最高速度になるまでの秒数（急に速くならないように。0.2→0.35）
     maxHp: 100,
     power: 20,             // 本体の強さ（今は攻撃しないので大きさだけに使う。半径 約10）
     fireInterval: 0.4,
@@ -72,7 +72,7 @@ export const CONFIG = {
   },
 
   ghost: {
-    sizeMul: 1.2,          // 分身の大きさの倍率（見た目と当たりの大きさ。攻撃力から決まる大きさに掛ける）
+    sizeMul: 1.7,          // 分身の大きさの倍率（1.2→1.7：ふたまわり大きく）（見た目と当たりの大きさ。攻撃力から決まる大きさに掛ける）
     powerUnit: 20,         // 軌跡の長さ20ごとに攻撃力1（＝長さ100ごとに5）
     fireInterval: 1.0,
     ramInterval: 0.5,      // 体当たり型：同じ敵に当たり直せる間隔
