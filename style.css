@@ -1255,10 +1255,8 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-navsoon { position: absolute; top: -0.6cqw; right: 1cqw; font-size: 1.9cqw; color: var(--ink); background: var(--muted); border: 0.3cqw solid var(--ink); border-radius: 0.8cqw; padding: 0 0.6cqw; }
 .ms-none { font-size: 3cqw; color: var(--muted); text-align: center; padding: 2cqw 0; }
 .ms-ghostdot { display: block; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, #fff 0 25%, var(--cyan) 30% 70%, transparent 72%); }
-.ms-zpic { display: grid; place-items: center; width: 13cqw; height: 13cqw; padding: 1.6cqw; background: #121738; border: 0.6cqw solid var(--ink); border-radius: 2cqw; box-shadow: 0 0.8cqw 0 var(--ink), inset 0 0 0 0.4cqw #2a3270; }
-.ms-zpic svg { width: 100%; height: 100%; }
-.ms-zgrid.enemy, .ms-zgrid.boss { grid-template-columns: repeat(4, 1fr); row-gap: 3cqw; }
-.ms-zgrid.enemy .ms-zcell small, .ms-zgrid.boss .ms-zcell small { font-size: 2.6cqw; }
+.ms-zpic { display: grid; place-items: center; box-sizing: border-box; width: 13cqw; height: 13cqw; padding: 1.6cqw; background: #121738; border: 0.6cqw solid var(--ink); border-radius: 2cqw; box-shadow: 0 0.8cqw 0 var(--ink), inset 0 0 0 0.4cqw #2a3270; }
+.ms-zcell .ms-zpic svg { width: 100%; height: 100%; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
 .ms-chip.unseen { color: #2a3270; font-size: 4cqw; border-style: dashed; border-color: #2a3270; }
 .ms-chip[data-act] { cursor: pointer; }
 .ms-dstats.two { grid-template-columns: 1fr 1fr; }
@@ -1463,7 +1461,7 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-zgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.6cqw; }
 .ms-zcell { display: flex; flex-direction: column; align-items: center; gap: 0.6cqw; font-family: inherit; background: none; border: none; color: var(--text); padding: 0; }
 .ms-zcell svg { width: 13cqw; height: 13cqw; padding: 2.4cqw; background: #121738; border: 0.6cqw solid var(--ink); border-radius: 2cqw; box-shadow: 0 0.8cqw 0 var(--ink), inset 0 0 0 0.4cqw #2a3270; }
-.ms-zcell small { font-size: 2.2cqw; white-space: nowrap; }
+.ms-zcell small { font-size: 2.2cqw; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .ms-zcell.unseen b { display: grid; place-items: center; width: 13cqw; height: 13cqw; background: #121738; border: 0.6cqw dashed #2a3270; border-radius: 2cqw; color: #2a3270; font-size: 6cqw; font-weight: normal; }
 .ms-zcell.unseen small { color: #2a3270; }
 .ms-detail { padding: 4cqw; display: flex; flex-direction: column; gap: 2.4cqw; align-items: center; text-align: center; }
@@ -1489,6 +1487,9 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-skinpv { position: relative; width: 56cqw; height: 37cqw; border-radius: 2cqw; overflow: hidden; border: 0.6cqw solid var(--ink); flex: none; }
 .ms-skinpv img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .ms-shot { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ms-skinpv.icon { display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #2a3270, #0d1030 70%); }
+.ms-pvicon { display: grid; place-items: center; }
+.ms-pvicon .ms-avatar { width: 22cqw; height: 22cqw; font-size: 11cqw; }
 .ms-pvav { position: absolute; right: 2cqw; bottom: 2cqw; width: 14cqw !important; height: 14cqw !important; font-size: 7cqw !important; }
 .ms-thumb { display: block; width: 62%; aspect-ratio: 1; border-radius: 1.6cqw; overflow: hidden; border: 0.5cqw solid var(--ink); }
 .ms-thumb svg { display: block; width: 100% !important; height: 100% !important; }
@@ -1518,6 +1519,7 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-ggrid .ms-rare { font-size: 1.6cqw; }
 .ms-equip { position: absolute; bottom: -1.6cqw; font-size: 2.2cqw; background: var(--teal); color: #fff; border: 0.4cqw solid var(--ink); border-radius: 1cqw; padding: 0.2cqw 1.2cqw; }
 .ms-scell.picked { outline: 0.8cqw solid var(--gold); outline-offset: 0.6cqw; }
+.ms-scroll > .ms-sgrid { padding: 1.6cqw; }   /* 選んだ枠（外側に出る線）が、見える範囲の端で切れないように */
 .r-n { --rc: #8f9bd6; } .r-r { --rc: #4cf08a; } .r-sr { --rc: #c7a6ff; } .r-ssr { --rc: #ff8be0; }
 .ms-rare.r-n, .ms-rare.r-r, .ms-rare.r-sr, .ms-rare.r-ssr { position: static; font-size: 3cqw; }
 .r-lock { background: #0b0f24; box-shadow: 0 1cqw 0 var(--ink); }
