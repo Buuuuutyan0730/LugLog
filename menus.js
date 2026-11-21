@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122023711';
-import { snapIcons } from './icons.js?v=20261122023711';
-import { writeSave } from './save.js?v=20261122023711';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122023711';
-import { playSound } from './audio.js?v=20261122023711';
-import { createGachaFx } from './gachafx.js?v=20261122023711';
-import { titleOf } from './titles.js?v=20261122023711';
-import { frameOf } from './frames.js?v=20261122023711';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122023711';
-import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122023711';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122023711';
-import { GACHA_POOL } from './skins.js?v=20261122023711';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122023952';
+import { snapIcons } from './icons.js?v=20261122023952';
+import { writeSave } from './save.js?v=20261122023952';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122023952';
+import { playSound } from './audio.js?v=20261122023952';
+import { createGachaFx } from './gachafx.js?v=20261122023952';
+import { titleOf } from './titles.js?v=20261122023952';
+import { frameOf } from './frames.js?v=20261122023952';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122023952';
+import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122023952';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122023952';
+import { GACHA_POOL } from './skins.js?v=20261122023952';
 
 export function createMenus(save, hooks) {
   const stage = document.getElementById('stage');
@@ -116,7 +116,9 @@ export function createMenus(save, hooks) {
       case 'profile': open('s_profile'); break;
       case 'icon': save.equip.icon = arg; writeSave(save); sync(); render(); break;
       case 'frame': save.equip.frame = arg; writeSave(save); sync(); render(); break;
-      case 'ttl': save.equip.title = arg === 'none' ? '' : arg; writeSave(save); sync(); render(); break;   // 称号を選ぶ（'title' はタイトルへ戻る操作）
+      case 'ttl': save.equip.title = arg === 'none' ? '' : arg; writeSave(save); sync(); st.ttlOpen = false; render(); break;
+      case 'ttlopen': st.ttlOpen = true; render(); break;
+      case 'ttlclose': st.ttlOpen = false; render(); break;   // 称号を選ぶ（'title' はタイトルへ戻る操作）
       // ランキング
       case 'ranking': open('s_ranking', { rtab: 'week' }); loadRank('week'); break;
       case 'rtab': st.rtab = arg; render(); loadRank(arg); break;
@@ -148,8 +150,8 @@ export function createMenus(save, hooks) {
       // 着せ替え
       case 'skin': if (id === 's_soon') break; st.skinTab = arg; render(); root.querySelector('.ms-scroll')?.scrollTo(0, 0); break;
       case 'skinpick': if ((save.owned[arg] || []).includes(arg2) || (arg === 'frame' && arg2 === 'f_none')) { st.pick = { ...(st.pick || save.equip), [arg]: arg2 }; render(); } break;
-      case 'equip': { const tab = st.skinTab || 'set'; const v = (st.pick || save.equip)[tab] || (tab === 'frame' ? 'f_none' : ''); if ((save.owned[tab] || []).includes(v) || (tab === 'frame' && v === 'f_none')) { save.equip[tab] = v; writeSave(save); hooks.applySkin(); if (tab === 'icon' || tab === 'frame') sync(); render(); } break; }
-      case 'skinopen': open('s_skin', { skinTab: 'set', pick: { ...save.equip } }); break;
+      case 'equip': { const tab = st.skinTab || 'icon'; const v = (st.pick || save.equip)[tab] || (tab === 'frame' ? 'f_none' : ''); if ((save.owned[tab] || []).includes(v) || (tab === 'frame' && v === 'f_none')) { save.equip[tab] = v; writeSave(save); hooks.applySkin(); if (tab === 'icon' || tab === 'frame') sync(); render(); } break; }
+      case 'skinopen': open('s_skin', { skinTab: 'icon', pick: { ...save.equip } }); break;
       // ガチャ
       case 'gacha': open('s_gacha'); break;
       case 'rates': open('s_rates'); break;

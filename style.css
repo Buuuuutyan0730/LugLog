@@ -1871,3 +1871,11 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 @keyframes gb-err { 0% { opacity: 0; transform: translate(-50%, 1.5cqw); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 0); } }
 .ms-tabs:has(> :nth-child(5)) { gap: 1.2cqw; }
 .ms-tabs:has(> :nth-child(5)) .ms-tab { font-size: 2.8cqw; letter-spacing: -0.1cqw; white-space: nowrap; }
+/* プロフィール：いまの称号と「称号を変更」 */
+.ms-ttlnow { display: flex; align-items: center; gap: 2.4cqw; margin: 3cqw 0; padding: 2.4cqw 3cqw; border-radius: 2cqw; background: rgba(10, 10, 20, 0.45); }
+.ms-ttlnow-l { font-size: 3cqw; color: var(--muted); }
+.ms-ttlnow .btn { margin-left: auto; }
+.ms-ttlsheet { z-index: 5; }
+.ms-ttldlg { width: 84cqw; max-height: 78%; }
+.ms-ttlscroll { overflow-y: auto; min-height: 0; max-height: 52vh; scrollbar-width: none; }
+.ms-ttldlg .ms-ttlpicks { justify-content: center; margin-bottom: 0; }
