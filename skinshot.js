@@ -1,11 +1,11 @@
 // 着せ替えの絵：本物のゲームの描き方で、小さな場面を描いて画像にする（着せ替え・ガチャの画面で使う）
 //   色のセットと背景を一時的に入れて描き、描き終えたら身に着けているものに戻す
-import { createRenderer } from './render.js?v=20261122025021';
-import { createGame } from './game.js?v=20261122025021';
-import { applyForms } from './talents.js?v=20261122025021';
-import { THEME, applyColorSet, applyBackground } from './theme.js?v=20261122025021';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122025021';
-import { spawnPop, stepParticle } from './pops.js?v=20261122025021';
+import { createRenderer } from './render.js?v=20261122025244';
+import { createGame } from './game.js?v=20261122025244';
+import { applyForms } from './talents.js?v=20261122025244';
+import { THEME, applyColorSet, applyBackground } from './theme.js?v=20261122025244';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122025244';
+import { spawnPop, stepParticle } from './pops.js?v=20261122025244';
 
 const VW = 150, VH = 100;   // 場面の広さ（ゲームの中の長さ）
 const cache = new Map();
@@ -68,6 +68,7 @@ const unitCache = new Map();
 let ur = null, ucanvas = null;
 const UNIT = {
   core: { r: 15 }, hunter: { r: 12, ang: -Math.PI / 4 }, twin: { r: 12, side: 1 }, clock: { r: 14, handA: -Math.PI / 3 }, shade: { r: 13 },
+  drift: { r: 12 }, shooter: { r: 12, ang: -Math.PI / 2 }, swarm: { r: 8, ang: -Math.PI / 4 }, tank: { r: 14 },
   chaser: { r: 11, ang: -Math.PI / 4 }, dasher: { r: 11, ang: -Math.PI / 4 }, bomber: { r: 11 }, thief: { r: 11, ang: -Math.PI / 4 }, shield: { r: 11, ang: -Math.PI / 2 },
 };
 export function unitImage(kind) {
