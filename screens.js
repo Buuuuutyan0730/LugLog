@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261122025244';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122025244';
-import { CONFIG } from './config.js?v=20261122025244';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122025244';
-import { POP_STYLES } from './pops.js?v=20261122025244';
-import { TITLES, titleChip } from './titles.js?v=20261122025244';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122025244';
-import { titleOf } from './titles.js?v=20261122025244';
+import { iconSvg, snapIcons } from './icons.js?v=20261122025511';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122025511';
+import { CONFIG } from './config.js?v=20261122025511';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122025511';
+import { POP_STYLES } from './pops.js?v=20261122025511';
+import { TITLES, titleChip } from './titles.js?v=20261122025511';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122025511';
+import { titleOf } from './titles.js?v=20261122025511';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122025244';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122025511';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122025244';
-import { iconArtSvg } from './iconart.js?v=20261122025244';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122025244';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122025244';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122025511';
+import { iconArtSvg } from './iconart.js?v=20261122025511';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122025511';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122025511';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -156,6 +156,10 @@ const LOGO_STARS = [[8, 30, 0], [18, 78, 1.1], [30, 12, 0.5], [44, 88, 1.7], [62
 const LOGO_BACK = `<div class="logo-back"><div class="lb-aura"></div><div class="lb-core"></div><div class="lb-flare"></div><div class="lb-stars">${LOGO_STARS}</div></div>`;
 const logo = () => m('ロゴ', `${LOGO_BACK}<div class="logo-wrap">${LOGO_TRAIL}<div class="logo-main" data-t="LugLog"><span>Lug</span><span class="lg2">Log</span></div></div><div class="logo-sub"><i></i>指先のきせきにドラマを<i></i></div>`);
 // 下のタブ（ホーム・着せ替え・ガチャ・ランキング・図鑑・ミッション）。どのページにも同じものを出し、今いるページを光らせる
+// 右上：コイン・お知らせ・設定（ホームと、下のタブで行けるページで同じもの）
+const topRight = (d) => `<div class="ms-topright">${d.coins == null ? '' : `<div class="ms-wallet">${m('コイン', `${coin}<span>${num(d.coins)}</span>`, 'ms-cur')}</div>`}${m('お知らせ', `${px(PX.bell)}${d.newsNew ? `<span class="ms-dot">${d.newsNew}</span>` : ''}`, 'btn btn-icon ms-ib', 'button', act('news'))}${m('設定', px(PX.gear), 'btn btn-icon ms-ib', 'button', act('settings'))}</div>`;
+// 下のタブで行けるページの見出し：戻るボタンはなし（タブで移れるので）。右上はホームと同じ
+const pageHead = (title, d) => `<div class="ms-head ms-head-nav"><div class="ms-title">${title}</div>${topRight(d)}</div>`;
 const NAV = [['ホーム', 'M1 3h1V2h1V1h2v1h1v1h1v5H5V5H3v3H1z', 'home'], ['着せ替え', 'M2 0h4v1h2v3H7v4H1V4H0V1h2z', 'skinopen'], ['ガチャ', 'M2 0h4v1h1v3H6v1h1v3H1V5h1V4H1V1h1z', 'gacha'], ['ランキング', 'M3 0h2v8H3zM0 3h2v5H0zM6 5h2v3H6z', 'ranking'], ['図鑑', 'M0 1h3v1h2V1h3v7H5V7H3v1H0z', 'zukan'], ['ミッション', 'M1 0h6v8H1zM2 2v1h4V2zM2 4v1h4V4z', 'mission']];
 function navBar(d, cur) {
   return `<nav class="ms-nav">${NAV.map(([n, p, a]) => m(`下のタブ：${n}`, `${px(p)}<span>${n}</span>${a === 'mission' && d.missionDot ? '<i class="ms-navdot"></i>' : ''}`, `ms-navi${a === cur ? ' on' : ''}`, 'button', a === cur ? '' : act('nav:' + a))).join('')}</nav>`;
@@ -174,11 +178,7 @@ export const SCREENS = {
     <div class="ms-full ms-home">
       <div class="ms-topbar">
         ${m('プロフィール', `${frameHtml(d.frameItem, `<div class="ms-avatar">${avatarHtml(d.iconItem)}</div>`)}<div class="ms-pname">${titleChip(d.titleItem, 'sm')}<b>${esc(d.name)}</b><small>ID ${d.id}</small></div>`, 'ms-prof', 'button', act('profile'))}
-        <div class="ms-topright">
-          ${d.coins == null ? '' : `<div class="ms-wallet">${m('コイン', `${coin}<span>${num(d.coins)}</span>`, 'ms-cur')}</div>`}
-          ${m('お知らせ', `${px(PX.bell)}${d.newsNew ? `<span class="ms-dot">${d.newsNew}</span>` : ''}`, 'btn btn-icon ms-ib', 'button', act('news'))}
-          ${m('設定', px(PX.gear), 'btn btn-icon ms-ib', 'button', act('settings'))}
-        </div>
+        ${topRight(d)}
       </div>
       <div class="ms-logo ms-logo-fixed">${logo()}</div>
       ${d.best.score > 0 ? m('最高記録', `<span>BEST</span><b>PHASE ${d.best.phase}</b><b>${num(d.best.score)}</b>`, 'ms-best') : ''}
@@ -288,7 +288,7 @@ export const SCREENS = {
     }
     return `
     <div class="ms-full ms-page">
-      ${back('図鑑')}
+      ${pageHead('図鑑', d)}
       ${tabs(['スキル', '敵', 'ボス'], ['skill', 'enemy', 'boss'].indexOf(tab), '図鑑のタブ', ['ztab:skill', 'ztab:enemy', 'ztab:boss'])}
       ${m('集めた数', `<span>集めた数</span>${bar(got / total, 'cyan')}<b>${got}/${total}</b>`, 'ms-progress')}
       <div class="ms-scroll">${body}</div>
@@ -530,7 +530,7 @@ Object.assign(SCREENS, {
     const cur = list.find((x) => x.id === pick[tab]);
     return `
     <div class="ms-full ms-page">
-      ${back('着せ替え', d)}
+      ${pageHead('着せ替え', d)}
       ${m('着せ替えの見本', `<div class="ms-skinpv ${tab}">${skinPreview(tab, cur, pickedSet, pickedBg, d)}</div><div class="ms-skinname">${cur.rarity === 'start' && tab === 'icon' ? 'アイコン' : cur.name}<small>${RARE_LABEL[cur.rarity] ? RARE_LABEL[cur.rarity] + '・' : '最初から・'}${KIND_NAME[tab]}</small>${tab === 'icon' && cur.photo && owned.icon.includes(cur.id) ? m('写真を選ぶ', d.photo ? '写真を選びなおす' : '写真を選ぶ', 'btn btn-small btn-sub ms-photobtn', 'button', act('photo-pick')) : ''}</div>`, 'ms-skinbox')}
       ${tabs(['アイコン', 'アイコン枠', '色のセット', '背景', 'エフェクト'], ['icon', 'frame', 'set', 'bg', 'pop'].indexOf(tab), '着せ替えのタブ', ['skin:icon', 'skin:frame', 'skin:set', 'skin:bg', 'skin:pop'])}
       <div class="ms-scroll"><div class="ms-sgrid ${tab}">
@@ -549,7 +549,7 @@ Object.assign(SCREENS, {
     const pity = d.pity ?? 62, total = GACHA_POOL.length, got = d.gachaGot ?? 37;
     return `
     <div class="ms-full ms-page">
-      ${back('ガチャ', { ...d, coins: d.coins ?? 12480 })}
+      ${pageHead('ガチャ', { ...d, coins: d.coins ?? 12480 })}
       ${m('ガチャの看板', `<div class="gb-rays"></div><div class="gb-stars"></div>
         <div class="gb-head"><div class="gb-title">ガチャ</div><div class="gb-count">全<b>${total}</b>種</div></div>
         <div class="gb-sub">色・背景・アイコン・エフェクト・称号・アイコン枠</div>
@@ -608,7 +608,7 @@ Object.assign(SCREENS, {
     const row = (e, me = false) => m(me ? '自分の順位' : `順位の行：${e.rank}位`, `<span class="ms-rank">${e.rank ?? '-'}</span>${av(e, 'sm')}<span class="ms-rname">${titleChip(titleOf(e.title), 'sm')}<b>${esc(e.name)}${me ? '（あなた）' : ''}</b></span><span class="ms-rph">P${e.phase}</span><b class="ms-rsc">${num(e.score)}</b>`, `ms-rrow${me ? ' me' : ''}`);
     return `
     <div class="ms-full ms-page">
-      ${back('ランキング', d)}
+      ${pageHead('ランキング', d)}
       ${tabs(['今週', '全期間'], tab === 'week' ? 0 : 1, 'ランキングのタブ', ['rtab:week', 'rtab:all'])}
       ${m('集計の期間', tab === 'week' ? `${R.period || '11/17（月）〜 11/23（日）'}　毎週月曜の朝4時に入れかわります` : 'これまでの1回の最高スコア', 'ms-period')}
       ${R.list.length ? `
@@ -636,7 +636,7 @@ Object.assign(SCREENS, {
     const ready = tab === 'daily' ? M.daily.some((x) => x.state === 'ready') || M.bonus === 'ready' : ACHIEVEMENTS.some((A) => { const p = M.ach[A.id] || { now: 0, got: 0 }; return p.got < A.tiers.length && p.now >= A.tiers[p.got][0]; });
     return `
     <div class="ms-full ms-page">
-      ${back('ミッション', d)}
+      ${pageHead('ミッション', d)}
       ${tabs(['デイリー', '実績'], tab === 'daily' ? 0 : 1, 'ミッションのタブ', ['mtab:daily', 'mtab:ach'])}
       ${tab === 'daily' ? m('次の入れかえまで', `朝4時に入れかわります　あと ${M.left || '16:42:10'}`, 'ms-period') : ''}
       <div class="ms-scroll">${body}</div>

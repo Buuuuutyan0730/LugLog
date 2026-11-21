@@ -1,11 +1,11 @@
 // 着せ替えの絵：本物のゲームの描き方で、小さな場面を描いて画像にする（着せ替え・ガチャの画面で使う）
 //   色のセットと背景を一時的に入れて描き、描き終えたら身に着けているものに戻す
-import { createRenderer } from './render.js?v=20261122025244';
-import { createGame } from './game.js?v=20261122025244';
-import { applyForms } from './talents.js?v=20261122025244';
-import { THEME, applyColorSet, applyBackground } from './theme.js?v=20261122025244';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122025244';
-import { spawnPop, stepParticle } from './pops.js?v=20261122025244';
+import { createRenderer } from './render.js?v=20261122025511';
+import { createGame } from './game.js?v=20261122025511';
+import { applyForms } from './talents.js?v=20261122025511';
+import { THEME, applyColorSet, applyBackground } from './theme.js?v=20261122025511';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122025511';
+import { spawnPop, stepParticle } from './pops.js?v=20261122025511';
 
 const VW = 150, VH = 100;   // 場面の広さ（ゲームの中の長さ）
 const cache = new Map();
