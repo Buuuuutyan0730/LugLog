@@ -197,7 +197,7 @@ html, body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 6cqw;
+  top: 45%;
   text-align: center;
   font-size: 3.6cqw;
   color: var(--text);
@@ -1402,7 +1402,7 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-nowc small { display: block; font-size: 3cqw; color: var(--muted); margin-bottom: 1.4cqw; }
 .ms-nowc b { font-family: 'Press Start 2P', monospace; font-size: 5cqw; font-weight: normal; color: var(--text); text-shadow: 0 0.6cqw 0 var(--ink); }
 /* 見本では下の帯に隠れないよう少し上に置く（実際は真ん中） */
-.ms-pausebg { place-items: start center; padding-top: 22cqw; }
+.ms-pausebg { place-items: center; }
 .ms-pausebtn { position: absolute; top: 3cqw; right: 3cqw; outline: 0.6cqw dashed var(--cyan); outline-offset: 1cqw; }
 
 /* 設定 */
