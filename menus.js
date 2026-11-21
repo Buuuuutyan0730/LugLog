@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122012532';
-import { snapIcons } from './icons.js?v=20261122012532';
-import { writeSave } from './save.js?v=20261122012532';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122012532';
-import { playSound } from './audio.js?v=20261122012532';
-import { createGachaFx } from './gachafx.js?v=20261122012532';
-import { titleOf } from './titles.js?v=20261122012532';
-import { frameOf } from './frames.js?v=20261122012532';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122012532';
-import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122012532';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122012532';
-import { GACHA_POOL } from './skins.js?v=20261122012532';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122020454';
+import { snapIcons } from './icons.js?v=20261122020454';
+import { writeSave } from './save.js?v=20261122020454';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122020454';
+import { playSound } from './audio.js?v=20261122020454';
+import { createGachaFx } from './gachafx.js?v=20261122020454';
+import { titleOf } from './titles.js?v=20261122020454';
+import { frameOf } from './frames.js?v=20261122020454';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122020454';
+import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122020454';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122020454';
+import { GACHA_POOL } from './skins.js?v=20261122020454';
 
 export function createMenus(save, hooks) {
   const stage = document.getElementById('stage');
@@ -26,7 +26,7 @@ export function createMenus(save, hooks) {
   const rank = {};
   function loadRank(tab) {
     if (!rank[tab]) rank[tab] = { list: [], me: null, error: '読みこみ中…' };
-    loadRanking(tab).then((r) => { rank[tab] = r; }, () => { if (!rank[tab].list.length) rank[tab] = { list: [], me: null, error: 'ランキングにつながりません。電波のよいところで、もう一度開いてください' }; })
+    loadRanking(tab).then((r) => { rank[tab] = r; }, (e) => { if (!rank[tab].list.length) rank[tab] = { list: [], me: null, error: `ランキングにつながりません。電波のよいところで、もう一度開いてください<small class="ms-why">${String((e && (e.code || e.message)) || 'unknown').replace(/[<>&]/g, '').slice(0, 80)}</small>` }; })
       .then(() => { if (id === 's_ranking' && (st.rtab || 'week') === tab) render(); });
   }
   // 名前・アイコン・枠・称号を変えたら、ランキングの表示も変える（つながらなければ何もしない）

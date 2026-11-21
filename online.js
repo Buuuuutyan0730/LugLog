@@ -2,7 +2,6 @@
 //   人の見分け：名前の登録なしで端末ごとに見分ける「匿名ログイン」
 //   全期間の最高は scores/<見分けの番号>、その週の最高は weeks/<週の番号>/scores/<見分けの番号> に1つずつ
 //   つながらないとき（電波がない・読みこめない）は、ゲームはそのまま遊べる。ランキングだけ「つながりません」と出す
-const VER = '13.4.0';
 const CONFIG = {
   apiKey: 'AIzaSyA9JWRT-1pPiMH4wnL78nrt_7icvCd_v7M',
   authDomain: 'luglog.firebaseapp.com',
@@ -32,17 +31,17 @@ let ready = null;   // つなぐ処理（1回だけ）
 function connect() {
   if (ready) return ready;
   ready = (async () => {
-    const base = `https://www.gstatic.com/firebasejs/${VER}/`;
-    const [appM, authM, fs] = await Promise.all([import(`${base}firebase-app.js`), import(`${base}firebase-auth.js`), import(`${base}firebase-firestore.js`)]);
-    const app = appM.initializeApp(CONFIG);
-    const auth = authM.getAuth(app);
-    const cred = auth.currentUser ? { user: auth.currentUser } : await authM.signInAnonymously(auth);
+    // Firebaseの部品はゲームに同梱（外のサイトから読みこまない）。ランキングを使うときだけ読みこむ
+    const fs = await import('./firebase.js');
+    const app = fs.initializeApp(CONFIG);
+    const auth = fs.getAuth(app);
+    const cred = auth.currentUser ? { user: auth.currentUser } : await fs.signInAnonymously(auth);
     return { fs, db: fs.getFirestore(app), uid: cred.user.uid };
   })();
   ready.catch(() => { ready = null; });   // 失敗したら、次にまた試す
   return ready;
 }
-const withTimeout = (p, ms = 8000) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+const withTimeout = (p, ms = 15000) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
 
 // ありえない記録かどうか（サーバー側のきまりと同じ考え方。測った値の3〜4倍まで認める）
 //   スコアはフェーズの3乗にほぼ比例して伸びる（測った値：フェーズ10で約1.3万、20で約6万、30で約18万、40で約49万）
