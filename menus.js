@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122024253';
-import { snapIcons } from './icons.js?v=20261122024253';
-import { writeSave } from './save.js?v=20261122024253';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122024253';
-import { playSound } from './audio.js?v=20261122024253';
-import { createGachaFx } from './gachafx.js?v=20261122024253';
-import { titleOf } from './titles.js?v=20261122024253';
-import { frameOf } from './frames.js?v=20261122024253';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122024253';
-import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122024253';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122024253';
-import { GACHA_POOL } from './skins.js?v=20261122024253';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122024522';
+import { snapIcons } from './icons.js?v=20261122024522';
+import { writeSave } from './save.js?v=20261122024522';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122024522';
+import { playSound } from './audio.js?v=20261122024522';
+import { createGachaFx } from './gachafx.js?v=20261122024522';
+import { titleOf } from './titles.js?v=20261122024522';
+import { frameOf } from './frames.js?v=20261122024522';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122024522';
+import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122024522';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122024522';
+import { GACHA_POOL } from './skins.js?v=20261122024522';
 
 export function createMenus(save, hooks) {
   const stage = document.getElementById('stage');
@@ -48,7 +48,7 @@ export function createMenus(save, hooks) {
     frameItem: frameOf(save.equip.frame),
     missions: id === 's_mission' ? missionView(save, ownedCount) : null,
     ranking: id === 's_ranking' ? { ...(rank[st.rtab || 'week'] || { list: [], me: null, error: '読みこみ中…' }), period: weekLabel() } : null,
-    missionDot: id === 's_home' ? (ensureDaily(save, SKILL_ROADS), hasClaimable(save, ownedCount)) : false,
+    missionDot: ['s_home', 's_skin', 's_gacha', 's_ranking', 's_zukan', 's_mission'].includes(id) ? (ensureDaily(save, SKILL_ROADS), hasClaimable(save, ownedCount)) : false,
     zitem: st.zitem,
     gachaGot: id === 's_gacha' ? ownedCount(save) : null,
   });
@@ -92,6 +92,12 @@ export function createMenus(save, hooks) {
     const [cmd, arg, arg2] = a.split(':');
     switch (cmd) {
       case 'back': back(); break;
+      // 下のタブ：どのページからでも、ホームの上に1枚だけ開く（戻るとホーム）
+      case 'nav':
+        if (arg === 'home') { home(); break; }
+        history.length = 0; history.push({ id: 's_home', st: {} }); id = null;
+        doAct(arg);
+        break;
       case 'start':
         // はじめてプレイを押したときだけ、先に遊び方を見せる
         if (!save.howtoDone) open('s_howto', { page: 0, thenPlay: true });

@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261122024253';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122024253';
-import { CONFIG } from './config.js?v=20261122024253';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122024253';
-import { POP_STYLES } from './pops.js?v=20261122024253';
-import { TITLES, titleChip } from './titles.js?v=20261122024253';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122024253';
-import { titleOf } from './titles.js?v=20261122024253';
+import { iconSvg, snapIcons } from './icons.js?v=20261122024522';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122024522';
+import { CONFIG } from './config.js?v=20261122024522';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122024522';
+import { POP_STYLES } from './pops.js?v=20261122024522';
+import { TITLES, titleChip } from './titles.js?v=20261122024522';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122024522';
+import { titleOf } from './titles.js?v=20261122024522';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122024253';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122024522';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122024253';
-import { iconArtSvg } from './iconart.js?v=20261122024253';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122024253';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122024253';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122024522';
+import { iconArtSvg } from './iconart.js?v=20261122024522';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122024522';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122024522';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -155,6 +155,11 @@ const LOGO_STARS = [[8, 30, 0], [18, 78, 1.1], [30, 12, 0.5], [44, 88, 1.7], [62
   .map(([x, y, d], i) => `<i style="left:${x}%;top:${y}%;animation-delay:${d}s;--s:${i % 3 ? 1 : 1.6}"></i>`).join('');
 const LOGO_BACK = `<div class="logo-back"><div class="lb-aura"></div><div class="lb-core"></div><div class="lb-flare"></div><div class="lb-stars">${LOGO_STARS}</div></div>`;
 const logo = () => m('ロゴ', `${LOGO_BACK}<div class="logo-wrap">${LOGO_TRAIL}<div class="logo-main" data-t="LugLog"><span>Lug</span><span class="lg2">Log</span></div></div><div class="logo-sub"><i></i>指先のきせきにドラマを<i></i></div>`);
+// 下のタブ（ホーム・着せ替え・ガチャ・ランキング・図鑑・ミッション）。どのページにも同じものを出し、今いるページを光らせる
+const NAV = [['ホーム', 'M1 3h1V2h1V1h2v1h1v1h1v5H5V5H3v3H1z', 'home'], ['着せ替え', 'M2 0h4v1h2v3H7v4H1V4H0V1h2z', 'skinopen'], ['ガチャ', 'M2 0h4v1h1v3H6v1h1v3H1V5h1V4H1V1h1z', 'gacha'], ['ランキング', 'M3 0h2v8H3zM0 3h2v5H0zM6 5h2v3H6z', 'ranking'], ['図鑑', 'M0 1h3v1h2V1h3v7H5V7H3v1H0z', 'zukan'], ['ミッション', 'M1 0h6v8H1zM2 2v1h4V2zM2 4v1h4V4z', 'mission']];
+function navBar(d, cur) {
+  return `<nav class="ms-nav">${NAV.map(([n, p, a]) => m(`下のタブ：${n}`, `${px(p)}<span>${n}</span>${a === 'mission' && d.missionDot ? '<i class="ms-navdot"></i>' : ''}`, `ms-navi${a === cur ? ' on' : ''}`, 'button', a === cur ? '' : act('nav:' + a))).join('')}</nav>`;
+}
 export const SCREENS = {
   s_load: (st, d) => `
     <div class="ms-full ms-load">
@@ -184,10 +189,7 @@ export const SCREENS = {
           ${m('オンライン', 'オンライン<small>準備中</small>', 'btn btn-sub ms-btn ms-soon', 'button', act('soon:オンライン'))}
         </div>
       </div>
-      <nav class="ms-nav">
-        ${[['ホーム', 'M1 3h1V2h1V1h2v1h1v1h1v5H5V5H3v3H1z', ''], ['着せ替え', 'M2 0h4v1h2v3H7v4H1V4H0V1h2z', 'skinopen'], ['ガチャ', 'M2 0h4v1h1v3H6v1h1v3H1V5h1V4H1V1h1z', 'gacha'], ['ランキング', 'M3 0h2v8H3zM0 3h2v5H0zM6 5h2v3H6z', 'ranking'], ['図鑑', 'M0 1h3v1h2V1h3v7H5V7H3v1H0z', 'zukan'], ['ミッション', 'M1 0h6v8H1zM2 2v1h4V2zM2 4v1h4V4z', 'mission']]
-          .map(([n, p, a], i) => m(`下のタブ：${n}`, `${px(p)}<span>${n}</span>${a.startsWith('soon') && !d.mock ? '<small class="ms-navsoon">準備中</small>' : ''}${a === 'mission' && d.missionDot ? '<i class="ms-navdot"></i>' : ''}`, `ms-navi${i === 0 ? ' on' : ''}`, 'button', a ? act(a) : '')).join('')}
-      </nav>
+      ${navBar(d, 'home')}
     </div>`,
 
   s_howto: (st) => {
@@ -290,6 +292,7 @@ export const SCREENS = {
       ${tabs(['スキル', '敵', 'ボス'], ['skill', 'enemy', 'boss'].indexOf(tab), '図鑑のタブ', ['ztab:skill', 'ztab:enemy', 'ztab:boss'])}
       ${m('集めた数', `<span>集めた数</span>${bar(got / total, 'cyan')}<b>${got}/${total}</b>`, 'ms-progress')}
       <div class="ms-scroll">${body}</div>
+      ${navBar(d, 'zukan')}
     </div>`;
   },
 
@@ -534,6 +537,7 @@ Object.assign(SCREENS, {
         ${list.map((it) => itemCell(it, { owned: owned[tab].includes(it.id), equipped: eq[tab] === it.id, picked: pick[tab] === it.id, a: `skinpick:${tab}:${it.id}` })).join('')}
       </div></div>
       <div class="ms-foot">${btn('ガチャへ', 'btn-sub', 'gacha')}${eq[tab] === pick[tab] ? m('装備中', '装備中', 'btn ms-btn ms-disabled', 'button') : btn('装備する', '', 'equip')}</div>
+      ${navBar(d, 'skinopen')}
     </div>`;
   },
   s_gacha: (st, d) => {
@@ -562,6 +566,7 @@ Object.assign(SCREENS, {
         ${m('10回引く', `<span>10回</span><b>${coin}${num(GACHA.price10)}</b><small>SR以上1つ確定</small>`, 'btn ms-gbtn', 'button', act('pull:10'))}
       </div>
       <div class="ms-row center">${m('確率を見る', '確率を見る', 'ms-link', 'button', act('rates'))}</div>
+      ${navBar(d, 'gacha')}
     </div>`;
   },
   s_gacharesult: (st, d) => {
@@ -612,6 +617,7 @@ Object.assign(SCREENS, {
       </div>
       <div class="ms-scroll">${rest.map((e) => row(e)).join('')}</div>` : `<div class="ms-none">${R.error || 'まだ記録がありません'}</div>`}
       ${R.me ? row(R.me, true) : !R.list.length ? '' : m('自分の順位', '<span class="ms-rname">まだ記録がありません</span>', 'ms-rrow me none')}
+      ${navBar(d, 'ranking')}
     </div>`;
   },
   s_mission: (st, d) => {
@@ -635,6 +641,7 @@ Object.assign(SCREENS, {
       ${tab === 'daily' ? m('次の入れかえまで', `朝4時に入れかわります　あと ${M.left || '16:42:10'}`, 'ms-period') : ''}
       <div class="ms-scroll">${body}</div>
       <div class="ms-foot">${ready ? btn('まとめて受け取る', 'wide', 'mgetall') : m('まとめて受け取る', 'まとめて受け取る', 'btn wide ms-btn ms-disabled', 'button')}</div>
+      ${navBar(d, 'mission')}
     </div>`;
   },
 });
