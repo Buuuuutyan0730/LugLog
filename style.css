@@ -1879,3 +1879,14 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .ms-ttldlg { width: 84cqw; max-height: 78%; }
 .ms-ttlscroll { overflow-y: auto; min-height: 0; max-height: 52vh; scrollbar-width: none; }
 .ms-ttldlg .ms-ttlpicks { justify-content: center; margin-bottom: 0; }
+/* 称号を選ぶ小窓：どの称号も同じ大きさのマス（2列）。選んでいるものは金の枠 */
+.ms-ttldlg { width: 86cqw; height: 78%; max-height: none; }
+.ms-ttlscroll { flex: 1; max-height: none; padding: 1cqw; }
+.ms-ttlgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2cqw; }
+.ms-ttlcell { position: relative; display: grid; place-items: center; height: 13cqw; padding: 0 1.6cqw; overflow: hidden; font-family: inherit; color: var(--text);
+  background: #121738; border: 0.6cqw solid #2a3270; border-radius: 2cqw; box-shadow: 0 0.8cqw 0 var(--ink); }
+.ms-ttlcell .ms-ttl { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-ttlcell.on { border-color: var(--gold); background: #232a66; box-shadow: 0 0.8cqw 0 var(--ink), 0 0 3cqw rgba(255, 216, 74, 0.35); }
+.ms-ttlcell.on::after { content: '✓'; position: absolute; right: 1.4cqw; top: 0.6cqw; font-size: 2.6cqw; color: var(--gold); }
+.ms-ttlnone { font-size: 3.4cqw; color: var(--muted); }
+.ms-ttlcell .ms-ttl { font-size: 3.2cqw; padding: 0.8cqw 2cqw; }
