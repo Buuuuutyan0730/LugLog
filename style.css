@@ -1498,7 +1498,9 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-ggrid .ms-thumb.icon .ms-avatar { font-size: 4.4cqw; }
 .ms-avsvg { display: grid; place-items: center; width: 78%; height: 78%; }
 .ms-avsvg svg { width: 100%; height: 100%; }
-.ms-sgrid.icon { grid-template-columns: repeat(4, 1fr); }
+.ms-sgrid.icon, .ms-sgrid.frame { grid-template-columns: repeat(4, 1fr); }
+.ms-skinpv.frame { display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, #2a3270, #0d1030 70%); }
+.ms-skinname .ms-photobtn { margin-top: 2cqw; }
 .ms-banner-art .ms-thumb { width: 18cqw; }
 .ms-banner-art .ms-thumb:nth-child(2) { width: 24cqw; margin-top: -3cqw; }
 .ms-ggrid.one { grid-template-columns: 30cqw; justify-content: center; }
@@ -1867,3 +1869,5 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 /* コインが足りないとき：ボタンの上に重ねて出す（ほかの並びを動かさない） */
 .ms-gerr { position: absolute; left: 50%; bottom: calc(100% + 1.4cqw); transform: translateX(-50%); z-index: 2; white-space: nowrap; padding: 1.4cqw 3.6cqw; border-radius: 99px; background: rgba(10, 10, 20, 0.92); border: 0.5cqw solid var(--red); box-shadow: 0 0.8cqw 0 var(--ink); animation: gb-err 2.2s ease forwards; pointer-events: none; }
 @keyframes gb-err { 0% { opacity: 0; transform: translate(-50%, 1.5cqw); } 10%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 0); } }
+.ms-tabs:has(> :nth-child(5)) { gap: 1.2cqw; }
+.ms-tabs:has(> :nth-child(5)) .ms-tab { font-size: 2.8cqw; letter-spacing: -0.1cqw; white-space: nowrap; }

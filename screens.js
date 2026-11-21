@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261122023224';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122023224';
-import { CONFIG } from './config.js?v=20261122023224';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122023224';
-import { POP_STYLES } from './pops.js?v=20261122023224';
-import { TITLES, titleChip } from './titles.js?v=20261122023224';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122023224';
-import { titleOf } from './titles.js?v=20261122023224';
+import { iconSvg, snapIcons } from './icons.js?v=20261122023711';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122023711';
+import { CONFIG } from './config.js?v=20261122023711';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122023711';
+import { POP_STYLES } from './pops.js?v=20261122023711';
+import { TITLES, titleChip } from './titles.js?v=20261122023711';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122023711';
+import { titleOf } from './titles.js?v=20261122023711';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122023224';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122023711';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122023224';
-import { iconArtSvg } from './iconart.js?v=20261122023224';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122023224';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122023224';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122023711';
+import { iconArtSvg } from './iconart.js?v=20261122023711';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122023711';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122023711';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -354,15 +354,10 @@ export const SCREENS = {
       ${back('プロフィール')}
       <div class="ms-scroll">
         <div class="box ms-pcard">
-          ${frameHtml(d.frameItem, m('アイコン（押すと変えられる）', `${avatarHtml(d.iconItem)}<span class="ms-avedit">${px(PX.pen)}</span>`, 'ms-avatar lg ms-avbtn'), 'lg')}
+          ${frameHtml(d.frameItem, m('アイコン', avatarHtml(d.iconItem), 'ms-avatar lg'), 'lg')}
           <div>${titleChip(d.titleItem)}${m('名前', esc(d.name), 'ms-pn')}${m('ID', `ID ${d.id}`, 'ms-pid')}</div>
           ${m('名前を変える（プロフィール）', '名前', 'btn btn-small btn-sub', 'button', act('rename'))}
         </div>
-        <div class="ms-sec">アイコン</div>
-        ${d.owned && d.owned.icon.includes('photo') ? m('写真を選ぶ', `${px(PX.pen)}<span>${d.photo ? '写真を選びなおす' : '写真を選ぶ'}</span>`, 'btn btn-small btn-sub ms-photobtn', 'button', act('photo-pick')) : ''}
-        ${m('アイコンを選ぶ', AVATAR_ITEMS.filter((it) => (d.owned ? d.owned.icon.includes(it.id) : it.rarity === 'start')).map((it) => `<button class="ms-avatar ${it.id === d.iconItem.id ? 'on' : ''}" ${act('icon:' + it.id)}>${avatarHtml(it)}</button>`).join(''), 'ms-avpick')}
-        <div class="ms-sec">アイコン枠</div>
-        ${m('アイコン枠を選ぶ', FRAMES.filter((f) => f.id === 'f_none' || (d.owned?.frame || []).includes(f.id)).map((f) => `<button class="ms-frpick ${(d.frameItem?.id || 'f_none') === f.id ? 'on' : ''}" ${act('frame:' + f.id)}>${frameHtml(f, `<span class="ms-avatar">${avatarHtml(d.iconItem)}</span>`)}</button>`).join(''), 'ms-frpicks')}
         <div class="ms-sec">称号</div>
         ${m('称号を選ぶ', `<button class="ms-ttlpick ${d.titleItem ? '' : 'on'}" ${act('ttl:none')}><span class="ms-ttl t-none">なし</span></button>` + TITLES.filter((t) => (d.owned?.title || []).includes(t.id)).map((t) => `<button class="ms-ttlpick ${d.titleItem && d.titleItem.id === t.id ? 'on' : ''}" ${act('ttl:' + t.id)}>${titleChip(t)}</button>`).join(''), 'ms-ttlpicks')}
         <div class="ms-statgrid">
@@ -439,12 +434,13 @@ function skinPreview(tab, cur, set, bg, d) {
   if (tab === 'pop') return `<img class="ms-shot" src="${popImage(cur.id)}" alt="">`;
   if (tab === 'bg') return `<img class="ms-shot bgshot" src="${bgImage(cur.id)}" alt="">`;
   if (tab === 'icon') return `<span class="ms-pvicon">${frameHtml(frameOf((d.equip || {}).frame), `<span class="ms-avatar">${avatarHtml(cur)}</span>`)}</span>`;
+  if (tab === 'frame') { const ic = AVATAR_ITEMS.find((x) => x.id === (d.equip || {}).icon) || AVATAR_ITEMS[0]; return `<span class="ms-pvicon">${frameHtml(cur, `<span class="ms-avatar">${avatarHtml(ic)}</span>`)}</span>`; }
   return shot(set.id, bg.id);
 }
 const KIND_NAME = { set: '色のセット', bg: '背景', icon: 'アイコン', pop: 'エフェクト', title: '称号', frame: 'アイコン枠' };
 function itemCell(it, { owned = true, equipped = false, picked = false, isNew = false, name, a } = {}) {
   if (!owned) return m(name || `まだ持っていない：${it.name}`, '<b>？</b>', 'ms-scell r-lock', 'button');
-  return m(name || `${KIND_NAME[it.kind]}：${it.name}`, `<span class="ms-thumb ${it.kind}">${itemThumb(it)}</span>${it.kind === 'icon' && it.rarity === 'start' ? '' : `<small>${it.name}</small>`}${RARE_LABEL[it.rarity] ? `<span class="ms-rare">${RARE_LABEL[it.rarity]}</span>` : ''}${equipped ? '<span class="ms-equip">装備中</span>' : ''}${isNew ? '<span class="ms-newtag">NEW</span>' : ''}`,
+  return m(name || `${KIND_NAME[it.kind]}：${it.name}`, `<span class="ms-thumb ${it.kind}">${itemThumb(it)}</span>${(it.kind === 'icon' || it.kind === 'frame') && it.rarity === 'start' ? '' : `<small>${it.name}</small>`}${RARE_LABEL[it.rarity] ? `<span class="ms-rare">${RARE_LABEL[it.rarity]}</span>` : ''}${equipped ? '<span class="ms-equip">装備中</span>' : ''}${isNew ? '<span class="ms-newtag">NEW</span>' : ''}`,
     `ms-scell ${RARE_CLS[it.rarity]}${picked ? ' picked' : ''}${it.rarity === 'SSR' && isNew ? ' shine' : ''}`, 'button', `${a ? act(a) : ''} data-zoom="${it.kind}:${it.id}"`);
 }
 
@@ -514,17 +510,20 @@ const FRMS = FRAMES.map((x) => ({ ...x, kind: 'frame' }));
 Object.assign(SCREENS, {
   s_skin: (st, d) => {
     const tab = st.skinTab || 'set';
-    const owned = { pop: ['std'], ...(d.owned || { set: ['std', 'crimson', 'mono', 'neon', 'gold'], bg: ['grid', 'plain', 'stars', 'city'], icon: ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'note', 'snow', 'crown', 'b_core'], pop: ['std', 'petal', 'firework'] }) };
-    const eq = { pop: 'std', ...(d.equip || { set: 'std', bg: 'grid', icon: 'a0' }) };
-    const pick = { pop: eq.pop, ...(st.pick || { set: 'neon', bg: 'city', icon: 'crown', pop: 'petal' }) };
-    const list = tab === 'set' ? SETS : tab === 'bg' ? BGS : tab === 'pop' ? POPS : ICONS;
+    const owned0 = { pop: ['std'], ...(d.owned || { set: ['std', 'crimson', 'mono', 'neon', 'gold'], bg: ['grid', 'plain', 'stars', 'city'], icon: ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'note', 'snow', 'crown', 'b_core'], pop: ['std', 'petal', 'firework'] }) };
+    const owned = { ...owned0, frame: ['f_none', ...(owned0.frame || [])] };
+    const eq = { pop: 'std', frame: 'f_none', ...(d.equip || { set: 'std', bg: 'grid', icon: 'a0' }) };
+    eq.frame = eq.frame || 'f_none';
+    const pick = { pop: eq.pop, frame: eq.frame, ...(st.pick || { set: 'neon', bg: 'city', icon: 'crown', pop: 'petal' }) };
+    pick.frame = pick.frame || 'f_none';
+    const list = tab === 'set' ? SETS : tab === 'bg' ? BGS : tab === 'pop' ? POPS : tab === 'frame' ? FRMS : ICONS;
     const pickedSet = SETS.find((x) => x.id === (tab === 'set' ? pick.set : eq.set)), pickedBg = BGS.find((x) => x.id === (tab === 'bg' ? pick.bg : eq.bg));
     const cur = list.find((x) => x.id === pick[tab]);
     return `
     <div class="ms-full ms-page">
       ${back('着せ替え', d)}
-      ${m('着せ替えの見本', `<div class="ms-skinpv ${tab}">${skinPreview(tab, cur, pickedSet, pickedBg, d)}</div><div class="ms-skinname">${cur.rarity === 'start' && tab === 'icon' ? 'アイコン' : cur.name}<small>${RARE_LABEL[cur.rarity] ? RARE_LABEL[cur.rarity] + '・' : '最初から・'}${KIND_NAME[tab]}</small></div>`, 'ms-skinbox')}
-      ${tabs(['色のセット', '背景', 'アイコン', 'エフェクト'], ['set', 'bg', 'icon', 'pop'].indexOf(tab), '着せ替えのタブ', ['skin:set', 'skin:bg', 'skin:icon', 'skin:pop'])}
+      ${m('着せ替えの見本', `<div class="ms-skinpv ${tab}">${skinPreview(tab, cur, pickedSet, pickedBg, d)}</div><div class="ms-skinname">${cur.rarity === 'start' && tab === 'icon' ? 'アイコン' : cur.name}<small>${RARE_LABEL[cur.rarity] ? RARE_LABEL[cur.rarity] + '・' : '最初から・'}${KIND_NAME[tab]}</small>${tab === 'icon' && cur.photo && owned.icon.includes(cur.id) ? m('写真を選ぶ', d.photo ? '写真を選びなおす' : '写真を選ぶ', 'btn btn-small btn-sub ms-photobtn', 'button', act('photo-pick')) : ''}</div>`, 'ms-skinbox')}
+      ${tabs(['色のセット', '背景', 'アイコン', 'アイコン枠', 'エフェクト'], ['set', 'bg', 'icon', 'frame', 'pop'].indexOf(tab), '着せ替えのタブ', ['skin:set', 'skin:bg', 'skin:icon', 'skin:frame', 'skin:pop'])}
       <div class="ms-scroll"><div class="ms-sgrid ${tab}">
         ${list.map((it) => itemCell(it, { owned: owned[tab].includes(it.id), equipped: eq[tab] === it.id, picked: pick[tab] === it.id, a: `skinpick:${tab}:${it.id}` })).join('')}
       </div></div>
