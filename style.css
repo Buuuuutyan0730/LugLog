@@ -1890,3 +1890,15 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .ms-ttlcell.on::after { content: '✓'; position: absolute; right: 1.4cqw; top: 0.6cqw; font-size: 2.6cqw; color: var(--gold); }
 .ms-ttlnone { font-size: 3.4cqw; color: var(--muted); }
 .ms-ttlcell .ms-ttl { font-size: 3.2cqw; padding: 0.8cqw 2cqw; }
+.ms-home .ms-nav { margin-top: 0 !important; }
+/* ガチャの看板：文字はいつも回る品より手前。回る輪は、使える高さに合わせて大きさを変える（スマホの画面の高さが違っても はみ出さない） */
+.gb-head, .gb-sub, .gb-rates { position: relative; z-index: 3; }
+.gb-sub { text-shadow: 0 0.4cqw 0 var(--ink), 0 0 2cqw #0f0d2e; }
+.gb-stage { min-height: 0; container-type: size; }
+.gb-orb { width: 30cqmin; height: 30cqmin; }
+.gb-orb i { inset: -5cqmin; }
+.gb-sat { transform: rotate(var(--a)) translateY(-37cqmin) rotate(calc(-1 * var(--a))); }
+.gb-up { left: -10.5cqmin; top: -10.5cqmin; width: 21cqmin; height: 21cqmin; }
+.gb-up .ms-thumb { width: 21cqmin; height: 21cqmin; }
+.ms-foot.one { display: flex; }
+.ms-foot.one > * { flex: 1; }
