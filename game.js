@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122032810';
-import { spawnPop, stepParticle } from './pops.js?v=20261122032810';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122032810';
+import { CONFIG } from './config.js?v=20261122035117';
+import { spawnPop, stepParticle } from './pops.js?v=20261122035117';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122035117';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -134,6 +134,7 @@ export function createGame() {
 
       enemies: [],
       enemyShots: [],
+      warns: [],             // ボスの技の予告（赤く光る形）
       shots: [],
       pickups: [],           // かけら
       particles: [],
@@ -362,6 +363,7 @@ export function createGame() {
 
   // dot：毎フレーム少しずつ削るダメージ（毒・炎・雷の線など）。白く光らせない（光りっぱなしになるので）
   function damageEnemy(e, amount, raw = false, dot = false) {
+    if (e.vanish) return;   // 影が消えている間は当たらない
     e.lastSrc = s.dmgSrc || 'ghost';
     if (!raw) amount *= markMul(e) * lureMul(e);
     if (e.frostT > 0 && s.st.evo.frostpath) amount *= 1 + SK.frostpath.kiwamiDamage;   // 極霜の道
@@ -369,6 +371,7 @@ export function createGame() {
     if (e.poisonN > 0 && skLv('corrode')) amount *= 1 + Math.min(s.st.evo.corrode ? SK.corrode.kiwamiCap : SK.corrode.cap, e.poisonN * SK.corrode.per);
     // 圧縮：引力の中の敵が多いほど、受けるダメージ↑
     if (e.inPullT > 0 && skLv('compress')) amount *= 1 + Math.min(s.st.evo.compress ? SK.compress.kiwamiCap : SK.compress.cap, (s.pullCount || 0) * SK.compress.per);
+    if (e.vuln) amount *= BOSS.vulnMul;   // ボスのすき：受けるダメージ↑
     e.hp -= amount;
     if (!dot) e.flash = 0.07;
     // 死神の契約：当てるたびに、まれに即死。大きい敵ほど効きにくく、ボスには効かない
@@ -2707,7 +2710,7 @@ export function createGame() {
     // 本体との接触（敵は消えず、本体にダメージ）
     for (const e of s.enemies) {
       if (s.over || p.inv > 0) break;
-      if (!ET[e.kind].damage) continue;   // 漂い：攻撃しない
+      if (!ET[e.kind].damage || e.vanish) continue;   // 漂い：攻撃しない／消えている影
       if (p.charge != null) continue;     // 突撃中：ぶつかっても無傷
       if (Math.hypot(e.x - p.x, e.y - p.y) < e.r * 0.8 + playerHitR()) {
         hurtPlayer(T.contactDamage.value * ET[e.kind].damage * Math.sqrt(e.tier), e);
@@ -2957,115 +2960,166 @@ export function createGame() {
     if (s.bossDownT > 0) { s.bossDownT -= DT; if (s.bossDownT <= 0) clearPhase(true); }
   }
 
-  // ---------- 影 ----------
-  // 本体の少し前の道をなぞって追ってくる。ときどき、本体の最近の動きをそのままなぞる「影の分身」を出す
-  function thinkShade(e) {
-    const S = BOSS.shade, p = s.player, z = s.zoom;
-    e.rage = e.hp / e.maxHp < S.rageAt;
-    if (!e.hist) { e.hist = []; e.echoCd = S.every / 2; }
-    // 本体の場所の記録（分身2体分の長さまで）
-    e.hist.push({ x: p.x, y: p.y });
-    const keep = Math.round((S.copy * 2) / DT) + 1;
-    if (e.hist.length > keep) e.hist.splice(0, e.hist.length - keep);
-    // 本体が少し前にいた場所へ向かう
-    const back = Math.round(S.delay / DT);
-    const q = e.hist[Math.max(0, e.hist.length - 1 - back)];
-    const dx = q.x - e.x, dy = q.y - e.y, d = Math.hypot(dx, dy);
-    if (d > 1) setVel(e, dx, dy, Math.min(d * 4, S.speed * z)); else { e.vx = 0; e.vy = 0; }
-    e.ang = Math.atan2(e.vy || 0, e.vx || 1);
-    // 影の分身
-    e.echoCd -= DT;
-    if (e.echoCd <= 0) {
-      e.echoCd = e.rage ? S.rageEvery : S.every;
-      const n = Math.round(S.copy / DT), H = e.hist;
-      spawnEcho(e, H.slice(Math.max(0, H.length - n)));
-      if (e.rage && H.length > n) spawnEcho(e, H.slice(Math.max(0, H.length - n * 2), H.length - n));
+  // ---------- ボスに共通する流れ ----------
+  //   動く（場所を変える）→ 予告（赤く光る）→ 技 → すき（止まる。受けるダメージ×1.5）→ 動く … をくり返す
+  //   技は袋から順に引く（同じ技が続かないように混ぜる）。怒ると技が1つ増え、予告とすきが短くなる
+  //   F：技の表（warn：予告の秒数、aim：予告の始まり、warnTick：予告中、start：技の始まり、tick：毎フレーム→終わったら true、end：終わり）
+  function bossFlow(e, F, list, move, moveTime) {
+    if (!e.flow) { e.flow = 'move'; e.ft = 1.0; e.bag = []; }
+    if (e.flow === 'move') {
+      move(e);
+      e.ft -= DT;
+      if (e.ft <= 0) {
+        let id = null;
+        for (let n = 0; n < 12 && !id; n++) {
+          if (!e.bag.length) { e.bag = list.slice().sort(() => Math.random() - 0.5); if (e.bag[0] === e.techId && e.bag.length > 1) e.bag.push(e.bag.shift()); }
+          const c = e.bag.shift();
+          if (list.includes(c)) id = c;
+        }
+        e.techId = id || list[0];
+        e.flow = 'warn'; e.ft = F[e.techId].warn * (e.rage ? BOSS.rageWarn : 1); e.ftMax = e.ft; e.tt = 0;
+        if (F[e.techId].aim) F[e.techId].aim(e);
+      }
+    } else if (e.flow === 'warn') {
+      const T2 = F[e.techId];
+      e.vx = (e.vx || 0) * 0.8; e.vy = (e.vy || 0) * 0.8;
+      if (T2.warnTick) T2.warnTick(e);
+      e.ft -= DT;
+      if (e.ft <= 0) { e.flow = 'act'; e.tt = 0; if (T2.start) T2.start(e); }
+    } else if (e.flow === 'act') {
+      const T2 = F[e.techId];
+      e.tt += DT;
+      if (T2.tick(e)) { if (T2.end) T2.end(e); e.flow = 'rest'; e.ft = e.rage ? BOSS.rageRest : BOSS.rest; e.ftMax = e.ft; e.vx = 0; e.vy = 0; }
+    } else {
+      e.vx = 0; e.vy = 0;
+      e.ft -= DT;
+      if (e.ft <= 0) { e.flow = 'move'; e.ft = moveTime; e.wx = null; }
+    }
+    e.vuln = e.flow === 'rest';
+  }
+  // 予告の形（赤く光る）。k：'circle'（x,y,r）・'line'（x1,y1,x2,y2,w）・'fan'（x,y,a,spread,len）・'path'（pts,w）
+  //   follow：その敵についていく、hot：当たる状態（明るく）
+  function warnShape(o, time) { const w = { ...o, t: time, max: time }; s.warns.push(w); return w; }
+  function bossShot(e, a, sp, life = 1.5) {
+    const z = s.zoom;
+    s.enemyShots.push({ x: e.x + Math.cos(a) * e.r * 0.8, y: e.y + Math.sin(a) * e.r * 0.8, vx: Math.cos(a) * sp * z, vy: Math.sin(a) * sp * z, r: EB.radius * z, life: EB.life * life, damage: EB.damage, from: e });
+  }
+  function bossRing(e, n, sp, off = 0) { for (let k = 0; k < n; k++) bossShot(e, off + (k * Math.PI * 2) / n, sp); }
+  // 画面の中をゆっくり漂う（本体から少し離れた場所を行き先にする）
+  function bossWander(e, speed, area = [0.15, 0.85, 0.14, 0.55]) {
+    const z = s.zoom, p = s.player;
+    if (e.wx == null || Math.hypot(e.wx - e.x, e.wy - e.y) < 12 * z) {
+      for (let k = 0; k < 8; k++) { e.wx = rand(area[0], area[1]) * s.world.w; e.wy = rand(area[2], area[3]) * s.world.h; if (Math.hypot(e.wx - p.x, e.wy - p.y) > 150 * z) break; }
+    }
+    setVel(e, e.wx - e.x, e.wy - e.y, speed * z);
+  }
+  const angTo = (e, q) => Math.atan2(q.y - e.y, q.x - e.x);
+
+  // ---------- コア ----------
+  // 画面の中をゆっくり漂う。技：渦の弾・弾の輪・手下を呼ぶ／怒ると「収縮して爆発」が増える
+  function coreCall(e, n) {
+    for (let k = 0; k < n; k++) {
+      const a = (k * Math.PI * 2) / n + e.spin, d = e.r * 1.8;
+      const one = ET.chaser.hp, r = radiusOf(one) * (ET.chaser.sizeMul || 1);
+      const x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d;
+      s.enemies.push({ kind: 'chaser', tier: 1, x, y, r, hp: one, maxHp: one, vx: 0, vy: 0, ang: a, flash: 0, speedMul: 1, phase: 'move', timer: 1, strafe: 1, dashX: 0, dashY: 0, wx: x, wy: y, shield: 0, shieldMax: 0 });
+      ring(x, y, 4, r * 2.5, 0.35, 'enemy', 0, 3);
     }
   }
-  function spawnEcho(src, pts) {
-    const S = BOSS.shade, z = s.zoom;
-    if (pts.length < 2) return;
-    // 3刻みに間引いた道（描く用）と、刻みごとの道（なぞる用）
-    const path = pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1).map((q) => ({ x: q.x, y: q.y }));
-    const hp = PH.hpRateBase * growthOf(s.phase) * S.echoHp;
-    const e = { kind: 'echo', tier: 1, x: pts[0].x, y: pts[0].y, r: S.echoRadius * z, hp, maxHp: hp, vx: 0, vy: 0, ang: 0, flash: 0, speedMul: 1, shield: 0, shieldMax: 0,
-      path, steps: pts.map((q) => ({ x: q.x, y: q.y })), si: 0, pi: 0, wait: S.wait, from: src };
-    s.enemies.push(e);
-    ring(e.x, e.y, 2, e.r * 2.5, 0.4, 'enemy', 0, 3);
-    // 影から分身の始まりへ、黒いすじ
-    sparks(src.x, src.y, 'enemy', 4, 80);
-  }
-  function thinkEcho(e) {
-    if (e.wait > 0) { e.wait -= DT; e.vx = 0; e.vy = 0; return; }
-    e.si++;
-    if (e.si >= e.steps.length) { e.hp = 0; e.selfDestruct = true; enemyDeathFx(e); return; }
-    const q = e.steps[e.si];
-    e.vx = (q.x - e.x) / DT; e.vy = (q.y - e.y) / DT;
-    if (e.vx || e.vy) e.ang = Math.atan2(e.vy, e.vx);
-    e.pi = Math.floor(e.si / 3);
+  const CORE_TECH = {
+    spiral: { warn: 0.6, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 1.7, follow: e }, e.ft),
+      start: (e) => { e.fireCd = 0; },
+      tick: (e) => {
+        const C = BOSS.core;
+        e.fireCd -= DT;
+        if (e.fireCd <= 0) { e.fireCd = C.fireEvery; const n = e.rage ? C.rageArms : C.arms; for (let k = 0; k < n; k++) bossShot(e, e.spin + (k * Math.PI * 2) / n, C.bulletSpeed); }
+        return e.tt >= (e.rage ? C.rageSpiralTime : C.spiralTime);
+      } },
+    rings: { warn: 0.6, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 2.2, follow: e }, e.ft),
+      start: (e) => { e.shotN = 0; },
+      tick: (e) => {
+        const C = BOSS.core, n = e.rage ? C.rageRingWays : C.ringWays;
+        while (e.shotN < C.ringCount && e.tt >= e.shotN * C.ringGap) { bossRing(e, n, C.ringSpeed, e.spin + (e.shotN % 2) * Math.PI / n); ring(e.x, e.y, e.r, e.r * 1.8, 0.25, 'enemy', 0, 3); e.shotN++; }
+        return e.tt >= C.ringCount * C.ringGap;
+      } },
+    call: { warn: 0.5, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 1.9, follow: e }, e.ft),
+      start: (e) => coreCall(e, e.rage ? BOSS.core.rageCallCount : BOSS.core.callCount), tick: (e) => e.tt >= 0.3 },
+    blast: { warn: 1.1, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: BOSS.core.blastR * s.zoom, follow: e, fill: true }, e.ft),
+      start: (e) => {
+        const C = BOSS.core, p = s.player, R = C.blastR * s.zoom;
+        if (!s.over && !(p.inv > 0) && Math.hypot(p.x - e.x, p.y - e.y) < R + playerHitR()) hurtPlayer(T.contactDamage.value * C.blastDamage, e);
+        ring(e.x, e.y, e.r, R, 0.4, 'enemy', 0, 6); flash(e.x, e.y, R, 0.15, 'white'); s.shake = Math.max(s.shake, 8); sfx('sk_misfire');
+        bossRing(e, C.blastWays, C.ringSpeed * 1.2, e.spin);
+      },
+      tick: (e) => e.tt >= 0.3 },
+  };
+  function thinkCore(e) {
+    const C = BOSS.core;
+    e.rage = e.hp / e.maxHp < C.rageAt;
+    e.spin += C.spin * (e.rage ? C.rageSpin : 1) * DT * (e.flow === 'rest' ? 0.25 : 1);
+    bossFlow(e, CORE_TECH, e.rage ? ['spiral', 'rings', 'call', 'blast'] : ['spiral', 'rings', 'call'], (b) => bossWander(b, C.moveSpeed), C.moveTime);
   }
 
-  // ---------- 時計 ----------
-  // 長い針を1周させる。ときどき時間を止め、その間に弾を並べる（動き出すと一斉に飛ぶ）
-  function clockHands(e) {
-    const C = BOSS.clock, z = s.zoom;
-    const a = e.handA + Math.PI * 2 * (e.sweepK || 0);
-    const hands = [{ a, len: C.hand * z }];
-    if (e.rage) hands.push({ a: e.handA + Math.PI - Math.PI * 2 * (e.sweepK || 0), len: C.rageHand * z });
-    return hands;
+  // ---------- ハンター ----------
+  // 速く飛び回る。技：突進（怒ると2回）・短い3連突進・止まって扇形の弾
+  function hunterAim(e, lenMul, wind) {
+    const H2 = BOSS.hunter, p = s.player, z = s.zoom;
+    e.ang = angTo(e, p);
+    e.dashLen = Math.min(H2.maxLen * z * lenMul, Math.hypot(p.x - e.x, p.y - e.y) + H2.over * z);
+    e.phase = 'windup'; e.timer = wind; e.windupMax = wind; e.vx = 0; e.vy = 0;
   }
-  function thinkClock(e) {
-    const C = BOSS.clock, p = s.player, z = s.zoom, W = s.world.w;
-    e.rage = e.hp / e.maxHp < C.rageAt;
-    if (e.stopCd == null) { e.stopCd = C.stopEvery; e.phase = 'idle'; e.timer = C.every; e.sweepK = 0; e.handA = 0; e.clockT = 0; }
-    // 時間停止の間：弾を内側から順に並べていく
-    if (s.timeStop > 0) {
-      e.vx = 0; e.vy = 0;
-      const done = 1 - s.timeStop / C.stop;
-      while (e.placed < C.rings.length && done >= (e.placed + 1) / (C.rings.length + 1)) {
-        const R = C.rings[e.placed] * z, sp = C.bulletSpeed * z;
-        for (let k = 0; k < C.ways; k++) {
-          const a = e.stopA + (k * Math.PI * 2) / C.ways;
-          s.enemyShots.push({ x: e.x + Math.cos(a) * R, y: e.y + Math.sin(a) * R, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: EB.radius * z, life: EB.life * 2, damage: EB.damage, from: e, held: true });
-          sparks(e.x + Math.cos(a) * R, e.y + Math.sin(a) * R, 'white', 1, 40);
+  // 1回の突進。終わったら true
+  function hunterDash(e) {
+    const H2 = BOSS.hunter, z = s.zoom;
+    if (e.phase !== 'dash') { e.phase = 'dash'; e.dashT = e.dashLen / (H2.dashSpeed * z); setVel(e, Math.cos(e.ang), Math.sin(e.ang), H2.dashSpeed * z); sfx('sk_dash'); }
+    e.dashT -= DT;
+    const m = e.r, W = s.world.w, H = s.world.h;
+    if (e.dashT <= 0 || e.x < m || e.x > W - m || e.y < m || e.y > H - m) {
+      e.x = clamp(e.x, m, W - m); e.y = clamp(e.y, m, H - m);
+      s.shake = Math.max(s.shake, 4); e.vx = 0; e.vy = 0; e.phase = 'land';
+      return true;
+    }
+    return false;
+  }
+  // n 回続けて突進する（2回目からは wind 秒の予告）
+  function hunterDashes(e, n, wind, lenMul) {
+    if (e.dn == null) { e.dn = 0; e.sub = 0; }
+    if (e.sub > 0) { e.sub -= DT; e.timer = e.sub; e.vx = 0; e.vy = 0; return false; }
+    if (hunterDash(e)) { e.dn++; if (e.dn >= n) { e.dn = null; return true; } hunterAim(e, lenMul, wind); e.sub = wind; }
+    return false;
+  }
+  const HUNTER_TECH = {
+    dash: { warn: 1.0, aim: (e) => hunterAim(e, 1, e.ft), warnTick: (e) => { e.timer = e.ft; },
+      tick: (e) => hunterDashes(e, e.rage ? 2 : 1, BOSS.hunter.rageWindup, 1) },
+    triple: { warn: 0.7, aim: (e) => hunterAim(e, BOSS.hunter.tripleLen, e.ft), warnTick: (e) => { e.timer = e.ft; },
+      tick: (e) => hunterDashes(e, 3, BOSS.hunter.tripleWindup * (e.rage ? 0.8 : 1), BOSS.hunter.tripleLen) },
+    fan: { warn: 0.7,
+      aim: (e) => { const H2 = BOSS.hunter; e.phase = 'aim'; e.fanA = angTo(e, s.player); e.ang = e.fanA; warnShape({ k: 'fan', x: e.x, y: e.y, a: e.fanA, spread: H2.fanSpread, len: 260 * s.zoom, follow: e }, e.ft); },
+      start: (e) => { e.shotN = 0; },
+      tick: (e) => {
+        const H2 = BOSS.hunter, n = e.rage ? H2.fanWays + 2 : H2.fanWays;
+        while (e.shotN < H2.fanVolleys && e.tt >= e.shotN * H2.fanGap) {
+          const a0 = angTo(e, s.player) * 0.5 + e.fanA * 0.5;
+          for (let k = 0; k < n; k++) bossShot(e, a0 + (k / (n - 1) - 0.5) * H2.fanSpread, H2.fanSpeed);
+          e.shotN++;
         }
-        e.placed++;
-      }
-      return;
+        return e.tt >= H2.fanVolleys * H2.fanGap;
+      } },
+  };
+  function hunterFly(e) {
+    const H2 = BOSS.hunter, p = s.player, z = s.zoom;
+    e.phase = 'move';
+    if (e.wx == null || Math.hypot(e.wx - e.x, e.wy - e.y) < 20 * z) {
+      for (let k = 0; k < 8; k++) { e.wx = rand(0.12, 0.88) * s.world.w; e.wy = rand(0.12, 0.7) * s.world.h; if (Math.hypot(e.wx - p.x, e.wy - p.y) > H2.keep * z) break; }
     }
-    // 左右にゆっくり動く（針を回している間は止まる）
-    if (e.phase !== 'sweep') {
-      e.clockT += DT;
-      const tx = W / 2 + Math.sin(e.clockT * C.driftSpeed) * W * C.drift;
-      e.vx = (tx - e.x) * 3; e.vy = (s.world.h * C.y - e.y) * 3;
-    } else { e.vx = 0; e.vy = 0; }
-    // 時間停止：針を回していないときに始める
-    e.stopCd -= DT;
-    if (e.stopCd <= 0 && e.phase !== 'sweep' && e.phase !== 'windup') {
-      e.stopCd = e.rage ? C.rageStopEvery : C.stopEvery;
-      s.timeStop = C.stop;
-      e.placed = 0;
-      sfx('timestop');
-      e.stopA = Math.atan2(p.y - e.y, p.x - e.x) + Math.PI / C.ways;   // 本体のいる方向は弾のすき間にしておく
-      s.banner = { text: '時間停止', sub: '', t: 1 };
-      ring(e.x, e.y, e.r, Math.max(s.world.w, s.world.h), 0.5, 'white', 0, 3);
-      return;
-    }
-    // 針：待つ→予告→1周
-    e.timer -= DT;
-    if (e.phase === 'idle') {
-      if (e.timer <= 0) { e.phase = 'windup'; e.timer = C.windup; e.windupMax = C.windup; e.sweepK = 0; e.handA = Math.atan2(p.y - e.y, p.x - e.x) + Math.PI; }
-    } else if (e.phase === 'windup') {
-      if (e.timer <= 0) { e.phase = 'sweep'; e.timer = C.sweep; }
-    } else if (e.phase === 'sweep') {
-      e.sweepK = Math.min(1, 1 - e.timer / C.sweep);
-      if (!(p.inv > 0) && !s.over) {
-        for (const h of clockHands(e)) {
-          if (segDist(e.x, e.y, e.x + Math.cos(h.a) * h.len, e.y + Math.sin(h.a) * h.len, p.x, p.y) < playerHitR() + C.handWidth * z) { hurtPlayer(T.contactDamage.value * C.handDamage, null); break; }
-        }
-      }
-      if (e.timer <= 0) { e.phase = 'idle'; e.timer = C.every; e.sweepK = 0; }
-    }
+    setVel(e, e.wx - e.x, e.wy - e.y, H2.speed * z);
+    e.ang = Math.atan2(e.vy, e.vx);
+  }
+  function thinkHunter(e) {
+    const H2 = BOSS.hunter;
+    e.rage = e.hp / e.maxHp < H2.rageAt;
+    bossFlow(e, HUNTER_TECH, e.rage ? ['dash', 'triple', 'fan', 'dash'] : ['dash', 'triple', 'fan'], hunterFly, H2.moveTime);
+    if (e.flow === 'rest') e.phase = 'recover';
   }
 
   // ---------- 双子 ----------
@@ -3093,29 +3147,74 @@ export function createGame() {
     s.shake = Math.max(s.shake, 8);
   }
   function aliveTwins() { return s.enemies.filter((e) => e.kind === 'twin' && e.hp > 0); }
+  // 双子：2体で1つの流れ（s.twin が流れを持つ）。技：扇形の弾・2体の間の光の線・反対側から同時に突進
+  //   片方が倒れると、残った方は全方向の弾と扇形の弾だけになり、回るのが速くなる
+  const TWIN_TECH = {
+    fan: { warn: 0.6,
+      aim: () => { for (const e of aliveTwins()) warnShape({ k: 'fan', x: e.x, y: e.y, a: angTo(e, s.player), spread: BOSS.twin.fanSpread * 2, len: 220 * s.zoom, follow: e, aimAt: 'player' }, s.twin.ft); },
+      start: () => { s.twin.shotN = 0; },
+      tick: () => {
+        const T2 = BOSS.twin, tw = s.twin;
+        while (tw.shotN < 2 && tw.tt >= tw.shotN * 0.5) {
+          for (const e of aliveTwins()) { const base = angTo(e, s.player); for (let k = 0; k < T2.fan; k++) bossShot(e, base + (k - (T2.fan - 1) / 2) * (T2.fanSpread / ((T2.fan - 1) / 2)), T2.bulletSpeed); }
+          tw.shotN++;
+        }
+        return tw.tt >= 0.6;
+      } },
+    tether: { warn: 0.8, aim: () => { s.twin.tether.st = 'warn'; }, start: () => { s.twin.tether.st = 'on'; },
+      tick: () => {
+        const T2 = BOSS.twin, live = aliveTwins(), p = s.player;
+        if (live.length < 2) return true;
+        if (!(p.inv > 0) && !s.over) { const [a, b] = live; if (segDist(a.x, a.y, b.x, b.y, p.x, p.y) < p.r + T2.tetherWidth * s.zoom) hurtPlayer(T.contactDamage.value * T2.tetherDamage, null); }
+        return s.twin.tt >= T2.tetherOn;
+      },
+      end: () => { s.twin.tether.st = 'off'; } },
+    pincer: { warn: 0.9,
+      aim: () => {
+        const T2 = BOSS.twin, p = s.player, z = s.zoom;
+        s.twin.hold = true;
+        for (const e of aliveTwins()) {
+          const a = angTo(e, p), L = Math.hypot(p.x - e.x, p.y - e.y) + T2.pincerOver * z;
+          e.pa = a; e.pLeft = L; e.ang = a;
+          warnShape({ k: 'line', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * L, y2: e.y + Math.sin(a) * L, w: e.r }, s.twin.ft);
+        }
+      },
+      start: () => { sfx('sk_dash'); },
+      tick: () => {
+        const T2 = BOSS.twin, z = s.zoom; let moving = 0;
+        for (const e of aliveTwins()) {
+          if (e.pLeft > 0) { const st = Math.min(e.pLeft, T2.pincerSpeed * z * DT); e.x += Math.cos(e.pa) * st; e.y += Math.sin(e.pa) * st; e.pLeft -= st; moving++; e.x = clamp(e.x, e.r, s.world.w - e.r); e.y = clamp(e.y, e.r, s.world.h - e.r); }
+        }
+        return !moving;
+      },
+      end: () => {
+        const tw = s.twin, live = aliveTwins();
+        // 今いる場所から、また回り始める
+        const cx = live.reduce((v, e) => v + e.x, 0) / Math.max(1, live.length), cy = live.reduce((v, e) => v + e.y, 0) / Math.max(1, live.length);
+        tw.cx = cx; tw.cy = cy; if (live[0]) tw.a = Math.atan2(live[0].y - cy, live[0].x - cx) - (live.length > 1 ? live[0].slot * Math.PI : 0);
+        tw.hold = false; s.shake = Math.max(s.shake, 5);
+      } },
+    burst: { warn: 0.6, aim: () => { for (const e of aliveTwins()) warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 2, follow: e }, s.twin.ft); },
+      start: () => { s.twin.shotN = 0; },
+      tick: () => {
+        const T2 = BOSS.twin, tw = s.twin;
+        while (tw.shotN < 2 && tw.tt >= tw.shotN * 0.45) { for (const e of aliveTwins()) bossRing(e, T2.rageWays, T2.bulletSpeed, tw.shotN * Math.PI / T2.rageWays); tw.shotN++; }
+        return tw.tt >= 0.5;
+      } },
+  };
   function updateTwins() {
     const T2 = BOSS.twin, tw = s.twin, p = s.player, z = s.zoom;
     const live = aliveTwins();
     if (!live.length && !tw.dead) return;
     const solo = live.length === 1;
-    // 回る中心は、本体をゆっくり追う
-    const dx = p.x - tw.cx, dy = p.y - tw.cy, d = Math.hypot(dx, dy), step = T2.follow * z * DT;
-    if (d <= step) { tw.cx = p.x; tw.cy = p.y; } else { tw.cx += dx / d * step; tw.cy += dy / d * step; }
-    tw.a += T2.spin * (solo ? T2.rageSpin : 1) * DT;
-    // 光の線：消えている→予告→当たる、をくり返す（2体そろっているときだけ）
-    const L = tw.tether;
-    if (live.length === 2) {
-      L.t -= DT;
-      if (L.t <= 0) {
-        if (L.st === 'off') { L.st = 'warn'; L.t = T2.tetherWarn; }
-        else if (L.st === 'warn') { L.st = 'on'; L.t = T2.tetherOn; }
-        else { L.st = 'off'; L.t = T2.tetherOff; }
-      }
-      if (L.st === 'on' && !(p.inv > 0)) {
-        const [a, b] = live;
-        if (segDist(a.x, a.y, b.x, b.y, p.x, p.y) < p.r + T2.tetherWidth * z) hurtPlayer(T.contactDamage.value * T2.tetherDamage, null);
-      }
-    } else { L.st = 'off'; L.t = T2.tetherOff; }
+    tw.rage = solo;
+    bossFlow(tw, TWIN_TECH, solo ? ['burst', 'fan'] : ['fan', 'tether', 'pincer'], () => {}, T2.moveTime);
+    // 回る中心は、本体をゆっくり追う（突進中・すきの間は止まる）
+    if (!tw.hold) {
+      const dx = p.x - tw.cx, dy = p.y - tw.cy, d = Math.hypot(dx, dy), step = T2.follow * z * DT;
+      if (d <= step) { tw.cx = p.x; tw.cy = p.y; } else { tw.cx += dx / d * step; tw.cy += dy / d * step; }
+      if (tw.flow !== 'rest') tw.a += T2.spin * (solo ? T2.rageSpin : 1) * DT;
+    }
     // 復活：片方が倒れてから時間内にもう片方を倒せないと、戻ってくる
     if (tw.dead && solo) {
       tw.dead.t -= DT;
@@ -3123,114 +3222,195 @@ export function createGame() {
         const e = makeTwin(tw.dead.slot, tw.dead.x, tw.dead.y, tw.dead.maxHp * T2.reviveHp, tw.dead.maxHp);
         s.enemies.push(e);
         live[0].rage = false;
-        // 残っていた方の位置に合わせて、回る角度をそろえる
         tw.a = Math.atan2(live[0].y - tw.cy, live[0].x - tw.cx) - live[0].slot * Math.PI;
         ring(e.x, e.y, 4, e.r * 3, 0.6, 'enemy', 0, 6);
         flash(e.x, e.y, e.r * 4, 0.3, 'white');
         s.banner = { text: '復活', sub: '', t: 1 };
         tw.dead = null;
-        L.st = 'off'; L.t = T2.tetherOff;
+        tw.tether.st = 'off';
       }
     }
-    // HPバー：2体の合計
     const now = aliveTwins();
     if (s.boss && s.boss.twin) s.boss.hp = now.reduce((v, e) => v + e.hp, 0);
   }
   function thinkTwin(e) {
-    const T2 = BOSS.twin, p = s.player, z = s.zoom;
-    if (!s.twin) return;
+    const p = s.player, tw = s.twin;
+    if (!tw) return;
+    e.vuln = tw.flow === 'rest';
+    e.flow = tw.flow;
+    if (tw.hold) { e.vx = 0; e.vy = 0; return; }   // 突進は updateTwins の技が動かす
     const live = aliveTwins(), solo = live.length === 1;
     const q = twinPos(e.slot, solo);
-    // 回る位置へ追いつく（離れていても速すぎないように）
     const dx = q.x - e.x, dy = q.y - e.y, d = Math.hypot(dx, dy);
-    const sp = Math.min(d * 5, 320 * z);
+    const sp = Math.min(d * 5, 320 * s.zoom);
     if (d > 0.5) setVel(e, dx, dy, sp); else { e.vx = 0; e.vy = 0; }
-    // 向き：相方の方（1体のときは本体の方）へ、くぼみを向ける
     const o = live.find((x) => x !== e);
     const tx = o && !solo ? o.x : p.x, ty = o && !solo ? o.y : p.y;
     e.ang = Math.atan2(ty - e.y, tx - e.x);
-    // 弾：ふだんは本体へ扇形、怒ると全方向
-    e.fireCd -= DT;
-    if (e.fireCd <= 0) {
-      const EB = CONFIG.enemyBullet, spd = T2.bulletSpeed * z;
-      const base = Math.atan2(p.y - e.y, p.x - e.x);
-      const shot = (a) => s.enemyShots.push({ x: e.x + Math.cos(a) * e.r * 0.8, y: e.y + Math.sin(a) * e.r * 0.8, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd, r: EB.radius * s.zoom, life: EB.life * 1.5, damage: EB.damage, from: e });
-      if (e.rage) { for (let k = 0; k < T2.rageWays; k++) shot(base + (k * Math.PI * 2) / T2.rageWays); e.fireCd = T2.rageEvery; }
-      else { for (let k = 0; k < T2.fan; k++) shot(base + (k - (T2.fan - 1) / 2) * (T2.fanSpread / ((T2.fan - 1) / 2))); e.fireCd = T2.every; }
-    }
   }
-  // ハンター：速く飛び回り、ときどき止まって本体めがけて突進。怒ると2回続けて突進する
-  function thinkHunter(e) {
-    const H2 = BOSS.hunter, p = s.player, z = s.zoom;
-    e.rage = e.hp / e.maxHp < H2.rageAt;
-    const startWindup = (short) => {
-      e.phase = 'windup';
-      e.windupMax = short ? H2.rageWindup : H2.windup;
-      e.timer = e.windupMax;
-      e.ang = Math.atan2(p.y - e.y, p.x - e.x);
-      e.dashLen = Math.min(H2.maxLen * z, Math.hypot(p.x - e.x, p.y - e.y) + H2.over * z);
-      e.vx = 0; e.vy = 0;
-    };
-    if (e.phase === 'move') {
-      // 行き先へ飛ぶ。着いたら、本体から少し離れた別の場所を行き先にする
-      if (e.wx == null || Math.hypot(e.wx - e.x, e.wy - e.y) < 20 * z) {
-        for (let k = 0; k < 8; k++) {
-          const x = rand(0.12, 0.88) * s.world.w, y = rand(0.12, 0.7) * s.world.h;
-          e.wx = x; e.wy = y;
-          if (Math.hypot(x - p.x, y - p.y) > H2.keep * z) break;
+
+  // ---------- 時計 ----------
+  // 左右にゆっくり動く（ときどき真ん中へ瞬間移動）。技：針で1周なぎ払う・時間停止・12方向に順番に撃つ
+  //   怒ると、逆回りの短い針が加わり、「真ん中へ瞬間移動して弾の輪」が増える
+  function clockHands(e) {
+    const C = BOSS.clock, z = s.zoom;
+    const a = e.handA + Math.PI * 2 * (e.sweepK || 0);
+    const hands = [{ a, len: C.hand * z }];
+    if (e.rage) hands.push({ a: e.handA + Math.PI - Math.PI * 2 * (e.sweepK || 0), len: C.rageHand * z });
+    return hands;
+  }
+  function clockDrift(e) {
+    const C = BOSS.clock, W = s.world.w;
+    e.clockT = (e.clockT || 0) + DT;
+    const tx = W / 2 + Math.sin(e.clockT * C.driftSpeed) * W * C.drift;
+    e.vx = (tx - e.x) * 3; e.vy = (s.world.h * C.y - e.y) * 3;
+  }
+  function clockWarp(e, x, y) {
+    flash(e.x, e.y, e.r * 2, 0.15, 'white'); sparks(e.x, e.y, 'enemy', 8, 160);
+    e.x = x; e.y = y; e.clockT = Math.asin(clamp((x - s.world.w / 2) / (s.world.w * BOSS.clock.drift), -1, 1)) / BOSS.clock.driftSpeed;
+    ring(e.x, e.y, e.r, e.r * 3, 0.4, 'white', 0, 4); sfx('sk_blink');
+  }
+  const CLOCK_TECH = {
+    sweep: { warn: 1.0,
+      aim: (e) => { e.phase = 'windup'; e.timer = e.ft; e.windupMax = e.ft; e.sweepK = 0; e.handA = angTo(e, s.player) + Math.PI; },
+      warnTick: (e) => { e.timer = e.ft; },
+      start: (e) => { e.phase = 'sweep'; },
+      tick: (e) => {
+        const C = BOSS.clock, p = s.player, z = s.zoom;
+        e.vx = 0; e.vy = 0;
+        e.sweepK = Math.min(1, e.tt / C.sweep);
+        if (!(p.inv > 0) && !s.over) {
+          for (const h of clockHands(e)) {
+            if (segDist(e.x, e.y, e.x + Math.cos(h.a) * h.len, e.y + Math.sin(h.a) * h.len, p.x, p.y) < playerHitR() + C.handWidth * z) { hurtPlayer(T.contactDamage.value * C.handDamage, null); break; }
+          }
         }
-      }
-      setVel(e, e.wx - e.x, e.wy - e.y, H2.speed * z);
-      e.ang = Math.atan2(e.vy, e.vx);
-      e.timer -= DT;
-      if (e.timer <= 0) { e.second = false; startWindup(false); }
-    } else if (e.phase === 'windup') {
-      e.timer -= DT;
-      if (e.timer <= 0) { e.phase = 'dash'; e.timer = e.dashLen / (H2.dashSpeed * z); setVel(e, Math.cos(e.ang), Math.sin(e.ang), H2.dashSpeed * z); }
-    } else if (e.phase === 'dash') {
-      e.timer -= DT;
-      const m = e.r, W = s.world.w, H = s.world.h;
-      const out = e.x < m || e.x > W - m || e.y < m || e.y > H - m;
-      if (e.timer <= 0 || out) {
-        e.x = clamp(e.x, m, W - m); e.y = clamp(e.y, m, H - m);
-        s.shake = Math.max(s.shake, 4);
-        // 怒り：もう1回、すぐに突進
-        if (e.rage && !e.second) { e.second = true; startWindup(true); }
-        else { e.phase = 'recover'; e.timer = H2.recover; e.vx = 0; e.vy = 0; }
-      }
-    } else if (e.phase === 'recover') {
-      e.vx = 0; e.vy = 0;
-      e.timer -= DT;
-      if (e.timer <= 0) { e.phase = 'move'; e.timer = H2.every; e.wx = null; }
-    }
+        return e.tt >= C.sweep;
+      },
+      end: (e) => { e.phase = 'idle'; e.sweepK = 0; } },
+    stop: { warn: 0.5, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: BOSS.clock.rings[BOSS.clock.rings.length - 1] * s.zoom, follow: e }, e.ft),
+      start: (e) => {
+        const C = BOSS.clock;
+        s.timeStop = C.stop; e.placed = 0; sfx('timestop');
+        e.stopA = angTo(e, s.player) + Math.PI / C.ways;   // 本体のいる方向は弾のすき間にしておく
+        s.banner = { text: '時間停止', sub: '', t: 1 };
+        ring(e.x, e.y, e.r, Math.max(s.world.w, s.world.h), 0.5, 'white', 0, 3);
+      },
+      tick: (e) => {
+        const C = BOSS.clock, z = s.zoom;
+        e.vx = 0; e.vy = 0;
+        const done = 1 - Math.max(0, s.timeStop) / C.stop;
+        while (e.placed < C.rings.length && done >= (e.placed + 1) / (C.rings.length + 1)) {
+          const R = C.rings[e.placed] * z, sp = C.bulletSpeed * z;
+          for (let k = 0; k < C.ways; k++) {
+            const a = e.stopA + (k * Math.PI * 2) / C.ways;
+            s.enemyShots.push({ x: e.x + Math.cos(a) * R, y: e.y + Math.sin(a) * R, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: EB.radius * z, life: EB.life * 2, damage: EB.damage, from: e, held: true });
+            sparks(e.x + Math.cos(a) * R, e.y + Math.sin(a) * R, 'white', 1, 40);
+          }
+          e.placed++;
+        }
+        return s.timeStop <= 0;
+      } },
+    tick: { warn: 0.5, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 2, follow: e }, e.ft),
+      start: (e) => { e.shotN = 0; },
+      tick: (e) => {
+        const C = BOSS.clock, total = 12 * (e.rage ? C.rageTickRounds : C.tickRounds);
+        e.vx = 0; e.vy = 0;
+        while (e.shotN < total && e.tt >= e.shotN * C.tickGap) {
+          const a = -Math.PI / 2 + (e.shotN % 12) * (Math.PI * 2 / 12) + Math.floor(e.shotN / 12) * (Math.PI / 12);
+          bossShot(e, a, C.tickSpeed, 2); bossShot(e, a + Math.PI, C.tickSpeed, 2);
+          e.handA = a; e.shotN++;
+        }
+        return e.tt >= total * C.tickGap;
+      } },
+    warp: { warn: 0.6,
+      aim: (e) => { e.wtx = s.world.w / 2; e.wty = s.world.h * BOSS.clock.warpY; warnShape({ k: 'circle', x: e.wtx, y: e.wty, r: e.r * 1.6 }, e.ft); },
+      start: (e) => { clockWarp(e, e.wtx, e.wty); bossRing(e, BOSS.clock.ways, BOSS.clock.bulletSpeed); },
+      tick: (e) => { e.vx = 0; e.vy = 0; return e.tt >= 0.3; } },
+  };
+  function thinkClock(e) {
+    const C = BOSS.clock;
+    e.rage = e.hp / e.maxHp < C.rageAt;
+    if (e.handA == null) { e.handA = 0; e.sweepK = 0; e.clockT = 0; e.phase = 'idle'; }
+    bossFlow(e, CLOCK_TECH, e.rage ? ['sweep', 'stop', 'tick', 'warp'] : ['sweep', 'stop', 'tick'], (b) => {
+      // 動き始めにときどき、真ん中寄りへ瞬間移動する
+      if (b.ft >= C.moveTime - DT * 1.5 && Math.random() < C.warpChance) clockWarp(b, s.world.w * rand(0.3, 0.7), s.world.h * C.y);
+      clockDrift(b);
+    }, C.moveTime);
   }
-  // コア：真ん中で回りながら渦の弾幕。ときどき追跡を呼ぶ。HPが減ると怒る
-  function thinkCore(e) {
-    const C = BOSS.core;
-    e.vx = 0; e.vy = 0;
-    const rage = e.hp / e.maxHp < C.rageAt;
-    e.rage = rage;
-    e.spin += C.spin * (rage ? C.rageSpin : 1) * DT;
-    e.fireCd -= DT;
-    if (e.fireCd <= 0) {
-      e.fireCd = C.fireEvery;
-      const n = rage ? C.rageArms : C.arms, sp = C.bulletSpeed * s.zoom;
-      for (let k = 0; k < n; k++) {
-        const a = e.spin + (k * Math.PI * 2) / n;
-        s.enemyShots.push({ x: e.x + Math.cos(a) * e.r * 0.8, y: e.y + Math.sin(a) * e.r * 0.8, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: EB.radius * s.zoom, life: EB.life * 1.5, damage: EB.damage, from: e });
-      }
-    }
-    e.callCd -= DT;
-    if (e.callCd <= 0) {
-      e.callCd = C.callEvery;
-      for (let k = 0; k < C.callCount; k++) {
-        const a = (k * Math.PI * 2) / C.callCount + e.spin, d = e.r * 1.8;
-        const one = ET.chaser.hp, r = radiusOf(one) * (ET.chaser.sizeMul || 1);
-        const x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d;
-        s.enemies.push({ kind: 'chaser', tier: 1, x, y, r, hp: one, maxHp: one, vx: 0, vy: 0, ang: a, flash: 0, speedMul: 1, phase: 'move', timer: 1, strafe: 1, dashX: 0, dashY: 0, wx: x, wy: y, shield: 0, shieldMax: 0 });
-        ring(x, y, 4, r * 2.5, 0.35, 'enemy', 0, 3);
-      }
-    }
+
+  // ---------- 影 ----------
+  // 本体の少し前の道をなぞって追ってくる。技：影の分身・本体の通った道に遅れて当たりが出る・消えて近くに現れる
+  function shadeFollow(e) {
+    const S = BOSS.shade, z = s.zoom;
+    const back = Math.round(S.delay / DT);
+    const q = e.hist[Math.max(0, e.hist.length - 1 - back)];
+    const dx = q.x - e.x, dy = q.y - e.y, d = Math.hypot(dx, dy);
+    if (d > 1) setVel(e, dx, dy, Math.min(d * 4, S.speed * z)); else { e.vx = 0; e.vy = 0; }
+    e.ang = Math.atan2(e.vy || 0, e.vx || 1);
+  }
+  const SHADE_TECH = {
+    echo: { warn: 0.5, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 1.8, follow: e }, e.ft),
+      start: (e) => {
+        const S = BOSS.shade, n = Math.round(S.copy / DT), H = e.hist;
+        spawnEcho(e, H.slice(Math.max(0, H.length - n)));
+        if (e.rage && H.length > n) spawnEcho(e, H.slice(Math.max(0, H.length - n * 2), H.length - n));
+      },
+      tick: (e) => e.tt >= 0.2 },
+    trace: { warn: 0.9,
+      aim: (e) => {
+        const S = BOSS.shade, n = Math.round(S.traceTime / DT), H = e.hist;
+        e.tracePts = H.slice(Math.max(0, H.length - n)).filter((_, i) => i % 3 === 0).map((q) => ({ x: q.x, y: q.y }));
+        warnShape({ k: 'path', pts: e.tracePts, w: S.traceWidth * s.zoom }, e.ft);
+      },
+      start: (e) => { warnShape({ k: 'path', pts: e.tracePts, w: BOSS.shade.traceWidth * s.zoom, hot: true }, BOSS.shade.traceOn); },
+      tick: (e) => {
+        const S = BOSS.shade, p = s.player, P2 = e.tracePts;
+        if (!(p.inv > 0) && !s.over) {
+          for (let i = 1; i < P2.length; i++) if (segDist(P2[i - 1].x, P2[i - 1].y, P2[i].x, P2[i].y, p.x, p.y) < playerHitR() + S.traceWidth * s.zoom) { hurtPlayer(T.contactDamage.value * S.traceDamage, null); break; }
+        }
+        return e.tt >= S.traceOn;
+      } },
+    blink: { warn: 0.8,
+      aim: (e) => {
+        const S = BOSS.shade, p = s.player, z = s.zoom, a = rand(0, Math.PI * 2), m = e.r;
+        e.vanish = true; sparks(e.x, e.y, 'enemy', 8, 140); sfx('sk_blink');
+        e.bx = clamp(p.x + Math.cos(a) * S.blinkDist * z, m, s.world.w - m); e.by = clamp(p.y + Math.sin(a) * S.blinkDist * z, m, s.world.h - m);
+        warnShape({ k: 'circle', x: e.bx, y: e.by, r: e.r * 1.3 }, e.ft);
+      },
+      warnTick: (e) => { e.vx = 0; e.vy = 0; },
+      start: (e) => { const S = BOSS.shade; e.x = e.bx; e.y = e.by; e.vanish = false; ring(e.x, e.y, e.r, e.r * 3, 0.4, 'enemy', 0, 5); bossRing(e, S.blinkWays, S.blinkSpeed); s.shake = Math.max(s.shake, 4); },
+      tick: (e) => e.tt >= 0.3 },
+  };
+  function thinkShade(e) {
+    const S = BOSS.shade, p = s.player;
+    e.rage = e.hp / e.maxHp < S.rageAt;
+    if (!e.hist) e.hist = [];
+    e.hist.push({ x: p.x, y: p.y });
+    const keep = Math.round((S.copy * 2) / DT) + 1;
+    if (e.hist.length > keep) e.hist.splice(0, e.hist.length - keep);
+    bossFlow(e, SHADE_TECH, e.rage ? ['echo', 'trace', 'blink', 'echo'] : ['echo', 'trace', 'blink'], shadeFollow, S.moveTime);
+  }
+  function spawnEcho(src, pts) {
+    const S = BOSS.shade, z = s.zoom;
+    if (pts.length < 2) return;
+    // 3刻みに間引いた道（描く用）と、刻みごとの道（なぞる用）
+    const path = pts.filter((_, i) => i % 3 === 0 || i === pts.length - 1).map((q) => ({ x: q.x, y: q.y }));
+    const hp = PH.hpRateBase * growthOf(s.phase) * S.echoHp;
+    const e = { kind: 'echo', tier: 1, x: pts[0].x, y: pts[0].y, r: S.echoRadius * z, hp, maxHp: hp, vx: 0, vy: 0, ang: 0, flash: 0, speedMul: 1, shield: 0, shieldMax: 0,
+      path, steps: pts.map((q) => ({ x: q.x, y: q.y })), si: 0, pi: 0, wait: S.wait, from: src };
+    s.enemies.push(e);
+    ring(e.x, e.y, 2, e.r * 2.5, 0.4, 'enemy', 0, 3);
+    // 影から分身の始まりへ、黒いすじ
+    sparks(src.x, src.y, 'enemy', 4, 80);
+  }
+  function thinkEcho(e) {
+    if (e.wait > 0) { e.wait -= DT; e.vx = 0; e.vy = 0; return; }
+    e.si++;
+    if (e.si >= e.steps.length) { e.hp = 0; e.selfDestruct = true; enemyDeathFx(e); return; }
+    const q = e.steps[e.si];
+    e.vx = (q.x - e.x) / DT; e.vy = (q.y - e.y) / DT;
+    if (e.vx || e.vy) e.ang = Math.atan2(e.vy, e.vx);
+    e.pi = Math.floor(e.si / 3);
   }
 
   // 才能を選ぶ（i：選んだカードの番号）
@@ -3270,6 +3450,7 @@ export function createGame() {
     s.boss = null;
     s.twin = null;
     s.timeStop = 0;
+    s.warns = [];
     s.bossDownT = 0;
     if (s.bossPhase) {
       s.bossAppear = BOSS.appear;
@@ -3356,6 +3537,7 @@ export function createGame() {
     updateRecord(input.held);
     // 時間停止（ボス「時計」）：分身と自分の攻撃は止まる
     if (s.timeStop > 0) s.timeStop -= DT;
+    if (s.warns.length) { for (const w of s.warns) { w.t -= DT; if (w.follow) { w.x = w.follow.x; w.y = w.follow.y; } } s.warns = s.warns.filter((w) => w.t > 0); }
     else {
       if (s.volleyCd > 0) s.volleyCd -= DT;
       updateGhosts();

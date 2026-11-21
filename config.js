@@ -147,15 +147,22 @@ export const CONFIG = {
     normalRate: 0.3,          // ボスのフェーズでの、ふつうの敵の出る勢い（倍）
     appear: 1.5,              // フェーズが始まってから、ボスが現れるまでの秒数
     clearDelay: 1.2,          // ボスを倒してから、カード選びになるまでの秒数
+    // どのボスも「動く→予告→技→すき」をくり返す。すきの秒数（怒ると短い）／怒ったときの予告の秒数の倍／すきの間に受けるダメージの倍
+    rest: 1.6, rageRest: 1.1, rageWarn: 0.8, vulnMul: 1.5,
     core: { name: 'コア', radius: 42, y: 0.32, spin: 0.9, arms: 3, fireEvery: 0.16, bulletSpeed: 110, callEvery: 8, callCount: 3,
-            rageAt: 0.5, rageSpin: 1.5, rageArms: 5 },   // 回る速さ／渦の本数／撃つ間隔／弾の速さ／追跡を呼ぶ間隔と数／HPがこの割合を切ると怒る（回る速さの倍・渦の本数）
-    hunter: { name: 'ハンター', radius: 30, y: 0.3, speed: 150, keep: 120, every: 3, windup: 1, rageWindup: 0.5, dashSpeed: 600, over: 60, maxLen: 340, recover: 0.8, rageAt: 0.5 },
+            rageAt: 0.5, rageSpin: 1.5, rageArms: 5,
+            moveSpeed: 55, moveTime: 1.6, spiralTime: 2.2, rageSpiralTime: 2.8, ringWays: 16, rageRingWays: 22, ringCount: 3, ringGap: 0.45, ringSpeed: 95, rageCallCount: 5, blastR: 120, blastDamage: 1.5, blastWays: 14 },   // 回る速さ／渦の本数／撃つ間隔／弾の速さ／追跡を呼ぶ間隔と数／HPがこの割合を切ると怒る（回る速さの倍・渦の本数）
+    hunter: { name: 'ハンター', radius: 30, y: 0.3, speed: 150, keep: 120, every: 3, windup: 1, rageWindup: 0.5, dashSpeed: 600, over: 60, maxLen: 340, recover: 0.8, rageAt: 0.5,
+              moveTime: 1.6, tripleWindup: 0.45, tripleLen: 0.6, fanWays: 5, fanSpread: 0.9, fanVolleys: 3, fanGap: 0.35, fanSpeed: 170 },
     twin: { name: '双子', radius: 32, orbit: 150, spin: 0.45, follow: 60, every: 4, fan: 5, fanSpread: 0.55, bulletSpeed: 150,
             rageSpin: 1.5, rageEvery: 2, rageWays: 8, revive: 8, reviveHp: 0.3,
-            tetherOff: 1.7, tetherWarn: 0.8, tetherOn: 1.5, tetherWidth: 6, tetherDamage: 1.2 },
+            tetherOff: 1.7, tetherWarn: 0.8, tetherOn: 1.5, tetherWidth: 6, tetherDamage: 1.2,
+            moveTime: 1.8, pincerSpeed: 480, pincerOver: 90 },
     clock: { name: '時計', radius: 36, y: 0.25, drift: 0.25, driftSpeed: 0.4, every: 5, windup: 1, sweep: 2, hand: 260, rageHand: 150, handWidth: 5, handDamage: 1.5,
-             stopEvery: 15, rageStopEvery: 10, stop: 2, ways: 12, rings: [70, 140, 210], bulletSpeed: 130, rageAt: 0.5 },
-    shade: { name: '影', radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5 },
+             stopEvery: 15, rageStopEvery: 10, stop: 2, ways: 12, rings: [70, 140, 210], bulletSpeed: 130, rageAt: 0.5,
+             moveTime: 1.6, warpChance: 0.35, warpY: 0.4, tickRounds: 2, rageTickRounds: 3, tickGap: 0.09, tickSpeed: 120 },
+    shade: { name: '影', radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
+             moveTime: 1.8, traceTime: 1.6, traceWidth: 7, traceOn: 0.5, traceDamage: 1.0, blinkDist: 110, blinkWays: 10, blinkSpeed: 120 },
     // 影：本体の何秒前の場所を追うか・追う速さの上限／影の分身：間隔・なぞる秒数・動き出すまでの秒数・大きさ・体力（1秒に出る敵の体力の何倍）
     //   怒り：分身の間隔（2体ずつ。2体目は、さらにその前の同じ秒数をなぞる）／怒るHPの割合
     // 時計：左右にゆっくり動く幅（画面の幅の割合）と速さ／針：間隔・予告の秒数・1周の秒数・長さ（怒ると逆回りの短針も）・当たる太さ・ダメージ（体当たりの何倍）

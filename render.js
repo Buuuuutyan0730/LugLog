@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122032810';
-import { makeForms } from './forms.js?v=20261122032810';
-import { CONFIG } from './config.js?v=20261122032810';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122035117';
+import { makeForms } from './forms.js?v=20261122035117';
+import { CONFIG } from './config.js?v=20261122035117';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -887,10 +887,13 @@ export function createRenderer(canvas, view) {
       const st = e.status || NO_STATUS;
       if (st.pull) drawPullLines(e, st.pull, t);
 
-      const warn = e.phase === 'windup' && Math.sin(t * 40) > 0; // 撃つ・突っ込む直前は白く点滅
+      const warn = (e.phase === 'windup' || e.flow === 'warn') && Math.sin(t * 40) > 0; // 撃つ・突っ込む直前は白く点滅（ボスは技の予告の間）
       const hit = e.flash > 0 || warn;
       const heavy = e.kind === 'tank' || e.boss || e.elite;      // 重いもの・ボス・中ボスは縁を太く
+      // ボスのすき：まわりに白い点線の輪が回り、上に「チャンス」
+      if (e.vuln) drawBossChance(e, t);
       ctx.save();
+      if (e.vanish) ctx.globalAlpha *= 0.12;   // 影が消えている間
       ctx.translate(e.x, e.y);
       ctx.rotate(e.kind === 'tank' || (e.boss && e.kind !== 'hunter' && e.kind !== 'twin') ? 0 : e.ang || 0);
       // 体の色：凍結＝水色、毒＝紫（両方なら凍結を優先）。影と敵の分身は黒い体
@@ -1319,6 +1322,59 @@ export function createRenderer(canvas, view) {
     ctx.restore();
   }
   // 双子をつなぐ赤い糸（片方が倒れると切れる）と、影が作った敵の分身の道筋
+  // ボスの技の予告：赤く光る形。だんだん中が満ちていき、満ちたら技が来る。hot は当たっている最中（明るく）
+  function drawWarns(state, t) {
+    const W2 = state.warns;
+    if (!W2 || !W2.length) return;
+    ctx.save();
+    for (const w of W2) {
+      const k = 1 - Math.max(0, w.t) / (w.max || 1), pulse = 0.5 + 0.5 * Math.sin(t * 18);
+      const fillA = w.hot ? 0.45 : 0.08 + 0.1 * k, lineA = w.hot ? 0.95 : 0.45 + 0.35 * pulse;
+      ctx.fillStyle = `rgba(${THEME.enemyRgbB}, ${fillA})`;
+      ctx.strokeStyle = `rgba(${THEME.enemyRgbL}, ${lineA})`;
+      ctx.lineWidth = 2;
+      if (w.k === 'circle') {
+        ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.fill();
+        ctx.setLineDash([7, 5]); ctx.lineDashOffset = -t * 30; ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = `rgba(${THEME.enemyRgbB}, ${0.18 + 0.12 * k})`; ctx.beginPath(); ctx.arc(w.x, w.y, w.r * k, 0, Math.PI * 2); ctx.fill();
+      } else if (w.k === 'line') {
+        const a = Math.atan2(w.y2 - w.y1, w.x2 - w.x1), L = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
+        ctx.save(); ctx.translate(w.x1, w.y1); ctx.rotate(a);
+        ctx.fillRect(0, -w.w, L, w.w * 2);
+        ctx.fillStyle = `rgba(${THEME.enemyRgbB}, ${0.2 + 0.15 * k})`; ctx.fillRect(0, -w.w, L * k, w.w * 2);
+        ctx.setLineDash([8, 6]); ctx.strokeRect(0, -w.w, L, w.w * 2); ctx.setLineDash([]);
+        ctx.restore();
+      } else if (w.k === 'fan') {
+        let a = w.a;
+        if (w.aimAt === 'player' && state.player) a = Math.atan2(state.player.y - w.y, state.player.x - w.x);
+        ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.arc(w.x, w.y, w.len, a - w.spread / 2, a + w.spread / 2); ctx.closePath(); ctx.fill();
+        ctx.setLineDash([7, 5]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = `rgba(${THEME.enemyRgbB}, ${0.18 + 0.12 * k})`; ctx.beginPath(); ctx.moveTo(w.x, w.y); ctx.arc(w.x, w.y, w.len * k, a - w.spread / 2, a + w.spread / 2); ctx.closePath(); ctx.fill();
+      } else if (w.k === 'path' && w.pts && w.pts.length > 1) {
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); w.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+        ctx.lineWidth = w.w * 2; ctx.strokeStyle = `rgba(${THEME.enemyRgbB}, ${w.hot ? 0.55 : 0.12 + 0.12 * k})`; ctx.stroke();
+        ctx.lineWidth = w.hot ? 3 : 1.6; ctx.strokeStyle = `rgba(${THEME.enemyRgbL}, ${lineA})`;
+        if (!w.hot) { ctx.setLineDash([6, 6]); ctx.lineDashOffset = -t * 40; }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    ctx.restore();
+  }
+  // ボスのすき：白い点線の輪が回り、上に「チャンス」の文字（ダメージが通りやすい合図）
+  function drawBossChance(e, t) {
+    ctx.save();
+    const R = e.r * 1.4 + 3 * Math.sin(t * 8);
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2.5; ctx.setLineDash([10, 8]); ctx.lineDashOffset = -t * 40;
+    glow('#ffffff', 10);
+    ctx.beginPath(); ctx.arc(e.x, e.y, R, 0, Math.PI * 2); ctx.stroke();
+    noGlow(); ctx.setLineDash([]);
+    ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#ffe14a'; ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 10);
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3;
+    ctx.strokeText('チャンス！', e.x, e.y - R - 4); ctx.fillText('チャンス！', e.x, e.y - R - 4);
+    ctx.restore();
+  }
   function drawBossLinks(state, t) {
     const twins = state.enemies.filter((e) => e.kind === 'twin' && e.hp > 0 && !e.rage);
     if (twins.length === 2) {
@@ -2236,6 +2292,7 @@ export function createRenderer(canvas, view) {
     drawPickups(state, t);
     drawShots(state);
     drawBossLinks(state, t);
+    drawWarns(state, t);
     drawEnemies(state, t);
     drawGhosts(state, t);
     drawLasers(state);
