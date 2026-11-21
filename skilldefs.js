@@ -1,7 +1,7 @@
-// スキルの一覧（6つの道・115個）。名前と種類と、樹形図のつながり。
+// スキルの一覧（6つの系統：影・本体・罠・現象・星環・収穫／115個）。名前と種類と、樹形図のつながり。
 //   アイコンは icons.js の sk_<id>。効果の説明は下の SKILL_TEXT（書いてあるもの＝もう動くもの）
 export const SKILL_ROADS = [
-  { id: 'ghost', name: '分身の道', skills: [
+  { id: 'ghost', name: '影', skills: [
     { id: 'volley', name: '一斉射撃', kind: '入口' },
     { id: 'giant', name: '巨大化', kind: '目覚め' },
     { id: 'crush', name: '押しつぶし', kind: '分岐' },
@@ -24,7 +24,7 @@ export const SKILL_ROADS = [
     { id: 'repair', name: '修復', kind: '両立' },
     { id: 'fortress', name: '不落', kind: '奥義' },
   ] },
-  { id: 'body', name: '本体の道', skills: [
+  { id: 'body', name: '本体', skills: [
     { id: 'aura', name: '闘気', kind: '入口' },
     { id: 'charge', name: '突撃', kind: '目覚め' },
     { id: 'heavyfist', name: '重拳', kind: '分岐' },
@@ -42,7 +42,7 @@ export const SKILL_ROADS = [
     { id: 'nimble', name: '身軽', kind: '両立' },
     { id: 'blink', name: '瞬身', kind: '奥義' },
   ] },
-  { id: 'trap', name: '罠の道', skills: [
+  { id: 'trap', name: '罠', skills: [
     { id: 'keepsake', name: '置き土産', kind: '入口' },
     { id: 'caltrop', name: 'マキビシ', kind: '目覚め' },
     { id: 'barb', name: '返し針', kind: '分岐' },
@@ -60,7 +60,7 @@ export const SKILL_ROADS = [
     { id: 'ember', name: '残り火', kind: '両立' },
     { id: 'firesea', name: '火の海', kind: '奥義' },
   ] },
-  { id: 'phenom', name: '現象の道', skills: [
+  { id: 'phenom', name: '現象', skills: [
     { id: 'thunder', name: '雷', kind: '目覚め' },
     { id: 'chainbolt', name: '連鎖雷', kind: '分岐' },
     { id: 'strike', name: '落雷', kind: '分岐' },
@@ -87,7 +87,7 @@ export const SKILL_ROADS = [
     { id: 'soulreap', name: '魂の収穫', kind: '両立' },
     { id: 'scythe', name: '大鎌', kind: '奥義' },
   ] },
-  { id: 'orbit', name: '衛星の道', skills: [
+  { id: 'orbit', name: '星環', skills: [
     { id: 'float', name: '浮遊', kind: '入口' },
     { id: 'satellite', name: '衛星', kind: '目覚め' },
     { id: 'bigsat', name: '大衛星', kind: '分岐' },
@@ -110,7 +110,7 @@ export const SKILL_ROADS = [
     { id: 'escort', name: '護衛', kind: '両立' },
     { id: 'sanctuary', name: '聖域', kind: '奥義' },
   ] },
-  { id: 'harvest', name: '収穫の道', skills: [
+  { id: 'harvest', name: '収穫', skills: [
     { id: 'keeper', name: '拾い上手', kind: '入口' },
     { id: 'shortcut', name: '近道', kind: '目覚め' },
     { id: 'double', name: '二重取り', kind: '分岐' },
@@ -262,7 +262,7 @@ for (const road of SKILL_ROADS) {
   let wake = null;
   for (const k of road.skills) {
     if (k.kind === '目覚め') wake = k;
-    const info = { ...k, road: road.id, roadName: road.name.replace('の道', ''), text: SKILL_TEXT[k.id] || null };
+    const info = { ...k, road: road.id, roadName: road.name, text: SKILL_TEXT[k.id] || null };
     info.type = k.kind === '入口' ? null : k.kind === '目覚め' ? k.id : wake.id;   // 型（その型の目覚めの id）
     if (k.kind === '入口') info.need = null;
     else if (k.kind === '目覚め') info.need = entry ? entry.id : null;   // 現象の道は入口なし

@@ -1,3 +1,4 @@
+import { SKILL_ROADS } from './skilldefs.js?v=20261122021402';
 // ミッション（デイリーと実績）。報酬はコイン
 //   デイリー：候補から毎日3つ（朝4時に入れかわる）。どれも「2回ちゃんと遊べば届く」くらいの量。3つ全部でボーナス
 //   実績：ずっと残る。段階ごとに受け取れる
@@ -11,7 +12,7 @@ export const DAILY_POOL = [
   { id: 'time', text: '合計10分遊ぶ', goal: 600, coins: 40, unit: 'min' },
   { id: 'reroll', text: '引き直しを1回使う', goal: 1, coins: 30 },
   { id: 'gacha', text: 'ガチャを1回引く', goal: 1, coins: 30 },
-  { id: 'road', text: '{road}のスキルを3つ取る', goal: 3, coins: 40 },
+  { id: 'road', text: '「{road}」のスキルを3つ取る', goal: 3, coins: 40 },
   { id: 'phase', text: 'フェーズ10に着く', goal: 10, coins: 50, best: true },
   { id: 'survive', text: '1回のプレイで5分生き残る', goal: 300, coins: 50, best: true, unit: 'min' },
   { id: 'boss', text: 'ボスを1体倒す', goal: 1, coins: 60 },
@@ -96,7 +97,7 @@ export function missionView(save, poolSize) {
   const M = save.missions;
   const daily = M.daily.map((x) => {
     const d = defOf(x.id);
-    return { id: x.id, text: d.text.replace('{road}', x.roadName || ''), now: x.now, goal: d.goal, coins: d.coins, unit: d.unit, state: x.got ? 'got' : x.now >= d.goal ? 'ready' : 'yet' };
+    return { id: x.id, text: d.text.replace('{road}', (SKILL_ROADS.find((r) => r.id === x.road) || {}).name || x.roadName || ''), now: x.now, goal: d.goal, coins: d.coins, unit: d.unit, state: x.got ? 'got' : x.now >= d.goal ? 'ready' : 'yet' };
   });
   const allDone = daily.every((x) => x.state !== 'yet');
   const ach = {};
