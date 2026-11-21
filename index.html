@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#05070f">
+  <title>LugLog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=20261122012532">
+</head>
+<body>
+  <div id="app">
+    <div id="stage">
+      <!-- いちばん上：フェーズとかけらの数 -->
+      <div class="phasebar">
+        <div class="dock-row">
+          <span class="phase-label" id="phase">PHASE 1</span>
+          <div class="shard-bar"><div class="shard-fill" id="shard-fill"></div></div>
+          <span class="phase-num" id="shard-num">0/15</span>
+        </div>
+      </div>
+      <!-- 遊ぶ範囲（描画は render.js）。下の枠とは重ならない -->
+      <div id="field">
+      <canvas id="game"></canvas>
+
+      <!-- 画面上の表示（見た目は style.css、中身の更新は ui.js） -->
+      <div id="hud">
+        <div class="hud-top">
+          <div class="box score">
+            <div class="score-label">SCORE</div>
+            <div class="score-num" id="score">0</div>
+          </div>
+          <div class="box clock">
+            <div class="clock-time" id="time">00:00</div>
+          </div>
+          <div class="hud-right">
+            <!-- 取得した才能の一覧 -->
+            <button class="btn btn-icon btn-owned" id="open-owned" aria-label="取得した才能">
+              <svg viewBox="0 0 8 8" class="px-icon"><path d="M0 0h3v3H0zM5 0h3v3H5zM0 5h3v3H0zM5 5h3v3H5z"/></svg>
+              <span class="owned-count" id="owned-count">0</span>
+            </button>
+            <!-- 一時停止 -->
+            <button class="btn btn-icon" id="open-pause" aria-label="一時停止">
+              <svg viewBox="0 0 8 8" class="px-icon"><path d="M1 1h2v6H1zM5 1h2v6H5z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ボスのHPバー（ボスがいるときだけ出す） -->
+        <div class="boss" id="boss">
+          <div class="boss-head">
+            <span class="boss-tag">BOSS</span>
+            <span class="boss-name" id="boss-name">コア</span>
+          </div>
+          <div class="boss-bar">
+            <div class="boss-lag" id="boss-lag"></div>
+            <div class="boss-fill" id="boss-fill"></div>
+          </div>
+        </div>
+
+        <div class="hint" id="hint">ドラッグしてスタート</div>
+
+      </div>
+      </div>
+
+      <!-- 下の枠：かけら（フェーズ）と軌跡の総量。画面の端までぴったり付ける -->
+      <div class="dock">
+        <div class="record-head">
+          <span class="record-label" id="record-label"><span class="rec-dot"></span><span id="record-text">待機中</span></span>
+          <span class="badge" id="ghost-count">分身 0体</span>
+        </div>
+        <div class="bar" id="budget-bar"></div>
+        <div class="record-foot">
+          <span class="record-next" id="record-hint">ドラッグで軌跡を描く</span>
+          <span class="budget-num" id="budget-num">0/1200</span>
+        </div>
+      </div>
+
+      <!-- フェーズ開始の表示 -->
+      <div class="banner" id="banner">
+        <div class="banner-text" id="banner-text">PHASE 1</div>
+        <div class="banner-sub" id="banner-sub"></div>
+      </div>
+
+      <!-- 才能の選択 -->
+      <div id="skill" class="skill" aria-hidden="true">
+        <div class="skill-inner">
+          <div class="skill-title" id="skill-title">PHASE 1 CLEAR!</div>
+          <div class="skill-sub">才能を1つ選ぼう</div>
+          <div class="skill-cards" id="skill-cards"></div>
+          <!-- 引き直し：押すたびに値段が上がる（1回のプレイの中で） -->
+          <div class="reroll" id="reroll" data-mark-name="引き直すボタン">
+            <button class="btn btn-sub reroll-btn" id="reroll-btn">
+              <span>引き直す</span>
+              <b><svg class="cur" viewBox="0 0 8 8"><path d="M2 0h4v1h1v1h1v4H7v1H6v1H2V7H1V6H0V2h1V1h1z" fill="#ffd84a"/><path d="M3 2h2v1h1v2H5v1H3V5H2V3h1z" fill="#d99a12"/></svg><span id="reroll-cost">50</span></b>
+            </button>
+            <div class="reroll-have">持っているコイン <svg class="cur" viewBox="0 0 8 8"><path d="M2 0h4v1h1v1h1v4H7v1H6v1H2V7H1V6H0V2h1V1h1z" fill="#ffd84a"/><path d="M3 2h2v1h1v2H5v1H3V5H2V3h1z" fill="#d99a12"/></svg><span id="reroll-have">1,240</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- やられた後の結果 -->
+      <div id="result" class="result" aria-hidden="true">
+        <div class="box result-box">
+          <div class="result-title">やられた！</div>
+          <div class="result-score" id="r-score">0</div>
+          <div class="result-new" id="r-new">最高スコア更新！</div>
+          <div class="result-row"><span>到達フェーズ</span><span class="num" id="r-phase">1</span></div>
+          <div class="result-row"><span>生きた時間</span><span class="num" id="r-time">00:00</span></div>
+          <div class="result-row"><span>撃破</span><span class="num" id="r-kills">0</span></div>
+          <div class="result-row best"><span>最高スコア</span><span class="num" id="r-best">0</span></div>
+          <button class="btn btn-big" id="retry">もう一回</button>
+        </div>
+      </div>
+
+      <!-- 取得した才能の一覧 -->
+      <div id="owned" class="modal" aria-hidden="true">
+        <div class="sheet-head">
+          <span class="sheet-title">取得した才能</span>
+          <button class="btn btn-small" id="close-owned">とじる</button>
+        </div>
+        <div class="sheet-body" id="owned-body"></div>
+      </div>
+
+      <!-- 一覧で押した才能のカード（どこを押しても閉じる） -->
+      <div id="talent" class="talent" aria-hidden="true">
+        <div class="talent-inner">
+          <div class="card" id="talent-card"></div>
+          <div class="talent-close">タップでとじる</div>
+        </div>
+      </div>
+
+      <!-- 試作用の調整ボタン（完成のときに外す）。どの画面からでも押せるよう、いちばん上に小さく置く -->
+      <button class="btn btn-icon btn-debug" id="open-debug" aria-label="調整パネル">
+        <svg viewBox="0 0 8 8" class="px-icon"><path d="M3 0h2v1h1v1h1v1h1v2H7v1H6v1H5v1H3V7H2V6H1V5H0V3h1V2h1V1h1zM3 3v2h2V3z"/></svg>
+      </button>
+      <!-- 試作用の調整パネル（debug.js） -->
+      <div id="debug" class="sheet" aria-hidden="true">
+        <div class="sheet-head">
+          <span class="sheet-title">調整パネル</span>
+          <div class="sheet-actions">
+            <button class="btn btn-small btn-sub" id="open-preview">見本</button>
+            <button class="btn btn-small btn-sub" id="debug-clear">クリア</button>
+            <button class="btn btn-small btn-sub" id="restart">やり直す</button>
+            <button class="btn btn-small" id="close-debug">とじる</button>
+          </div>
+        </div>
+        <div class="sheet-body" id="debug-body"></div>
+      </div>
+
+      <!-- 新しい見た目の見本（動かない。preview.js） -->
+      <div class="preview-bar" id="preview-bar" aria-hidden="true">
+        <div class="preview-nav">
+          <div class="preview-cats" id="preview-cats"></div>
+          <div class="preview-tabs" id="preview-tabs"></div>
+        </div>
+        <div class="preview-side">
+          <button class="btn btn-small btn-sub" id="mark-mode">印モード</button>
+          <button class="btn btn-small" id="mark-submit">提出<span class="mark-count" id="mark-count">0</span></button>
+          <button class="btn btn-small btn-sub" id="close-preview">とじる</button>
+        </div>
+      </div>
+
+      <!-- 印に一言を書く欄（preview.js） -->
+      <div class="mark-note" id="mark-note" aria-hidden="true">
+        <div class="mark-note-name" id="mark-note-name"></div>
+        <textarea id="mark-note-text" rows="2" placeholder="直してほしいこと（書かなくてもOK）"></textarea>
+        <div class="mark-note-actions">
+          <button class="btn btn-small btn-sub" id="mark-remove">印を外す</button>
+          <button class="btn btn-small" id="mark-ok">決定</button>
+        </div>
+      </div>
+      <div class="mark-toast" id="mark-toast"></div>
+    </div>
+  </div>
+
+  <script type="module" src="main.js?v=20261122012532"></script>
+</body>
+</html>

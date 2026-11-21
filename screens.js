@@ -1,0 +1,714 @@
+// ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
+//   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
+//   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
+import { iconSvg, snapIcons } from './icons.js?v=20261122012532';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261122012532';
+import { CONFIG } from './config.js?v=20261122012532';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261122012532';
+import { POP_STYLES } from './pops.js?v=20261122012532';
+import { TITLES, titleChip } from './titles.js?v=20261122012532';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261122012532';
+import { titleOf } from './titles.js?v=20261122012532';
+// ランキングの見本（見た目だけ）
+const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
+const RANK_MOCK = {
+  week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
+  all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
+};
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261122012532';
+// ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
+const MISSION_MOCK = {
+  daily: [
+    { id: 'kill', text: '敵を200体倒す', now: 200, goal: 200, coins: 40, state: 'ready' },
+    { id: 'road', text: '罠の道のスキルを3つ取る', now: 3, goal: 3, coins: 40, state: 'got' },
+    { id: 'time', text: '合計10分遊ぶ', now: 372, goal: 600, coins: 40, state: 'yet', unit: 'min' },
+  ],
+  bonus: 'yet',
+  ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
+};
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261122012532';
+import { iconArtSvg } from './iconart.js?v=20261122012532';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261122012532';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122012532';
+
+export const SCREEN_TABS = [
+  ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
+  ['s_reroll', 'カード選び'], ['s_result', '結果'], ['s_zukan', '図鑑'], ['s_zukan2', '図鑑の詳細'], ['s_skin', '着せ替え'], ['s_gacha', 'ガチャ'], ['s_gacharesult', 'ガチャ結果'],
+  ['s_rates', '確率'], ['s_ranking', 'ランキング'], ['s_name', '名前登録'], ['s_profile', 'プロフィール'], ['s_mission', 'ミッション'], ['s_news', 'お知らせ'],
+  ['s_credits', 'クレジット'], ['s_online', 'オンライン'],
+];
+// 全面の画面（ゲームの表示を隠す）。ないものは、ゲームの上に重ねる画面
+export const SOUND_TABS = [['s_snd_bgm', 'BGM'], ['s_snd_common', '共通'], ...SKILL_ROADS.map((r) => [`s_snd_${r.id}`, r.name])];
+export const FULL = new Set([...SOUND_TABS.map(([id]) => id), 's_load', 's_home', 's_howto', 's_settings', 's_zukan', 's_zukan2', 's_skin', 's_gacha', 's_gacharesult', 's_rates', 's_ranking', 's_name', 's_profile', 's_mission', 's_news', 's_credits', 's_online', 's_soon', 's_items_icon', 's_items_set', 's_items_bg', 's_items_pop', 's_items_title', 's_items_frame']);
+// 後ろでゲームの様子を流す画面
+export const LIVE_BG = new Set(['s_load', 's_home', 's_howto']);
+
+export const AVATARS = '★◆●▲♥☾'.split('');
+export const BOSS_KINDS = ['core', 'hunter', 'twin', 'clock', 'shade'];
+export const BOSS_NAMES = { core: 'コア', hunter: 'ハンター', twin: '双子', clock: '時計', shade: '影' };
+const BOSS_DESC = {
+  core: '真ん中で回りながら、渦の形に弾をまく。ときどき追跡を呼ぶ。',
+  hunter: '距離を保って動き回り、赤い帯で予告してから突っ込んでくる。',
+  twin: '2体で本体をはさんで回る。間の光の線に触れるとダメージ。片方だけ倒すと、もう片方が怒る。',
+  clock: '長い針を1周させる。ときどき時間を止め、止まっている間に弾を空中に並べる。',
+  shade: '本体の通った道を追う。本体の動きをそのままなぞる影の分身を出す。',
+};
+export const ENEMY_KINDS = ['drift', 'chaser', 'shooter', 'swarm', 'tank', 'dasher', 'shield', 'thief', 'bomber'];
+const ENEMY_DESC = {
+  drift: 'ふらふら漂う。ぶつかってもダメージはない。', chaser: 'まっすぐ追いかけてくる。', shooter: '距離をとって弾を撃つ。',
+  swarm: '小さいものが群れで来る。', tank: '大きくて硬い。ゆっくり来る。', dasher: '止まってためてから、一気に突っ込む。',
+  shield: '正面の盾で弾を防ぐ。横や後ろから攻めるとよい。', thief: 'かけらを拾って逃げる。倒すと全部返す。', bomber: '近づくと止まって点滅し、爆発する。',
+};
+const ROAD_OF = {};
+for (const r of SKILL_ROADS) for (const k of r.skills) ROAD_OF[k.id] = r;
+
+// 倒した攻撃の名前とアイコン（結果画面の「いちばん倒した攻撃」）
+export const SRC_INFO = {
+  ghost: ['分身の攻撃', null], body: ['本体の体当たり', 'sk_aura'], shoot: ['射撃', 'sk_shoot'], dash: ['疾走', 'sk_dash'], trap: ['マキビシ', 'sk_caltrop'],
+  mine: ['地雷', 'sk_mine'], fire: ['炎の道', 'sk_flamepath'], thunder: ['雷', 'sk_thunder'], ice: ['氷結', 'sk_freeze'], gravity: ['引力', 'sk_pull'],
+  poison: ['毒', 'sk_poison'], reaper: ['死神', 'sk_reaper'], orbit: ['浮遊', 'sk_float'], blade: ['刃輪', 'sk_blade'], drone: ['子機', 'sk_drone'],
+  shieldsat: ['盾衛星', 'sk_shieldsat'], alchemy: ['錬金', 'sk_alchemy'], heaven: ['天の光', 'sk_heaven'],
+};
+
+// ---------- 小さな部品 ----------
+const m = (name, html, cls = '', tag = 'div', extra = '') => `<${tag} class="${cls}" data-mark-name="${name}" ${extra}>${html}</${tag}>`;
+const act = (a) => `data-act="${a}"`;
+const coin = '<svg class="cur" viewBox="0 0 8 8"><path d="M2 0h4v1h1v1h1v4H7v1H6v1H2V7H1V6H0V2h1V1h1z" fill="#ffd84a"/><path d="M3 2h2v1h1v2H5v1H3V5H2V3h1z" fill="#d99a12"/></svg>';
+const wallet = (d) => (d.coins == null ? '' : `<div class="ms-wallet">${coin}<span>${d.coins.toLocaleString()}</span></div>`);
+const back = (title, d = {}) => `<div class="ms-head">${m('戻る', '<svg viewBox="0 0 8 8" class="px-icon"><path d="M4 0h2v2H4v1H3v2h1v1h2v2H4V7H3V6H2V5H1V3h1V2h1V1h1z"/></svg>', 'btn btn-icon ms-back', 'button', act('back'))}<div class="ms-title">${title}</div>${wallet(d)}</div>`;
+const tabs = (items, on = 0, name = 'タブ', acts = []) => `<div class="ms-tabs">${items.map((t, i) => m(`${name}：${t}`, t, `ms-tab${i === on ? ' on' : ''}`, 'button', acts[i] ? act(acts[i]) : '')).join('')}</div>`;
+const bar = (k, cls = '') => `<div class="ms-bar ${cls}"><i style="width:${Math.round(Math.max(0, Math.min(1, k)) * 100)}%"></i></div>`;
+const btn = (label, cls = '', a = '') => m(label, label, `btn ms-btn ${cls}`, 'button', a ? act(a) : '');
+const num = (v) => Math.round(v).toLocaleString();
+const fmtTime = (sec) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
+const fmtHours = (sec) => (sec >= 3600 ? `${Math.floor(sec / 3600)}時間${Math.floor((sec % 3600) / 60)}分` : `${Math.floor(sec / 60)}分`);
+const toggle = (on, a, name) => m(name, '<i></i>', `ms-toggle${on ? ' on' : ''}`, 'button', act(a));
+const PX = {
+  bell: 'M3 0h2v1h1v4h1v1H1V5h1V1h1zM3 7h2v1H3z',
+  gear: 'M3 0h2v1h1v1h1v1h1v2H7v1H6v1H5v1H3V7H2V6H1V5H0V3h1V2h1V1h1zM3 3v2h2V3z',
+  pen: 'M5 0h1v1h1v1h1v1H7v1H6v1H5v1H4v1H3v1H0V5h1V4h1V3h1V2h1V1h1z',
+};
+const px = (d) => `<svg viewBox="0 0 8 8" class="px-icon"><path d="${d}"/></svg>`;
+
+// ボスの小さな絵
+export const BOSS_ICONS = {
+  core: '<svg viewBox="-10 -10 20 20"><g fill="#ff3b5c" stroke="#0a0a14" stroke-width="1"><path d="M0-8 2-6 5-6 5-3 8-1 6 2 7 5 4 6 2 8-1 7-4 8-5 5-8 4-7 1-8-2-5-4-5-7-2-6z"/></g><circle r="2.6" fill="#fff"/></svg>',
+  hunter: '<svg viewBox="-10 -10 20 20"><path d="M9 0-6-6-3 0-6 6z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1"/><path d="M-3 0h10" stroke="#fff" stroke-width="1"/></svg>',
+  twin: '<svg viewBox="-10 -10 20 20"><path d="M-1-8A8 8 0 1 0-1 8 5 9 0 0 1-1-8z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="0.8" transform="translate(-1.5 0) scale(0.95)"/><path d="M1-8A8 8 0 1 1 1 8 5 9 0 0 0 1-8z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="0.8" transform="translate(1.5 0) scale(0.95)"/></svg>',
+  clock: '<svg viewBox="-10 -10 20 20"><circle r="8" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1"/><circle r="5.6" fill="none" stroke="#fff" stroke-width="0.8"/><path d="M0 0V-4.5M0 0 3 1.5" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>',
+  shade: '<svg viewBox="-10 -10 20 20"><path d="M0-9C6-9 8-3 8 3L8 8 5 6 2 8 0 6-2 8-5 6-8 8-8 3C-8-3-6-9 0-9z" fill="#2a0a16" stroke="#ff3b5c" stroke-width="1.2"/><path d="M0 0a3 3 0 1 1 3-3" fill="none" stroke="#ff3b5c" stroke-width="1"/></svg>',
+};
+// 敵の小さな絵（ゲームの形に合わせた簡単な形）
+const EN = (path) => `<svg viewBox="-10 -10 20 20"><path d="${path}" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1.2"/><circle r="1.6" fill="#fff"/></svg>`;
+export const ENEMY_ICONS = {
+  drift: EN('M7 0A7 7 0 1 1-7 0 7 7 0 1 1 7 0z'),
+  chaser: EN('M8 0-5 6-2 0-5-6z'),
+  shooter: EN('M8 0 0 6-7 0 0-6z'),
+  swarm: '<svg viewBox="-10 -10 20 20">' + [[-4, -3], [3, -4], [0, 2], [-5, 4], [5, 3]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.6" fill="#ff3b5c" stroke="#0a0a14" stroke-width="0.9"/>`).join('') + '</svg>',
+  tank: EN('M-5-7H5L7-5V5L5 7H-5L-7 5V-5z'),
+  dasher: EN('M9 0-5 5-2 0-5-5z'),
+  shield: EN('M3-6A9 6 0 0 0 3 6z'),
+  thief: EN('M0-8 2-3 7-3 3 1 5 7 0 3-5 7-3 1-7-3-2-3z'),
+  bomber: EN('M-2-7H2V-2H7V2H2V7H-2V2H-7V-2H-2z'),
+};
+
+// 遊び方の4枚
+const HOWTO = [
+  ['動くと、軌跡が描ける', '指を置いて動かすと、本体の通った跡が軌跡になる。下のバーが軌跡の残り。', '<path class="hw-trail" d="M20 120 C60 40 120 160 170 70"/><g transform="translate(170 70)"><path d="M0-9 2-2 9 0 2 2 0 9-2 2-9 0-2-2z" fill="#ffd84a"/></g>'],
+  ['指を離すと、分身が生まれる', '描いた軌跡をなぞって往復する分身が、自動で敵を攻撃する。長く描くほど大きくて強い。', '<path class="hw-trail ghost" d="M20 120 C60 40 120 160 170 70"/><circle cx="95" cy="100" r="12" fill="#3fe0ff" opacity="0.85"/><circle cx="95" cy="100" r="5" fill="#fff"/>'],
+  ['かけらを集めて、フェーズクリア', '倒した敵が落とすかけらを集めると、フェーズクリア。10フェーズごとにボスが出る。', '<g fill="#3fe0ff">' + [[50, 80], [80, 110], [120, 70], [150, 115], [100, 130]].map(([x, y]) => `<path d="M${x} ${y - 6}l5 6-5 6-5-6z"/>`).join('') + '</g><path d="M0-9 2-2 9 0 2 2 0 9-2 2-9 0-2-2z" fill="#ffd84a" transform="translate(95 95)"/>'],
+  ['才能を選んで、強くなる', 'フェーズクリアのたびに3枚のカードから1つ選ぶ。組み合わせで分身や本体の戦い方が変わる。', [0, 1, 2].map((i) => `<rect x="35" y="${18 + i * 47}" width="120" height="40" rx="6" fill="#2a3270" stroke="#0a0a14" stroke-width="3"/><rect x="44" y="${26 + i * 47}" width="24" height="24" rx="3" fill="${['#3fe0ff', '#ffd84a', '#c7a6ff'][i]}"/><rect x="76" y="${29 + i * 47}" width="${[56, 44, 62][i]}" height="6" rx="2" fill="#f3f5ff"/><rect x="76" y="${41 + i * 47}" width="${[68, 60, 50][i]}" height="4" rx="2" fill="#8f9bd6"/>`).join('')],
+];
+
+// お知らせ（新しい順）。新しく足したら一番上に入れる
+export const NEWS = [
+  ['更新', '11/21', 'ホーム画面と図鑑ができました', 'タイトルがホーム画面になりました。図鑑では、取ったスキルや見た敵・ボスを見返せます。プロフィールでは名前とアイコンを変えられます。'],
+  ['更新', '11/21', 'ボス5体と中ボスが登場しました', '10フェーズごとにボスが出るようになりました。コア・ハンター・双子・時計・影の5体です。フェーズ12からは中ボスも混ざります。'],
+  ['更新', '11/20', 'スキル115個がすべて使えるようになりました', '分身・本体・罠・現象・衛星・収穫の6つの道のスキルが、すべて動くようになりました。'],
+];
+
+// ---------- 見本用の仮の中身 ----------
+export const MOCK = {
+  name: 'ほしのこ', icon: 0, id: '4821-0937', coins: 12480, newsNew: 2, pity: 62,
+  get iconItem() { return AVATAR_ITEMS[0]; },
+  best: { score: 128400, phase: 42 },
+  stats: { plays: 213, time: 111600, kills: 412905, bosses: 58 },
+  pause: { phase: 23, time: 768 },
+  settings: { bgm: true, bgmVol: 70, se: false, seVol: 85, control: 'stick', shake: true, glow: 1 },
+  result: { score: 128400, isNew: true, phase: 42, time: 1102, kills: 3912, best: 128400, bosses: ['core', 'hunter', 'twin', 'clock'],
+    roads: [['volley', 'giant', 'gigant'], ['thunder', 'chainbolt'], ['float', 'satellite']], mvp: { src: 'thunder', pct: 38 }, coins: { score: 358, boss: 120 } },
+  zukan: { skills: Object.fromEntries(SKILL_ROADS.flatMap((r) => r.skills).filter((_, i) => i % 5 !== 3).map((k, i) => [k.id, { taken: 3 + (i % 9), evo: i % 3, best: 10 + i }])),
+    enemies: Object.fromEntries(ENEMY_KINDS.slice(0, 7).map((k, i) => [k, { seen: 20 - i, kills: 900 - i * 80 }])),
+    bosses: { core: { seen: 9, kills: 6 }, hunter: { seen: 6, kills: 4 }, twin: { seen: 4, kills: 3 }, clock: { seen: 3, kills: 3 } } },
+  ztab: 'skill', zitem: { kind: 'skill', id: 'thunder' },
+  page: 0,
+};
+
+// ---------- それぞれの画面（st：その画面の中の状態、d：記録や設定） ----------
+// ロゴ：文字の下を、指でなぞった軌跡が走り抜け、右上で本体（金の光）に行き着く。文字の左に残像が薄く尾を引く
+const LOGO_TRAIL = '<svg class="logo-trail" viewBox="0 0 300 120" aria-hidden="true"><defs><linearGradient id="lgTrail" x1="0" x2="1"><stop offset="0" stop-color="#3fe0ff" stop-opacity="0"/><stop offset="0.55" stop-color="#3fe0ff" stop-opacity="0.75"/><stop offset="1" stop-color="#ffd84a"/></linearGradient></defs>'
+  + '<path class="lt-path" d="M6 108 C 70 122, 140 118, 196 98 S 258 52, 276 22" fill="none" stroke="url(#lgTrail)" stroke-width="3.2" stroke-linecap="round"/>'
+  + '<path class="lt-dash" d="M6 108 C 70 122, 140 118, 196 98 S 258 52, 276 22" fill="none" stroke="#bff4ff" stroke-width="1" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.5"/>'
+  + '<circle class="lt-dot" cx="276" cy="22" r="5.5" fill="#ffd84a"/><circle cx="276" cy="22" r="2.4" fill="#fff"/></svg>';
+// ロゴの後ろの光：青紫の大きな光・水色の芯・横に走る光の筋・またたく小さな星
+const LOGO_STARS = [[8, 30, 0], [18, 78, 1.1], [30, 12, 0.5], [44, 88, 1.7], [62, 8, 0.9], [74, 84, 0.3], [86, 24, 1.4], [94, 66, 0.7], [52, 96, 2.1], [4, 62, 1.9]]
+  .map(([x, y, d], i) => `<i style="left:${x}%;top:${y}%;animation-delay:${d}s;--s:${i % 3 ? 1 : 1.6}"></i>`).join('');
+const LOGO_BACK = `<div class="logo-back"><div class="lb-aura"></div><div class="lb-core"></div><div class="lb-flare"></div><div class="lb-stars">${LOGO_STARS}</div></div>`;
+const logo = () => m('ロゴ', `${LOGO_BACK}<div class="logo-wrap">${LOGO_TRAIL}<div class="logo-main" data-t="LugLog"><span>Lug</span><span class="lg2">Log</span></div></div><div class="logo-sub"><i></i>指先のきせきにドラマを<i></i></div>`);
+export const SCREENS = {
+  s_load: (st, d) => `
+    <div class="ms-full ms-load">
+      <div class="ms-logo ms-logo-fixed">${logo()}</div>
+      <div class="ms-load-foot">
+        ${m('読み込みの進み具合', `${bar(st.load ?? 0.64, 'gold')}<div class="ms-load-pct">LOADING ${Math.round((st.load ?? 0.64) * 100)}%</div>`)}
+        ${m('ひとこと', `<div class="ms-tip">ヒント：${st.tip || '長く描くほど、大きくて強い分身が生まれる'}</div>`)}
+      </div>
+    </div>`,
+
+  s_home: (st, d) => `
+    <div class="ms-full ms-home">
+      <div class="ms-topbar">
+        ${m('プロフィール', `${frameHtml(d.frameItem, `<div class="ms-avatar">${avatarHtml(d.iconItem)}</div>`)}<div class="ms-pname">${titleChip(d.titleItem, 'sm')}<b>${esc(d.name)}</b><small>ID ${d.id}</small></div>`, 'ms-prof', 'button', act('profile'))}
+        <div class="ms-topright">
+          ${d.coins == null ? '' : `<div class="ms-wallet">${m('コイン', `${coin}<span>${num(d.coins)}</span>`, 'ms-cur')}</div>`}
+          ${m('お知らせ', `${px(PX.bell)}${d.newsNew ? `<span class="ms-dot">${d.newsNew}</span>` : ''}`, 'btn btn-icon ms-ib', 'button', act('news'))}
+          ${m('設定', px(PX.gear), 'btn btn-icon ms-ib', 'button', act('settings'))}
+        </div>
+      </div>
+      <div class="ms-logo ms-logo-fixed">${logo()}</div>
+      ${d.best.score > 0 ? m('最高記録', `<span>BEST</span><b>PHASE ${d.best.phase}</b><b>${num(d.best.score)}</b>`, 'ms-best') : ''}
+      <div class="ms-home-mid">
+        ${m('プレイ', 'プレイ', 'btn ms-start', 'button', act('start'))}
+        <div class="ms-home-sub">
+          ${m('遊び方', '遊び方', 'btn btn-sub ms-btn', 'button', act('howto'))}
+          ${m('オンライン', 'オンライン<small>準備中</small>', 'btn btn-sub ms-btn ms-soon', 'button', act('soon:オンライン'))}
+        </div>
+      </div>
+      <nav class="ms-nav">
+        ${[['ホーム', 'M1 3h1V2h1V1h2v1h1v1h1v5H5V5H3v3H1z', ''], ['着せ替え', 'M2 0h4v1h2v3H7v4H1V4H0V1h2z', 'skinopen'], ['ガチャ', 'M2 0h4v1h1v3H6v1h1v3H1V5h1V4H1V1h1z', 'gacha'], ['ランキング', 'M3 0h2v8H3zM0 3h2v5H0zM6 5h2v3H6z', 'ranking'], ['図鑑', 'M0 1h3v1h2V1h3v7H5V7H3v1H0z', 'zukan'], ['ミッション', 'M1 0h6v8H1zM2 2v1h4V2zM2 4v1h4V4z', 'mission']]
+          .map(([n, p, a], i) => m(`下のタブ：${n}`, `${px(p)}<span>${n}</span>${a.startsWith('soon') && !d.mock ? '<small class="ms-navsoon">準備中</small>' : ''}${a === 'mission' && d.missionDot ? '<i class="ms-navdot"></i>' : ''}`, `ms-navi${i === 0 ? ' on' : ''}`, 'button', a ? act(a) : '')).join('')}
+      </nav>
+    </div>`,
+
+  s_howto: (st) => {
+    const p = st.page || 0, [t, desc, art] = HOWTO[p];
+    return `
+    <div class="ms-full ms-howto">
+      ${m('とばす', 'とばす', 'btn btn-small btn-sub ms-skip', 'button', act('howto-end'))}
+      <div class="box ms-howto-box">
+        ${m(`遊び方${p + 1}の絵`, `<svg viewBox="0 0 190 170" class="ms-howto-art">${art}</svg>`, 'ms-howto-pic')}
+        ${m(`遊び方${p + 1}の見出し`, t, 'ms-howto-title')}
+        ${m(`遊び方${p + 1}の説明`, desc, 'ms-howto-desc')}
+        <div class="ms-dots">${HOWTO.map((_, i) => `<i class="${i === p ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="ms-row">
+          ${p > 0 ? m('前へ', '前へ', 'btn btn-sub ms-btn', 'button', act('howto-prev')) : '<span></span>'}
+          ${m(p < 3 ? '次へ' : '遊び方を終える', p < 3 ? '次へ' : st.thenPlay ? 'プレイ' : 'とじる', 'btn ms-btn', 'button', act(p < 3 ? 'howto-next' : 'howto-end'))}
+        </div>
+      </div>
+    </div>`;
+  },
+
+  s_pause: (st, d) => `
+    <div class="ms-dim ms-pausebg">
+      ${d.mock ? m('一時停止ボタン（右上）', px('M1 1h2v6H1zM5 1h2v6H5z'), 'btn btn-icon ms-pausebtn', 'button') : ''}
+      <div class="box ms-dialog">
+        ${m('一時停止の見出し', 'PAUSE', 'ms-dtitle pixfont')}
+        <div class="ms-now">${m('今のフェーズ', `<small>フェーズ</small><b>${d.pause.phase}</b>`, 'ms-nowc')}${m('今の時間', `<small>時間</small><b>${fmtTime(d.pause.time)}</b>`, 'ms-nowc')}</div>
+        ${btn('つづける', 'wide', 'resume')}
+        ${btn('やり直す', 'wide btn-sub', 'restart')}
+        ${btn('設定', 'wide btn-sub', 'settings')}
+        ${btn('タイトルへ', 'wide btn-sub', 'title')}
+      </div>
+    </div>`,
+
+  s_settings: (st, d) => {
+    const S = d.settings;
+    return `
+    <div class="ms-full ms-page">
+      ${back('設定')}
+      <div class="ms-scroll">
+        <div class="ms-sec">サウンド</div>
+        ${m('BGMの音量', `<span>BGM</span>${slider(S.bgmVol, !S.bgm, 'vol:bgmVol')}<b class="${S.bgm ? '' : 'off'}">${S.bgmVol}</b>${toggle(S.bgm, 'set:bgm', 'BGMのオン・オフ')}`, 'ms-set')}
+        ${m('効果音の音量', `<span>効果音</span>${slider(S.seVol, !S.se, 'vol:seVol')}<b class="${S.se ? '' : 'off'}">${S.seVol}</b>${toggle(S.se, 'set:se', '効果音のオン・オフ')}`, 'ms-set')}
+        <div class="ms-sec">操作</div>
+        ${m('操作方法', `<div class="ms-seg">${m('操作：スティック', 'スティック', S.control === 'stick' ? 'on' : '', 'button', act('ctl:stick'))}${m('操作：ドラッグ', 'ドラッグ', S.control === 'drag' ? 'on' : '', 'button', act('ctl:drag'))}</div>`, 'ms-set col')}
+        <div class="ms-sec">画面</div>
+        ${m('画面の揺れ', `<span>画面の揺れ</span>${toggle(S.shake, 'set:shake', '画面の揺れのオン・オフ')}`, 'ms-set')}
+        ${m('光の強さ', '<span>光の強さ</span><div class="ms-seg small">' + [['ひかえめ', 0.4], ['ふつう', 1], ['つよい', 1.6]].map(([x, v]) => `<button class="${S.glow === v ? 'on' : ''}" ${act('glow:' + v)}>${x}</button>`).join('') + '</div>', 'ms-set')}
+        <div class="ms-sec">そのほか</div>
+        ${m('名前を変える', `<span>名前を変える</span><span class="ms-go">${esc(d.name)} ›</span>`, 'ms-set', 'button', act('rename'))}
+        ${m('クレジット（設定から）', '<span>クレジット</span><span class="ms-go">›</span>', 'ms-set', 'button', act('credits'))}
+        ${m('バージョン', 'ver 0.1.0', 'ms-ver')}
+      </div>
+    </div>`;
+  },
+
+  s_result: (st, d) => {
+    const R = d.result;
+    const mvp = R.mvp && SRC_INFO[R.mvp.src];
+    return `
+    <div class="ms-dim">
+      <div class="box ms-result">
+        ${m('結果の見出し', 'やられた！', 'ms-rtitle')}
+        ${m('スコア', `<b>${num(R.score)}</b>${R.isNew ? '<span class="ms-new">最高スコア更新！</span>' : ''}`, 'ms-rscore')}
+        <div class="ms-rgrid">
+          ${m('到達フェーズ', `<span>到達フェーズ</span><b>${R.phase}</b>`, 'ms-rcell')}
+          ${m('生きた時間', `<span>生きた時間</span><b>${fmtTime(R.time)}</b>`, 'ms-rcell')}
+          ${m('撃破', `<span>撃破</span><b>${num(R.kills)}</b>`, 'ms-rcell')}
+          ${m('最高スコア', `<span>最高スコア</span><b>${num(R.best)}</b>`, 'ms-rcell gold')}
+        </div>
+        <div class="ms-sub">倒したボス</div>
+        ${m('倒したボス', BOSS_KINDS.map((k) => `<div class="ms-bossi ${R.bosses.includes(k) ? 'done' : ''}">${BOSS_ICONS[k]}<small>${R.bosses.includes(k) ? BOSS_NAMES[k] : '？'}</small></div>`).join(''), 'ms-bossrow')}
+        <div class="ms-sub">最後に持っていたスキル</div>
+        ${m('最後に持っていたスキル', R.roads.length ? R.roads.map((ids) => `<div class="ms-chipline">${ids.map((id) => `<span class="ms-chip">${iconSvg('sk_' + id)}</span>`).join('')}</div>`).join('') : '<div class="ms-none">スキルなし</div>', 'ms-roads')}
+        ${R.coins ? m('もらったコイン', `<span>もらったコイン</span>${coin}<b>+${num(R.coins.score + R.coins.boss)}</b><small>スコア ${num(R.coins.score)}${R.coins.boss ? `・ボス ${num(R.coins.boss)}` : ''}</small>`, 'ms-reward') : ''}
+        ${mvp ? m('いちばん倒した攻撃', `<span class="ms-chip big">${mvp[1] ? iconSvg(mvp[1]) : '<i class="ms-ghostdot"></i>'}</span><div><small>いちばん倒した攻撃</small><b>${mvp[0]}</b><span>倒した敵の ${R.mvp.pct}%</span></div>`, 'ms-mvp') : ''}
+        <div class="ms-row">${btn('タイトルへ', 'btn-sub', 'title')}${btn('もう一回', '', 'retry')}</div>
+      </div>
+    </div>`;
+  },
+
+  s_zukan: (st, d) => {
+    const Z = d.zukan, tab = d.ztab || 'skill';
+    const total = SKILL_ROADS.reduce((n, r) => n + r.skills.length, 0) + ENEMY_KINDS.length + BOSS_KINDS.length;
+    const got = Object.keys(Z.skills).length + ENEMY_KINDS.filter((k) => Z.enemies[k]).length + BOSS_KINDS.filter((k) => Z.bosses[k]).length;
+    let body = '';
+    if (tab === 'skill') {
+      body = SKILL_ROADS.map((r) => `<div class="ms-sec">${r.name}<small>${r.skills.filter((k) => Z.skills[k.id]).length}/${r.skills.length}</small></div>
+        <div class="ms-zgrid">${r.skills.map((k) => { const seen = !!Z.skills[k.id]; return m(seen ? k.name : `？（${k.name}）`, seen ? `${iconSvg('sk_' + k.id)}<small>${k.name}</small>` : '<b>？</b><small>？？？</small>', `ms-zcell${seen ? '' : ' unseen'}`, 'button', seen ? act(`zitem:skill:${k.id}`) : ''); }).join('')}</div>`).join('');
+    } else {
+      const kinds = tab === 'enemy' ? ENEMY_KINDS : BOSS_KINDS, box = tab === 'enemy' ? Z.enemies : Z.bosses, icons = tab === 'enemy' ? ENEMY_ICONS : BOSS_ICONS;
+      const names = (k) => (tab === 'enemy' ? CONFIG.enemies[k].name : BOSS_NAMES[k]);
+      body = `<div class="ms-sec">${tab === 'enemy' ? '敵' : 'ボス'}<small>${kinds.filter((k) => box[k]).length}/${kinds.length}</small></div>
+        <div class="ms-zgrid ${tab}">${kinds.map((k) => { const seen = !!box[k]; return m(seen ? names(k) : `？（${names(k)}）`, seen ? `<span class="ms-zpic">${icons[k]}</span><small>${names(k)}</small>` : '<b>？</b><small>？？？</small>', `ms-zcell${seen ? '' : ' unseen'}`, 'button', seen ? act(`zitem:${tab}:${k}`) : ''); }).join('')}</div>`;
+    }
+    return `
+    <div class="ms-full ms-page">
+      ${back('図鑑')}
+      ${tabs(['スキル', '敵', 'ボス'], ['skill', 'enemy', 'boss'].indexOf(tab), '図鑑のタブ', ['ztab:skill', 'ztab:enemy', 'ztab:boss'])}
+      ${m('集めた数', `<span>集めた数</span>${bar(got / total, 'cyan')}<b>${got}/${total}</b>`, 'ms-progress')}
+      <div class="ms-scroll">${body}</div>
+    </div>`;
+  },
+
+  s_zukan2: (st, d) => {
+    const it = d.zitem, Z = d.zukan;
+    let card = '';
+    if (it.kind === 'skill') {
+      const road = ROAD_OF[it.id], k = road.skills.find((x) => x.id === it.id), tx = SKILL_TEXT[it.id] || {}, z = Z.skills[it.id] || { taken: 0, evo: 0, best: 0 };
+      // 同じ型のスキル：入口から次の入口の前まで
+      const i0 = road.skills.findIndex((x) => x.id === it.id);
+      let a = i0; while (a > 0 && road.skills[a].kind !== '入口' && road.skills[a].kind !== '目覚め') a--;
+      let b = a + 1; while (b < road.skills.length && road.skills[b].kind !== '入口' && road.skills[b].kind !== '目覚め') b++;
+      const group = road.skills.slice(a, b);
+      card = `<div class="box ms-detail">
+          ${m('詳細：アイコン', iconSvg('sk_' + it.id), 'ms-dicon')}
+          ${m('詳細：名前', `${k.name}<small>${road.name}・${k.kind}</small>`, 'ms-dname')}
+          ${m('詳細：説明', tx.desc || '', 'ms-ddesc')}
+          ${tx.evoDesc ? m('詳細：極めたとき', `<b>極めると${tx.evo ? `「${tx.evo}」` : ''}</b><span>${tx.evoDesc}</span>`, 'ms-devo') : ''}
+          <div class="ms-dstats">
+            ${m('詳細：取った回数', `<span>取った回数</span><b>${z.taken}</b>`, '')}
+            ${m('詳細：極めた回数', `<span>極めた回数</span><b>${z.evo}</b>`, '')}
+            ${m('詳細：最高フェーズ', `<span>持っていた時の最高</span><b>PHASE ${z.best}</b>`, '')}
+          </div>
+          ${group.length > 1 ? m('詳細：つながるスキル', `<span>この型のスキル</span><div>${group.map((x) => (Z.skills[x.id] ? `<span class="ms-chip" ${act(`zitem:skill:${x.id}`)}>${iconSvg('sk_' + x.id)}</span>` : '<span class="ms-chip unseen">？</span>')).join('')}</div>`, 'ms-dlink') : ''}
+        </div>`;
+    } else {
+      const boss = it.kind === 'boss', z = (boss ? Z.bosses : Z.enemies)[it.id] || { seen: 0, kills: 0 };
+      const name = boss ? BOSS_NAMES[it.id] : CONFIG.enemies[it.id].name;
+      const sub = boss ? `フェーズ${(BOSS_KINDS.indexOf(it.id) + 1) * 10}のボス` : `フェーズ${CONFIG.enemies[it.id].unlockPhase}から出る`;
+      card = `<div class="box ms-detail">
+          ${m(boss ? '詳細：ボスの絵' : '詳細：敵の絵', (boss ? BOSS_ICONS : ENEMY_ICONS)[it.id], 'ms-dboss')}
+          ${m(boss ? '詳細：ボスの名前' : '詳細：敵の名前', `${name}<small>${sub}</small>`, 'ms-dname')}
+          ${m(boss ? '詳細：ボスの説明' : '詳細：敵の説明', (boss ? BOSS_DESC : ENEMY_DESC)[it.id], 'ms-ddesc')}
+          <div class="ms-dstats two">
+            ${m('詳細：出会った回数', `<span>出会ったプレイ</span><b>${z.seen}</b>`, '')}
+            ${m('詳細：倒した回数', `<span>倒した数</span><b>${num(z.kills)}</b>`, '')}
+          </div>
+        </div>`;
+    }
+    return `
+    <div class="ms-full ms-page">
+      ${back('図鑑')}
+      <div class="ms-scroll">${card}</div>
+    </div>`;
+  },
+
+  s_name: (st, d) => `
+    <div class="ms-full ms-page ms-namepg">
+      ${m('名前登録の見出し', d.name ? '名前を変える' : 'はじめまして！', 'ms-rtitle gold')}
+      ${m('名前登録の説明', 'ランキングに出る名前を決めてください。<br>あとから設定で変えられます。', 'ms-dtext')}
+      ${m('名前の入力欄', `<input class="ms-nameinput" maxlength="10" value="${esc(st.draft ?? d.name ?? '')}" placeholder="名前（10文字まで）" ${d.mock ? 'readonly' : ''}><small class="ms-namecount">${[...(st.draft ?? d.name ?? '')].length}/10</small>`, 'ms-input')}
+      ${m('名前の決まり', st.err || '1〜10文字で入れてください', `ms-hint${st.err ? ' err' : ''}`)}
+      ${btn('決定', 'wide', 'name-ok')}
+      ${d.name ? btn('やめる', 'wide btn-sub', 'back') : ''}
+    </div>`,
+
+  s_profile: (st, d) => {
+    const favs = Object.entries(d.zukan.skills).sort((a, b) => b[1].taken - a[1].taken).slice(0, 3);
+    const nameOf = (id) => ROAD_OF[id].skills.find((x) => x.id === id).name;
+    return `
+    <div class="ms-full ms-page">
+      ${back('プロフィール')}
+      <div class="ms-scroll">
+        <div class="box ms-pcard">
+          ${frameHtml(d.frameItem, m('アイコン（押すと変えられる）', `${avatarHtml(d.iconItem)}<span class="ms-avedit">${px(PX.pen)}</span>`, 'ms-avatar lg ms-avbtn'), 'lg')}
+          <div>${titleChip(d.titleItem)}${m('名前', esc(d.name), 'ms-pn')}${m('ID', `ID ${d.id}`, 'ms-pid')}</div>
+          ${m('名前を変える（プロフィール）', '名前', 'btn btn-small btn-sub', 'button', act('rename'))}
+        </div>
+        <div class="ms-sec">アイコン</div>
+        ${d.owned && d.owned.icon.includes('photo') ? m('写真を選ぶ', `${px(PX.pen)}<span>${d.photo ? '写真を選びなおす' : '写真を選ぶ'}</span>`, 'btn btn-small btn-sub ms-photobtn', 'button', act('photo-pick')) : ''}
+        ${m('アイコンを選ぶ', AVATAR_ITEMS.filter((it) => (d.owned ? d.owned.icon.includes(it.id) : it.rarity === 'start')).map((it) => `<button class="ms-avatar ${it.id === d.iconItem.id ? 'on' : ''}" ${act('icon:' + it.id)}>${avatarHtml(it)}</button>`).join(''), 'ms-avpick')}
+        <div class="ms-sec">アイコン枠</div>
+        ${m('アイコン枠を選ぶ', FRAMES.filter((f) => f.id === 'f_none' || (d.owned?.frame || []).includes(f.id)).map((f) => `<button class="ms-frpick ${(d.frameItem?.id || 'f_none') === f.id ? 'on' : ''}" ${act('frame:' + f.id)}>${frameHtml(f, `<span class="ms-avatar">${avatarHtml(d.iconItem)}</span>`)}</button>`).join(''), 'ms-frpicks')}
+        <div class="ms-sec">称号</div>
+        ${m('称号を選ぶ', `<button class="ms-ttlpick ${d.titleItem ? '' : 'on'}" ${act('ttl:none')}><span class="ms-ttl t-none">なし</span></button>` + TITLES.filter((t) => (d.owned?.title || []).includes(t.id)).map((t) => `<button class="ms-ttlpick ${d.titleItem && d.titleItem.id === t.id ? 'on' : ''}" ${act('ttl:' + t.id)}>${titleChip(t)}</button>`).join(''), 'ms-ttlpicks')}
+        <div class="ms-statgrid">
+          ${[['最高フェーズ', d.best.phase], ['最高スコア', num(d.best.score)], ['遊んだ回数', num(d.stats.plays)], ['合計プレイ時間', fmtHours(d.stats.time)], ['倒したボス', num(d.stats.bosses)], ['倒した敵', num(d.stats.kills)]].map(([k, v]) => m(`記録：${k}`, `<span>${k}</span><b>${v}</b>`, 'ms-stat')).join('')}
+        </div>
+        <div class="ms-sec">よく取るスキル</div>
+        ${favs.length ? m('よく取るスキル', favs.map(([id, z]) => `<div class="ms-fav"><span class="ms-chip">${iconSvg('sk_' + id)}</span><small>${nameOf(id)}</small><b>${z.taken}回</b></div>`).join(''), 'ms-favs') : '<div class="ms-none">まだありません</div>'}
+      </div>
+    </div>`;
+  },
+
+  s_news: (st, d) => `
+    <div class="ms-full ms-page">
+      ${back('お知らせ')}
+      <div class="ms-scroll">
+        ${NEWS.map(([tag, dt, t, body], i) => m(`お知らせ：${t}`, `<div class="ms-nhead"><span class="ms-ntag t${['更新', 'イベント', '不具合', 'お知らせ'].indexOf(tag)}">${tag}</span><small>${dt}</small>${i < (d.newsNew || 0) ? '<span class="ms-newtag">NEW</span>' : ''}</div><b>${t}</b>${body ? `<p>${body}</p>` : ''}`, `ms-nrow${body ? ' open' : ''}`)).join('')}
+      </div>
+    </div>`,
+
+  s_credits: () => `
+    <div class="ms-full ms-page">
+      ${back('クレジット')}
+      <div class="ms-scroll ms-credits">
+        <div class="ms-logo small">${logo()}</div>
+        ${[['企画・ゲームデザイン', ['（あなたの名前）']], ['プログラム', ['（あなたの名前）', 'Claude']], ['グラフィック', ['（あなたの名前）']], ['サウンド', ['（未定）']], ['フォント', ['DotGothic16（Fontworks）', 'Press Start 2P（CodeMan38）']], ['スペシャルサンクス', ['遊んでくれたあなた']]]
+          .map(([k, vs]) => m(`クレジット：${k}`, `<small>${k}</small>${vs.map((v) => `<b>${v}</b>`).join('')}`, 'ms-cblock')).join('')}
+      </div>
+    </div>`,
+
+  // 準備中（オンライン・着せ替え・ガチャ・ランキング・ミッション）
+  s_soon: (st) => `
+    <div class="ms-full ms-page">
+      ${back(st.title || 'オンライン')}
+      <div class="ms-soonpg">
+        ${m('準備中の絵', px('M2 0h4v1h1v1h1v4H7v1H6v1H2V7H1V6H0V2h1V1h1zM3 2v3h2V2zM3 6v1h2V6z'), 'ms-soonicon')}
+        ${m('準備中の見出し', '準備中', 'ms-rtitle gold')}
+        ${m('準備中の説明', `${st.title === 'オンライン' || !st.title ? 'みんなと遊べるようになる予定です。' : `${st.title}は、いま作っています。`}<br>もうしばらくお待ちください。`, 'ms-dtext')}
+      </div>
+    </div>`,
+};
+SCREENS.s_online = (st, d) => SCREENS.s_soon({ ...st, title: 'オンライン' }, d);
+
+function slider(v, off, a) { return `<div class="ms-bar slider${off ? ' off' : ''}" ${act(a)}><i style="width:${v}%"></i></div>`; }
+export function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ---------- 着せ替えの品の小さな絵 ----------
+const RARE_CLS = { start: 'r-n', N: 'r-n', R: 'r-r', SR: 'r-sr', SSR: 'r-ssr', lock: 'r-lock' };
+const RARE_LABEL = { start: '', N: 'N', R: 'R', SR: 'SR', SSR: 'SSR' };
+// 色のセット・背景の絵は、本物のゲームの描き方で描いた画像を使う（skinshot.js）
+const shot = (setId, bgId, cls = '') => `<img class="ms-shot ${cls}" src="${skinImage(setId, bgId)}" alt="">`;
+// 写真のアイコン：自分で選んだ写真（端末に保存した小さな画像）。選ぶまではカメラの絵
+let PHOTO = null;
+export function setPhoto(url) { PHOTO = url || null; }
+export function avatarHtml(it) {
+  if (it.photo && PHOTO) return `<img class="ms-avphoto" src="${PHOTO}" alt="">`;
+  if (it.art) return `<span class="ms-avsvg px">${iconArtSvg(it.id)}</span>`;
+  // ボス・敵・分身：ゲームと同じ描き方で描いた絵
+  const unit = it.boss || it.enemy || it.unit;
+  if (unit) return `<img class="ms-avimg" src="${unitImage(unit)}" alt="">`;
+  return it.glyph;
+}
+// 品の小さな絵（ガチャ結果・着せ替えの一覧）
+function itemThumb(it) {
+  if (it.kind === 'set') return shot(it.id, 'grid');
+  if (it.kind === 'frame') return `<span class="ms-frbox">${frameHtml(it, `<span class="ms-avatar">${avatarHtml(AVATAR_ITEMS[0])}</span>`)}</span>`;
+  if (it.kind === 'title') return `<span class="ms-ttlbox">${titleChip(it)}</span>`;
+  if (it.kind === 'pop') return `<img class="ms-shot" src="${popImage(it.id)}" alt="">`;
+  if (it.kind === 'bg') return `<img class="ms-shot bgshot" src="${bgImage(it.id)}" alt="">`;   // 背景は、背景だけを広めに描いた絵
+  return `<span class="ms-avatar">${avatarHtml(it)}</span>`;
+}
+const KIND_NAME = { set: '色のセット', bg: '背景', icon: 'アイコン', pop: 'エフェクト', title: '称号', frame: 'アイコン枠' };
+function itemCell(it, { owned = true, equipped = false, picked = false, isNew = false, name, a } = {}) {
+  if (!owned) return m(name || `まだ持っていない：${it.name}`, '<b>？</b>', 'ms-scell r-lock', 'button');
+  return m(name || `${KIND_NAME[it.kind]}：${it.name}`, `<span class="ms-thumb ${it.kind}">${itemThumb(it)}</span>${it.kind === 'icon' && it.rarity === 'start' ? '' : `<small>${it.name}</small>`}${RARE_LABEL[it.rarity] ? `<span class="ms-rare">${RARE_LABEL[it.rarity]}</span>` : ''}${equipped ? '<span class="ms-equip">装備中</span>' : ''}${isNew ? '<span class="ms-newtag">NEW</span>' : ''}`,
+    `ms-scell ${RARE_CLS[it.rarity]}${picked ? ' picked' : ''}${it.rarity === 'SSR' && isNew ? ' shine' : ''}`, 'button', `${a ? act(a) : ''} data-zoom="${it.kind}:${it.id}"`);
+}
+
+// ---------- 品を押すと、大きく見せる ----------
+//   ガチャ結果・品の一覧：押すとすぐ大きく。着せ替え：選んである品をもう一度押すか、上の見本を押すと大きく
+const ZOOM_LIST = { set: SETS_ALL(), bg: BGS_ALL(), icon: ICONS_ALL(), pop: POP_STYLES.map((x) => ({ ...x, kind: 'pop' })), title: TITLES.map((x) => ({ ...x, kind: 'title' })), frame: FRAMES.map((x) => ({ ...x, kind: 'frame' })) };
+function SETS_ALL() { return COLOR_SETS.map((x) => ({ ...x, kind: 'set' })); }
+function BGS_ALL() { return BACKGROUNDS.map((x) => ({ ...x, kind: 'bg' })); }
+function ICONS_ALL() { return AVATAR_ITEMS.map((x) => ({ ...x, kind: 'icon' })); }
+export function showZoom(kind, id, stage = document.getElementById('stage')) {
+  const it = (ZOOM_LIST[kind] || []).find((x) => x.id === id);
+  if (!it) return;
+  const big = kind === 'set' ? `<img class="ms-zimg" src="${skinImage(it.id, 'grid')}" alt="">`
+    : kind === 'frame' ? `<span class="ms-zfr">${frameHtml(it, `<span class="ms-avatar ms-zav">${avatarHtml(AVATAR_ITEMS[0])}</span>`)}</span>`
+    : kind === 'title' ? `<span class="ms-zttl">${titleChip(it)}</span>`
+    : kind === 'pop' ? `<img class="ms-zimg bgshot" src="${popImage(it.id)}" alt="">`
+    : kind === 'bg' ? `<img class="ms-zimg bgshot" src="${bgImage(it.id)}" alt="">`
+    : `<span class="ms-avatar ms-zav">${avatarHtml(it)}</span>`;
+  const el = document.createElement('div');
+  el.className = 'ms-zoom';
+  el.innerHTML = `<div class="ms-zbox ${RARE_CLS[it.rarity]}">${big}<div class="ms-zname">${RARE_LABEL[it.rarity] ? `<span class="ms-rare">${RARE_LABEL[it.rarity]}</span>` : ''}${it.kind === 'icon' && it.rarity === 'start' ? 'アイコン' : it.name}</div><small>${KIND_NAME[kind]}</small></div>`;
+  el.addEventListener('click', (e) => { e.stopPropagation(); el.remove(); });
+  stage.appendChild(el);
+  snapIcons(el);
+}
+export function initZoom() {
+  document.addEventListener('click', (e) => {
+    if (document.body.classList.contains('marking')) return;
+    const box = e.target.closest('.ms-skinbox');
+    if (box) { const p = document.querySelector('.ms-scell.picked[data-zoom]'); if (p) { const [k, id] = p.dataset.zoom.split(':'); showZoom(k, id); } return; }
+    const el = e.target.closest('[data-zoom]');
+    if (!el || el.closest('.ms-zoom')) return;
+    if (el.dataset.act && !el.classList.contains('picked')) return;   // 着せ替え：まだ選んでいない品は、まず選ぶ
+    const [k, id] = el.dataset.zoom.split(':');
+    // 着せ替えで選ぶ操作と重ならないよう、少しあとに開く
+    setTimeout(() => showZoom(k, id), 0);
+  });
+}
+
+// ---------- ガチャの品の見本（種類ごとに全部並べる） ----------
+export const ITEM_TABS = [['s_items_set', '色のセット'], ['s_items_bg', '背景'], ['s_items_icon', 'アイコン'], ['s_items_pop', 'エフェクト'], ['s_items_title', '称号'], ['s_items_frame', 'アイコン枠']];
+const itemList = (title, list, cols) => `
+    <div class="ms-full ms-page">
+      <div class="ms-head"><div class="ms-title">${title}（${list.filter((x) => x.rarity !== 'start').length}）</div></div>
+      <div class="ms-scroll">${['SSR', 'SR', 'R', 'N'].map((r) => `
+        <p class="ms-itemhead ${RARE_CLS[r]}">${r}（${list.filter((x) => x.rarity === r).length}）</p>
+        <div class="ms-sgrid ms-itemgrid c${cols}">${list.filter((x) => x.rarity === r).map((it) => itemCell(it, { name: `${title}：${it.name}` })).join('')}</div>`).join('')}
+      </div>
+    </div>`;
+SCREENS.s_items_icon = () => itemList('アイコン', ICONS, 4);
+SCREENS.s_items_set = () => itemList('色のセット', SETS, 3);
+SCREENS.s_items_bg = () => itemList('背景', BGS, 3);
+SCREENS.s_items_pop = () => itemList('エフェクト', POPS, 3);
+SCREENS.s_items_title = () => itemList('称号', TTLS, 3);
+SCREENS.s_items_frame = () => itemList('アイコン枠', FRMS, 4);
+
+// ガチャの演出で、割れた玉から出てくる品（gachafx.js が使う）
+export const gachaCell = (it, isNew) => itemCell(it, { isNew, name: `ガチャの演出：${it.name}` });
+
+// ---------- 見本だけの画面（中身が決まったら、本物の画面にする） ----------
+const SETS = COLOR_SETS.map((x) => ({ ...x, kind: 'set' }));
+const BGS = BACKGROUNDS.map((x) => ({ ...x, kind: 'bg' }));
+const ICONS = AVATAR_ITEMS.map((x) => ({ ...x, kind: 'icon' }));
+const POPS = POP_STYLES.map((x) => ({ ...x, kind: 'pop' }));
+const TTLS = TITLES.map((x) => ({ ...x, kind: 'title' }));
+const FRMS = FRAMES.map((x) => ({ ...x, kind: 'frame' }));
+Object.assign(SCREENS, {
+  s_skin: (st, d) => {
+    const tab = st.skinTab || 'set';
+    const owned = { pop: ['std'], ...(d.owned || { set: ['std', 'crimson', 'mono', 'neon', 'gold'], bg: ['grid', 'plain', 'stars', 'city'], icon: ['a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'note', 'snow', 'crown', 'b_core'], pop: ['std', 'petal', 'firework'] }) };
+    const eq = { pop: 'std', ...(d.equip || { set: 'std', bg: 'grid', icon: 'a0' }) };
+    const pick = { pop: eq.pop, ...(st.pick || { set: 'neon', bg: 'city', icon: 'crown', pop: 'petal' }) };
+    const list = tab === 'set' ? SETS : tab === 'bg' ? BGS : tab === 'pop' ? POPS : ICONS;
+    const pickedSet = SETS.find((x) => x.id === (tab === 'set' ? pick.set : eq.set)), pickedBg = BGS.find((x) => x.id === (tab === 'bg' ? pick.bg : eq.bg));
+    const cur = list.find((x) => x.id === pick[tab]);
+    return `
+    <div class="ms-full ms-page">
+      ${back('着せ替え', d)}
+      ${m('着せ替えの見本', `<div class="ms-skinpv">${tab === 'pop' ? `<img class="ms-shot" src="${popImage(cur.id)}" alt="">` : shot(pickedSet.id, pickedBg.id)}${tab === 'icon' ? `<span class="ms-avatar lg ms-pvav">${avatarHtml(cur)}</span>` : ''}</div><div class="ms-skinname">${cur.rarity === 'start' && tab === 'icon' ? 'アイコン' : cur.name}<small>${RARE_LABEL[cur.rarity] ? RARE_LABEL[cur.rarity] + '・' : '最初から・'}${KIND_NAME[tab]}</small></div>`, 'ms-skinbox')}
+      ${tabs(['色のセット', '背景', 'アイコン', 'エフェクト'], ['set', 'bg', 'icon', 'pop'].indexOf(tab), '着せ替えのタブ', ['skin:set', 'skin:bg', 'skin:icon', 'skin:pop'])}
+      <div class="ms-scroll"><div class="ms-sgrid ${tab}">
+        ${list.map((it) => itemCell(it, { owned: owned[tab].includes(it.id), equipped: eq[tab] === it.id, picked: pick[tab] === it.id, a: `skinpick:${tab}:${it.id}` })).join('')}
+      </div></div>
+      <div class="ms-foot">${btn('ガチャへ', 'btn-sub', 'gacha')}${eq[tab] === pick[tab] ? m('装備中', '装備中', 'btn ms-btn ms-disabled', 'button') : btn('装備する', '', 'equip')}</div>
+    </div>`;
+  },
+  s_gacha: (st, d) => {
+    const ssr = GACHA_POOL.filter((x) => x.rarity === 'SSR').slice(0, 3);
+    const pity = d.pity ?? 62;
+    return `
+    <div class="ms-full ms-page">
+      ${back('ガチャ', { ...d, coins: d.coins ?? 12480 })}
+      ${m('ガチャの看板', `<div class="ms-banner-t">ガチャ</div><div class="ms-banner-s">着せ替えの品が出る</div><div class="ms-banner-art">${ssr.map((it) => `<span class="ms-thumb ${it.kind}">${itemThumb(it)}</span>`).join('')}</div><div class="ms-banner-end">SSR ${GACHA.rates.SSR}%</div>`, 'ms-gbanner')}
+      ${st.err ? m('コインが足りない', st.err, 'ms-err') : ''}
+      ${m('天井（あと何回でSSR確定）', `<span>SSR確定まで</span>${bar(pity / GACHA.pity, 'gold')}<b>あと ${GACHA.pity - pity}回</b>`, 'ms-progress')}
+      <div class="ms-gbtns">
+        ${m('1回引く', `<span>1回</span><b>${coin}${num(GACHA.price)}</b>`, 'btn ms-gbtn btn-sub', 'button', act('pull:1'))}
+        ${m('10回引く', `<span>10回</span><b>${coin}${num(GACHA.price10)}</b><small>SR以上1つ確定</small>`, 'btn ms-gbtn', 'button', act('pull:10'))}
+      </div>
+      <div class="ms-row center">${m('確率を見る', '確率を見る', 'ms-link', 'button', act('rates'))}</div>
+    </div>`;
+  },
+  s_gacharesult: (st, d) => {
+    const got = st.got || [GACHA_POOL[4], GACHA_POOL[0], GACHA_POOL[9], GACHA_POOL[15], GACHA_POOL[2], GACHA_POOL[7], GACHA_POOL[10], GACHA_POOL[1], GACHA_POOL[19], GACHA_POOL[12]].map((it, i) => ({ it, isNew: [1, 3, 5, 8].includes(i) }));
+    const back10 = st.refund ?? 120;
+    return `
+    <div class="ms-full ms-page ms-gres">
+      ${m('ガチャ結果の見出し', `${got.length}回の結果`, 'ms-rtitle gold')}
+      <div class="ms-ggrid${got.length === 1 ? ' one' : ''}">
+        ${got.map(({ it, isNew }, i) => itemCell(it, { isNew, name: `ガチャ結果：${i + 1}つ目` })).join('')}
+      </div>
+      ${back10 ? m('かぶった品の代わり', `<span>持っていた品は、コインに変わった</span>${coin}<b>+${back10}</b>`, 'ms-reward') : ''}
+      <div class="ms-foot">${btn('とじる', 'btn-sub', 'back')}${btn(`もう${got.length}回`, '', `pull:${got.length}`)}</div>
+    </div>`;
+  },
+  s_rates: (st, d) => {
+    const R = GACHA.rates;
+    const per = (r) => GACHA_POOL.filter((x) => x.rarity === r);
+    return `
+    <div class="ms-full ms-page">
+      ${back('確率', d)}
+      <div class="ms-scroll">
+        ${m('確率の説明', `ガチャの出る確率です。10回引くと、SR以上が1つ必ず出ます。${GACHA.pity}回引いてもSSRが出なかったら、次は必ずSSRが出ます。持っている品が出たときは、コインに変わります。`, 'ms-note')}
+        <div class="ms-table">
+          ${['SSR', 'SR', 'R', 'N'].map((r) => m(`確率：${r}`, `<span class="ms-rare ${RARE_CLS[r]}">${r}</span><b>${R[r]}%</b>`, 'ms-trow')).join('')}
+        </div>
+        ${['SSR', 'SR', 'R', 'N'].map((r) => `<div class="ms-sec">${r}（1つあたり ${(R[r] / per(r).length).toFixed(2)}%）</div>
+          <div class="ms-table">${per(r).map((it) => m(`確率：${it.name}`, `<span>${it.name}</span><small>${KIND_NAME[it.kind]}</small>`, 'ms-trow')).join('')}</div>`).join('')}
+      </div>
+    </div>`;
+  },
+  s_ranking: (st, d) => {
+    const tab = st.rtab || 'week';
+    const R = d.ranking || RANK_MOCK[tab];
+    // 他の人の「写真」アイコンは、その人の写真はここにないので、カメラの絵で出す
+    const icon = (e) => { const it = AVATAR_ITEMS.find((x) => x.id === e.icon) || AVATAR_ITEMS[0]; return it.photo && !(d.ranking && e.uid && R.me && e.uid === R.me.uid) && d.ranking ? { ...it, photo: false } : it; };
+    const av = (e, cls = '') => frameHtml(frameOf(e.frame), `<span class="ms-avatar ${cls}">${avatarHtml(icon(e))}</span>`);
+    const top = R.list.slice(0, 3), rest = R.list.slice(3);
+    const row = (e, me = false) => m(me ? '自分の順位' : `順位の行：${e.rank}位`, `<span class="ms-rank">${e.rank ?? '-'}</span>${av(e, 'sm')}<span class="ms-rname">${titleChip(titleOf(e.title), 'sm')}<b>${esc(e.name)}${me ? '（あなた）' : ''}</b></span><span class="ms-rph">P${e.phase}</span><b class="ms-rsc">${num(e.score)}</b>`, `ms-rrow${me ? ' me' : ''}`);
+    return `
+    <div class="ms-full ms-page">
+      ${back('ランキング', d)}
+      ${tabs(['今週', '全期間'], tab === 'week' ? 0 : 1, 'ランキングのタブ', ['rtab:week', 'rtab:all'])}
+      ${m('集計の期間', tab === 'week' ? `${R.period || '11/17（月）〜 11/23（日）'}　毎週月曜の朝4時に入れかわります` : 'これまでの1回の最高スコア', 'ms-period')}
+      ${R.list.length ? `
+      <div class="ms-podium">
+        ${[1, 0, 2].filter((i) => top[i]).map((i) => m(`表彰台：${i + 1}位`, `${av(top[i])}${titleChip(titleOf(top[i].title), 'sm')}<b>${esc(top[i].name)}</b><span>${num(top[i].score)}</span><div class="ms-step">${i + 1}</div>`, `ms-pod p${i + 1}`)).join('')}
+      </div>
+      <div class="ms-scroll">${rest.map((e) => row(e)).join('')}</div>` : `<div class="ms-none">${R.error || 'まだ記録がありません'}</div>`}
+      ${R.me ? row(R.me, true) : m('自分の順位', '<span class="ms-rname">まだ記録がありません。遊び終えると、自動で記録が送られます</span>', 'ms-rrow me')}
+    </div>`;
+  },
+  s_mission: (st, d) => {
+    const tab = st.mtab || 'daily';
+    const M = d.missions || MISSION_MOCK;
+    const row = (name, text, a, b, r, state, extra = '') => m(`ミッション：${name}`, `<div class="ms-mt"><b>${text}</b>${bar(Math.min(1, a / b), state === 'got' ? 'dim' : state === 'ready' ? 'gold' : 'cyan')}<small>${extra || `${num(Math.min(a, b))}/${num(b)}`}</small></div><div class="ms-mr">${coin}<span>${r}</span></div>${state === 'ready' ? btn('受け取る', 'ms-get', `mget:${name}`) : state === 'got' ? '<span class="ms-yet got">受け取り<br>済み</span>' : '<span class="ms-yet">未達成</span>'}`, `ms-mrow ${state}`);
+    const body = tab === 'daily' ? `
+        ${M.daily.map((x) => row(`d_${x.id}`, x.text, x.now, x.goal, x.coins, x.state, x.unit === 'min' ? `${Math.floor(Math.min(x.now, x.goal) / 60)}/${x.goal / 60}分` : '')).join('')}
+        ${row('d_bonus', '3つ全部達成する（ボーナス）', M.daily.filter((x) => x.state !== 'yet').length, 3, DAILY_BONUS, M.bonus)}`
+      : ACHIEVEMENTS.map((A) => {
+        const p = M.ach[A.id] || { now: 0, got: 0 };
+        const k = Math.min(p.got, A.tiers.length - 1), [goal, c] = A.tiers[k], all = p.got >= A.tiers.length;
+        const state = all ? 'got' : p.now >= goal ? 'ready' : 'yet';
+        return row(`a_${A.id}`, `${A.text.replace('{n}', fmtN(goal))}<em>${Math.min(p.got + 1, A.tiers.length)}/${A.tiers.length}段階</em>`, p.now, goal, c, state);
+      }).join('');
+    const ready = tab === 'daily' ? M.daily.some((x) => x.state === 'ready') || M.bonus === 'ready' : ACHIEVEMENTS.some((A) => { const p = M.ach[A.id] || { now: 0, got: 0 }; return p.got < A.tiers.length && p.now >= A.tiers[p.got][0]; });
+    return `
+    <div class="ms-full ms-page">
+      ${back('ミッション', d)}
+      ${tabs(['デイリー', '実績'], tab === 'daily' ? 0 : 1, 'ミッションのタブ', ['mtab:daily', 'mtab:ach'])}
+      ${tab === 'daily' ? m('次の入れかえまで', `朝4時に入れかわります　あと ${M.left || '16:42:10'}`, 'ms-period') : ''}
+      <div class="ms-scroll">${body}</div>
+      <div class="ms-foot">${ready ? btn('まとめて受け取る', 'wide', 'mgetall') : m('まとめて受け取る', 'まとめて受け取る', 'btn wide ms-btn ms-disabled', 'button')}</div>
+    </div>`;
+  },
+});
+
+// ---------- 音の見本（押すと鳴る） ----------
+function soundBoard(title, items, note) {
+  return `
+    <div class="ms-full ms-page">
+      <div class="ms-head"><div class="ms-title">${title}</div></div>
+      ${m('音の見本の説明', note, 'ms-note')}
+      <div class="ms-scroll"><div class="ms-sndgrid">
+        ${items.map(([id, label, icon]) => m(`音：${label}`, `${icon ? `<span class="ms-chip">${iconSvg(icon)}</span>` : '<span class="ms-sndicon">♪</span>'}<small>${label}</small>`, 'ms-snd', 'button', act(`snd:${id}`))).join('')}
+      </div></div>
+    </div>`;
+}
+SCREENS.s_snd_bgm = () => `
+    <div class="ms-full ms-page">
+      <div class="ms-head"><div class="ms-title">BGM</div></div>
+      ${m('BGMの説明', '押すと流れ、もう一度押すと止まります。別の曲を押すと、少しずつ切りかわります。', 'ms-note')}
+      <div class="ms-scroll"><div class="ms-bgmlist">
+        ${SONG_LIST.map(([id, label]) => m(`曲：${label}`, `<span class="ms-sndicon">${bgmNow() === id ? '■' : '▶'}</span><b>${label}</b>`, `ms-bgm${bgmNow() === id ? ' on' : ''}`, 'button', act(`bgm:${id}`))).join('')}
+      </div></div>
+    </div>`;
+SCREENS.s_snd_common = () => soundBoard('効果音（共通）', COMMON_SOUNDS, '押すと鳴ります。気になる音は、印モードで印を付けて一言を書いてください。');
+for (const r of SKILL_ROADS) SCREENS[`s_snd_${r.id}`] = () => soundBoard(`効果音（${r.name}）`, r.skills.map((k) => [`sk_${k.id}`, k.name, `sk_${k.id}`]), 'スキルが発動したとき・当たったときの音です。スキルごとに違う音にしています。');
+
+// 1つの画面の中身を作る（menus.js も使う）
+export function screenHtml(id, st, d) {
+  return `<div class="mock-frame">${SCREENS[id](st, d)}</div>`;
+}
+
+// ---------- 見本（調整パネル → 見本 → 画面づくり） ----------
+export function createScreens() {
+  const stage = document.getElementById('stage');
+  const root = document.createElement('div');
+  root.id = 'mock';
+  root.className = 'mock';
+  stage.appendChild(root);
+  const st = { id: null, page: 0 };
+  const data = { ...MOCK, mock: true, newsNew: 2 };
+
+  function render() {
+    root.innerHTML = screenHtml(st.id, st, data);
+    snapIcons(root);
+    // 遊び方：前へ・次へで絵を切りかえる（見本の中だけ）
+    root.querySelectorAll('[data-act="howto-next"],[data-act="howto-prev"]').forEach((b) => b.addEventListener('click', () => {
+      if (document.body.classList.contains('marking')) return;
+      st.page = Math.max(0, Math.min(3, st.page + (b.dataset.act === 'howto-next' ? 1 : -1)));
+      render();
+    }));
+    // 音の見本：押すと鳴る（印モードの間は鳴らさない）
+    root.querySelectorAll('[data-act^="snd:"]').forEach((b) => b.addEventListener('click', () => {
+      if (document.body.classList.contains('marking')) return;
+      playSound(b.dataset.act.slice(4), { force: true });
+      b.classList.remove('playing'); void b.offsetWidth; b.classList.add('playing');
+    }));
+    // BGMの見本：押すと流れる・もう一度で止まる。ほかの画面へ移ったら止める
+    if (st.id !== 's_snd_bgm' && bgmNow()) stopBgm(0.6);
+    root.querySelectorAll('[data-act^="bgm:"]').forEach((b) => b.addEventListener('click', () => {
+      if (document.body.classList.contains('marking')) return;
+      const id = b.dataset.act.slice(4);
+      if (bgmNow() === id) stopBgm(1.2); else playBgm(id, { fade: 2.5, force: true });
+      render();
+    }));
+    // 着せ替え：タブと品を選ぶ（見本の中だけ）
+    // ランキング：タブを切りかえる（見本の中だけ）
+    root.querySelectorAll('[data-act^="rtab:"]').forEach((b) => b.addEventListener('click', () => {
+      if (document.body.classList.contains('marking')) return;
+      st.rtab = b.dataset.act.slice(5); render();
+    }));
+    // ミッション：タブを切りかえる（見本の中だけ）
+    root.querySelectorAll('[data-act^="mtab:"]').forEach((b) => b.addEventListener('click', () => {
+      if (document.body.classList.contains('marking')) return;
+      st.mtab = b.dataset.act.slice(5); render();
+    }));
+    root.querySelectorAll('[data-act^="skin:"],[data-act^="skinpick:"]').forEach((b) => b.addEventListener('click', () => {
+      if (document.body.classList.contains('marking')) return;
+      const [c, a1, a2] = b.dataset.act.split(':');
+      if (c === 'skin') st.skinTab = a1; else st.pick = { ...(st.pick || { set: 'neon', bg: 'city', icon: 'crown' }), [a1]: a2 };
+      render();
+    }));
+  }
+  function show(id) {
+    if (!SCREENS[id]) { hide(); return; }
+    if (st.id !== id) st.page = 0;
+    st.id = id;
+    render();
+    root.classList.add('show');
+    stage.classList.toggle('mock-full', FULL.has(id));
+    stage.classList.toggle('mock-over', !FULL.has(id));
+    // 見本の下の帯に隠れないよう、画面全体を少し縮めて上に置く（一時停止は、ゲームの表示と位置を合わせるため縮めない）
+    const barEl = document.getElementById('preview-bar');
+    const h = barEl ? barEl.getBoundingClientRect().height : 0, H = stage.getBoundingClientRect().height;
+    root.style.setProperty('--fit', H && id !== 's_pause' ? ((H - h) / H).toFixed(3) : '1');
+  }
+  function hide() {
+    st.id = null;
+    if (bgmNow()) stopBgm(0.6);
+    root.classList.remove('show');
+    root.innerHTML = '';
+    stage.classList.remove('mock-full', 'mock-over');
+  }
+  return { show, hide, get id() { return st.id; } };
+}

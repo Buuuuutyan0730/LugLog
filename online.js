@@ -1,0 +1,108 @@
+// ランキング（Firebase）。みんなの記録を Firestore の scores に1人1つずつ残す
+//   人の見分け：名前の登録なしで端末ごとに見分ける「匿名ログイン」
+//   全期間の最高は scores/<見分けの番号>、その週の最高は weeks/<週の番号>/scores/<見分けの番号> に1つずつ
+//   つながらないとき（電波がない・読みこめない）は、ゲームはそのまま遊べる。ランキングだけ「つながりません」と出す
+const VER = '13.4.0';
+const CONFIG = {
+  apiKey: 'AIzaSyA9JWRT-1pPiMH4wnL78nrt_7icvCd_v7M',
+  authDomain: 'luglog.firebaseapp.com',
+  projectId: 'luglog',
+  storageBucket: 'luglog.firebasestorage.app',
+  messagingSenderId: '1095451978628',
+  appId: '1:1095451978628:web:a8711e45bace2775aa8bd1',
+};
+// ありえない記録ははじく（サーバー側のきまりでも同じようにはじく）
+export const LIMITS = { phase: 300, name: 12 };
+
+// 週の番号：月曜の朝4時で区切る（日本の時刻で数える）。例：2026-11-16 の週 → "20261116"
+export function weekKey(now = new Date()) {
+  const jst = new Date(now.getTime() + 9 * 3600 * 1000 - 4 * 3600 * 1000);   // 日本時間の朝4時を日付の区切りにする
+  const day = (jst.getUTCDay() + 6) % 7;                                        // 月曜=0
+  const mon = new Date(Date.UTC(jst.getUTCFullYear(), jst.getUTCMonth(), jst.getUTCDate() - day));
+  return `${mon.getUTCFullYear()}${String(mon.getUTCMonth() + 1).padStart(2, '0')}${String(mon.getUTCDate()).padStart(2, '0')}`;
+}
+export function weekLabel(now = new Date()) {
+  const k = weekKey(now), y = +k.slice(0, 4), mo = +k.slice(4, 6) - 1, d = +k.slice(6);
+  const a = new Date(Date.UTC(y, mo, d)), b = new Date(Date.UTC(y, mo, d + 6));
+  const W = '日月火水木金土', f = (x) => `${x.getUTCMonth() + 1}/${x.getUTCDate()}（${W[x.getUTCDay()]}）`;
+  return `${f(a)}〜 ${f(b)}`;
+}
+
+let ready = null;   // つなぐ処理（1回だけ）
+function connect() {
+  if (ready) return ready;
+  ready = (async () => {
+    const base = `https://www.gstatic.com/firebasejs/${VER}/`;
+    const [appM, authM, fs] = await Promise.all([import(`${base}firebase-app.js`), import(`${base}firebase-auth.js`), import(`${base}firebase-firestore.js`)]);
+    const app = appM.initializeApp(CONFIG);
+    const auth = authM.getAuth(app);
+    const cred = auth.currentUser ? { user: auth.currentUser } : await authM.signInAnonymously(auth);
+    return { fs, db: fs.getFirestore(app), uid: cred.user.uid };
+  })();
+  ready.catch(() => { ready = null; });   // 失敗したら、次にまた試す
+  return ready;
+}
+const withTimeout = (p, ms = 8000) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+
+// ありえない記録かどうか（サーバー側のきまりと同じ考え方。測った値の3〜4倍まで認める）
+//   スコアはフェーズの3乗にほぼ比例して伸びる（測った値：フェーズ10で約1.3万、20で約6万、30で約18万、40で約49万）
+export const scoreCap = (phase) => 30 * phase * phase * phase + 20000;
+export function plausible(run) {
+  const score = Math.floor(run.score), phase = run.phase, sec = Math.floor(run.time);
+  return score > 0 && phase >= 1 && phase <= LIMITS.phase && score <= scoreCap(phase) && sec >= phase * 8 && sec <= 6 * 3600;
+}
+
+// 記録の置き場所：全期間＝scores/<番号>、今週＝weeks/<週の番号>/scores/<番号>
+//   どちらも「名前・アイコン・枠・称号・スコア・フェーズ・遊んだ秒数・送った時刻」だけを入れる
+async function put(fs, ref, prof, run, old) {
+  const data = { ...prof, score: Math.floor(run.score), phase: run.phase, sec: Math.floor(run.time), at: fs.serverTimestamp() };
+  if (old && old.score >= data.score) { Object.assign(data, { score: old.score, phase: old.phase, sec: old.sec }); }
+  await withTimeout(fs.setDoc(ref, data));
+}
+// 1回遊び終えたとき：自分の記録より良ければ送る（今週と全期間の、それぞれの最高だけ残す）
+export async function submitScore(save, run) {
+  if (!plausible(run)) return false;
+  const { fs, db, uid } = await withTimeout(connect());
+  const prof = profile(save), score = Math.floor(run.score);
+  let sent = false;
+  for (const ref of [fs.doc(db, 'scores', uid), fs.doc(db, 'weeks', weekKey(), 'scores', uid)]) {
+    const snap = await withTimeout(fs.getDoc(ref));
+    const old = snap.exists() ? snap.data() : null;
+    if (old && old.score >= score) continue;
+    await put(fs, ref, prof, run, old);
+    sent = true;
+  }
+  return sent;
+}
+// 名前・アイコン・枠・称号だけ変わったとき（記録はそのまま）
+export async function syncProfile(save) {
+  const { fs, db, uid } = await withTimeout(connect());
+  for (const ref of [fs.doc(db, 'scores', uid), fs.doc(db, 'weeks', weekKey(), 'scores', uid)]) {
+    const snap = await withTimeout(fs.getDoc(ref));
+    if (snap.exists()) await withTimeout(fs.updateDoc(ref, { ...profile(save), at: fs.serverTimestamp() }));
+  }
+}
+function profile(save) {
+  return { name: String(save.name || '名無し').slice(0, LIMITS.name), icon: String(save.equip.icon || 'a0').slice(0, 20), frame: String(save.equip.frame || 'f_none').slice(0, 20), title: String(save.equip.title || '').slice(0, 20) };
+}
+
+// ランキングを読む。tab：'week'（今週）・'all'（全期間）。上位50人と自分の順位
+export async function loadRanking(tab) {
+  const { fs, db, uid } = await withTimeout(connect());
+  const col = tab === 'week' ? fs.collection(db, 'weeks', weekKey(), 'scores') : fs.collection(db, 'scores');
+  const top = await withTimeout(fs.getDocs(fs.query(col, fs.orderBy('score', 'desc'), fs.limit(50))));
+  const list = top.docs.map((d, i) => ({ rank: i + 1, uid: d.id, ...pick(d.data()) })).filter((e) => e.score > 0);
+  let me = list.find((e) => e.uid === uid) || null;
+  if (!me) {
+    const mine = await withTimeout(fs.getDoc(fs.doc(col, uid)));
+    const d = mine.exists() ? mine.data() : null;
+    if (d && d.score > 0) {
+      const above = await withTimeout(fs.getCountFromServer(fs.query(col, fs.where('score', '>', d.score))));
+      me = { rank: above.data().count + 1, uid, ...pick(d) };
+    }
+  }
+  return { list, me };
+}
+function pick(d) {
+  return { name: d.name || '名無し', icon: d.icon || 'a0', frame: d.frame || 'f_none', title: d.title || '', score: d.score || 0, phase: d.phase || 0 };
+}
