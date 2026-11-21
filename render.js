@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122031404';
-import { makeForms } from './forms.js?v=20261122031404';
-import { CONFIG } from './config.js?v=20261122031404';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122032030';
+import { makeForms } from './forms.js?v=20261122032030';
+import { CONFIG } from './config.js?v=20261122032030';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -320,8 +320,12 @@ export function createRenderer(canvas, view) {
     ctx.restore();
   }
 
+  // 分身の形は「大きさの倍率 1.2」のときの見た目で作ってある。倍率を上げたときは、線の太さ・飾り・まとうものまで
+  //   丸ごと同じ割合で大きくする（体だけが大きくなって、線や飾りが細く小さく見えないように）
+  const GHOST_DESIGN_MUL = 1.2;
   function drawGhostBody(g, col, look, t) {
-    const r = g.r;
+    const S = (CONFIG.ghost.sizeMul || GHOST_DESIGN_MUL) / GHOST_DESIGN_MUL;
+    const r = g.r / S;
     const type = look ? look.type : null;
     const has = (id) => !!(look && look.parts && look.parts[id]);
     const kw = (id) => !!(look && look.evo && look.evo[id]);   // 極
@@ -330,6 +334,7 @@ export function createRenderer(canvas, view) {
     const fire = (k = 0) => ((t * 1.1 + k) % 1) < 0.1;          // 撃った瞬間（砲口が光る）
     ctx.save();
     ctx.translate(g.x, g.y);
+    ctx.scale(S, S);
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 

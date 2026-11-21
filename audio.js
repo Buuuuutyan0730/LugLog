@@ -64,11 +64,18 @@ function resumeOnly() {
   const c = ensure();
   if (c && c.state !== 'running') c.resume().catch(() => {});
 }
+// 裏に回るときは、音の土台をすぐ止める。止めずに裏へ回すと、スマホのブラウザが音の続きを作れなくなり、
+//   「ブー」というノイズが出ることがある
+function sleepAudio() {
+  wasHidden = true;
+  if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {});
+}
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) { wasHidden = true; return; }
+  if (document.hidden) { sleepAudio(); return; }
   if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});   // 触れる前でも、戻せるなら戻しておく
 });
-window.addEventListener('pagehide', () => { wasHidden = true; });
+window.addEventListener('pagehide', sleepAudio);
+window.addEventListener('blur', () => { if (document.hidden) sleepAudio(); });
 
 // ---------- 声を鳴らす ----------
 // v: { w: 波（square・triangle・sawtooth・sine・noise）, f: 始まりの高さ, f2: 終わりの高さ, d: 長さ（秒）, v: 大きさ,

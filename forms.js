@@ -9,7 +9,7 @@
 //           極は一回り大きくなり白く光る芯が入る／目覚めの進化は金のふち
 //   どの関数も、呼ぶ側が ctx.translate で中心に動かしてから呼ぶ
 
-import { THEME, PREFS } from './theme.js?v=20261122031404';
+import { THEME, PREFS } from './theme.js?v=20261122032030';
 
 export function makeForms(ctx) {
   const glow = (c, b) => { ctx.shadowColor = c; ctx.shadowBlur = b * PREFS.glow; };
