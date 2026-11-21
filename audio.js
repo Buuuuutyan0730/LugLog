@@ -39,14 +39,36 @@ export function setAudioPrefs(S) {
 export function audioParts(force = false) {
   const c = ensure();
   if (!c) return null;
-  if (c.state === 'suspended') c.resume();
+  if (c.state !== 'running') c.resume().catch(() => {});
   return { ctx: c, bus: force && !prefs.bgm ? master : bgmBus, master };
 }
 // 最初に画面に触れたときに音を出せるようにする（ブラウザの決まりで、触れる前は音を出せない）
+//   画面が裏に回って戻ってきたあと（ほかのアプリやタブを開いた・電話が来た など）は、
+//   スマホのブラウザが音の土台を止めたまま（iPhone では「中断」の状態）や、動いているのに音が出ない状態になることがある。
+//   そこで、裏から戻ったあと最初に触れたときに、音の土台を作り直す。BGM は作り直したあと、同じ曲を流し直す
+let wasHidden = false;
+const resetHooks = [];
+export function onAudioReset(fn) { resetHooks.push(fn); }
 export function unlockAudio() {
-  const c = ensure();
-  if (c && c.state === 'suspended') c.resume();
+  if (wasHidden) wasHidden = false; else return resumeOnly();
+  if (ctx) {
+    const old = ctx;
+    ctx = null; master = null; seBus = null; bgmBus = null; noiseBuf = null; live = 0;
+    try { old.close(); } catch { /* もう閉じている */ }
+    ensure();
+    for (const fn of resetHooks) fn();
+  }
+  resumeOnly();
 }
+function resumeOnly() {
+  const c = ensure();
+  if (c && c.state !== 'running') c.resume().catch(() => {});
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { wasHidden = true; return; }
+  if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {});   // 触れる前でも、戻せるなら戻しておく
+});
+window.addEventListener('pagehide', () => { wasHidden = true; });
 
 // ---------- 声を鳴らす ----------
 // v: { w: 波（square・triangle・sawtooth・sine・noise）, f: 始まりの高さ, f2: 終わりの高さ, d: 長さ（秒）, v: 大きさ,
@@ -95,7 +117,7 @@ function voice(v, t0, pitch, bus) {
 export function playSound(id, opt = {}) {
   const c = ensure();
   if (!c) return;
-  if (c.state === 'suspended') c.resume();
+  if (c.state !== 'running') c.resume().catch(() => {});
   const r = SOUNDS[id];
   if (!r) return;
   if (!opt.force && !prefs.se) return;

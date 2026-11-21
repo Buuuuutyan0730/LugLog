@@ -2,7 +2,7 @@
 //   どの曲も、目立たず、落ち着いていて、でも体が揺れる感じ。盛り上げない（フェーズが進んでも変えない）。
 //   4曲は、楽器・リズム・拍子・調をそれぞれ別に作る（同じ曲の手直しにしない）。
 //   曲を切りかえるときは、前の曲を少しずつ小さく、次の曲を少しずつ大きくする。
-import { audioParts } from './audio.js?v=20261122022401';
+import { audioParts, onAudioReset } from './audio.js?v=20261122023224';
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const vary = (v) => v * (0.88 + Math.random() * 0.24);
@@ -10,9 +10,10 @@ const hitOn = (row, i) => { const c = (row || '')[i]; return c === 'x' ? 1 : c =
 
 // ---------- 楽器 ----------
 // 端末の負担を軽くするため、1音あたりの部品は少なくし、こもらせる部品は曲ごとに1つを使い回す
-let noiseBuf = null;
+let noiseBuf = null, noiseCtx = null;
 function noise(ctx) {
-  if (noiseBuf) return noiseBuf;
+  if (noiseBuf && noiseCtx === ctx) return noiseBuf;
+  noiseCtx = ctx;
   noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -448,3 +449,11 @@ export function stopBgm(fade = 2.5) {
   s.tick = () => { if (s.ctx.currentTime < s.stopAt - 0.2) tick(); };
 }
 export const bgmNow = () => (cur ? cur.id : null);
+// 音の土台が作り直されたとき：古い土台の曲はもう鳴らないので片づけ、同じ曲を新しい土台で流し直す
+onAudioReset(() => {
+  const id = cur ? cur.id : null;
+  for (const s of fading) s.kill();
+  fading.clear();
+  if (cur) { cur.kill(); cur = null; }
+  if (id) playBgm(id, { fade: 1 });
+});
