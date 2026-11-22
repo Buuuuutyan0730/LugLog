@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122141118';
-import { spawnPop, stepParticle } from './pops.js?v=20261122141118';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122141118';
+import { CONFIG } from './config.js?v=20261122141438';
+import { spawnPop, stepParticle } from './pops.js?v=20261122141438';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122141438';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -405,11 +405,15 @@ export function createGame() {
   const comboMul = () => (s.st.combo > 0 ? 1 + s.combo.stacks * (BN.combo.perHit + BN.combo.add * (s.st.combo - 1)) : 1);
 
   // 衝撃波：その場所から広がり、周りの敵にダメージ
-  function shockwave(x, y, radius, dmg, kind = 'white', idx = 0) {
+  // chain：倒した時の衝撃波から出たもの。これで倒れた敵は、もう衝撃波を出さない（連鎖は1段まで）
+  function shockwave(x, y, radius, dmg, kind = 'white', idx = 0, chain = false) {
     const R = radius * s.st.area * s.zoom;
     ring(x, y, 4, R, 0.3, kind, idx, 3);
     for (const e of s.enemies) {
-      if (e.hp > 0 && Math.hypot(e.x - x, e.y - y) < R + e.r) damageEnemy(e, dmg);
+      if (e.hp > 0 && Math.hypot(e.x - x, e.y - y) < R + e.r) {
+        damageEnemy(e, dmg);
+        if (chain && e.hp <= 0) e.byWave = true;
+      }
     }
   }
 
@@ -2828,10 +2832,10 @@ export function createGame() {
         }
         // 極目印：印のある敵が倒れると、近くの敵に印が移る
         if (e.markT > 0 && s.st.evo.mark) jumpMark(e);
-        // 衝撃波：倒した敵のまわりの敵にダメージ（その衝撃波で倒れた敵も、次の刻みでまた衝撃波を出す）
-        if (s.st.shockwave) {
+        // 衝撃波：倒した敵のまわりの敵にダメージ（その衝撃波で倒れた敵からは、もう出ない）
+        if (s.st.shockwave && !e.byWave) {
           e.dying = true;
-          shockwave(e.x, e.y, BN.shockwave.radius, BN.shockwave.base + e.maxHp * BN.shockwave.ofHp);
+          shockwave(e.x, e.y, BN.shockwave.radius, BN.shockwave.base + e.maxHp * BN.shockwave.ofHp, 'white', 0, true);
         }
       }
     }
