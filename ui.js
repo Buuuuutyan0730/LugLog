@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122131532';
-import { choiceView, ownedViews } from './talents.js?v=20261122131532';
-import { iconSvg, snapIcons } from './icons.js?v=20261122131532';
+import { ghostColor } from './theme.js?v=20261122132021';
+import { choiceView, ownedViews } from './talents.js?v=20261122132021';
+import { iconSvg, snapIcons } from './icons.js?v=20261122132021';
 
 const $ = (id) => document.getElementById(id);
 
@@ -351,7 +351,7 @@ export function createHud() {
     clearTimeout(dealTimer);
     dealTimer = setTimeout(() => el.skillCards.classList.remove('dealing'), (DEAL_FIRST + cards.length * DEAL_GAP + 0.15) * 1000);
   }
-  const DEAL_FIRST = 0.12, DEAL_GAP = 0.15, PICK_TIME = 0.6;
+  const DEAL_FIRST = 0.12, DEAL_GAP = 0.15, PICK_TIME = 1.1;   // 選んでからゲームに戻るまでの秒数
   let dealTimer = 0;
 
   function hideSkills() {
