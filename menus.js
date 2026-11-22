@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122160634';
-import { snapIcons } from './icons.js?v=20261122160634';
-import { writeSave } from './save.js?v=20261122160634';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122160634';
-import { playSound } from './audio.js?v=20261122160634';
-import { createGachaFx } from './gachafx.js?v=20261122160634';
-import { titleOf } from './titles.js?v=20261122160634';
-import { frameOf } from './frames.js?v=20261122160634';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122160634';
-import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122160634';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122160634';
-import { GACHA_POOL } from './skins.js?v=20261122160634';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122161033';
+import { snapIcons } from './icons.js?v=20261122161033';
+import { writeSave } from './save.js?v=20261122161033';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122161033';
+import { playSound } from './audio.js?v=20261122161033';
+import { createGachaFx } from './gachafx.js?v=20261122161033';
+import { titleOf } from './titles.js?v=20261122161033';
+import { frameOf } from './frames.js?v=20261122161033';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122161033';
+import { loadRanking, syncProfile, weekLabel, claimDev } from './online.js?v=20261122161033';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122161033';
+import { GACHA_POOL } from './skins.js?v=20261122161033';
 
 // 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
 const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;
@@ -195,10 +195,15 @@ export function createMenus(save, hooks) {
         const v = (st.draft ?? '').trim();
         if (!v || [...v].length > 10) { st.err = '1〜10文字で入れてください'; render(); break; }
         // 開発者の合言葉：名前としては使わず、この端末を開発者にする（調整パネルが出る）
-        if (!save.dev && v.length === DEV_LEN) {
-          isDevKey(v).then((ok) => {
-            if (ok) { save.dev = true; writeSave(save); hooks.devChanged?.(); st.draft = ''; st.err = null; st.note = '開発者モードになりました。名前を入れてください'; render(); }
-            else finishName(v);
+        //   開発者は1人だけ：サーバーに登録できた（もう登録してある）端末だけがなれる
+        if (v.length === DEV_LEN) {
+          isDevKey(v).then(async (ok) => {
+            if (!ok) { finishName(v); return; }
+            st.err = null; st.note = '確認しています…'; render();
+            const r = await claimDev(v);
+            if (r === 'ok') { save.dev = true; writeSave(save); hooks.devChanged?.(); st.draft = ''; st.note = '開発者モードになりました。名前を入れてください'; }
+            else { st.draft = ''; st.note = null; st.err = r === 'taken' ? '開発者はすでにほかの端末で登録されています' : 'つながりません。電波のよい所でもう一度入れてください'; }
+            render();
           });
           break;
         }

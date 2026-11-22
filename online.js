@@ -105,3 +105,31 @@ export async function loadRanking(tab) {
 function pick(d) {
   return { name: d.name || '名無し', icon: d.icon || 'a0', frame: d.frame || 'f_none', title: d.title || '', score: d.score || 0, phase: d.phase || 0 };
 }
+
+// ---------- 開発者（1人だけ） ----------
+//   dev/owner に「開発者の端末の番号」を1つだけ置く。最初に合言葉を入れた端末が開発者になり、あとから書きかえられない
+//   合言葉が正しいかはサーバー側のきまりで確かめる。開発者の情報を読めるのは、開発者の端末だけ
+// 戻り値：'ok'（開発者になった・もうなっている）／'taken'（ほかの端末が開発者）／'offline'（つながらない）
+export async function claimDev(key) {
+  try {
+    const { fs, db, uid } = await withTimeout(connect());
+    const ref = fs.doc(db, 'dev', 'owner');
+    const snap = await withTimeout(fs.getDoc(ref)).catch(() => null);
+    if (snap && snap.exists()) return snap.data().uid === uid ? 'ok' : 'taken';
+    if (!snap) return 'taken';   // 読めない＝ほかの端末が開発者
+    await withTimeout(fs.setDoc(ref, { uid, key }));
+    return 'ok';
+  } catch (e) {
+    return e && e.code === 'permission-denied' ? 'taken' : 'offline';
+  }
+}
+// この端末が開発者か：'yes'／'no'／'offline'
+export async function checkDev() {
+  try {
+    const { fs, db, uid } = await withTimeout(connect());
+    const snap = await withTimeout(fs.getDoc(fs.doc(db, 'dev', 'owner')));
+    return snap.exists() && snap.data().uid === uid ? 'yes' : 'no';
+  } catch (e) {
+    return e && e.code === 'permission-denied' ? 'no' : 'offline';
+  }
+}
