@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122125205';
-import { spawnPop, stepParticle } from './pops.js?v=20261122125205';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122125205';
+import { CONFIG } from './config.js?v=20261122130009';
+import { spawnPop, stepParticle } from './pops.js?v=20261122130009';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122130009';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2921,9 +2921,15 @@ export function createGame() {
 
   // ---------- フェーズ ----------
   function clearPhase(afterBoss = false) {
-    sfx('clear');
+    if (s.sfx) s.sfx.push(['clear', 1], ['clearBurst', 1]);   // パーン（たくさん鳴っているフレームでも必ず鳴らす）
     // 画面上の敵・弾・かけらを消して、HPを全回復し、スキル選択へ
-    for (const e of s.enemies) enemyDeathFx(e);
+    //   クリアの演出：残っていた敵が一斉にはじけ、本体から大きな光の輪が広がり、画面がゆれる
+    const p0 = s.player, big = Math.max(s.world.w, s.world.h);
+    for (const e of s.enemies) { enemyDeathFx(e); sparks(e.x, e.y, 'enemy', 6, 260); flash(e.x, e.y, e.r * 3, 0.25, 'white'); }
+    flash(p0.x, p0.y, big * 1.2, 0.3, 'white');
+    for (let k = 0; k < 3; k++) ring(p0.x, p0.y, p0.r, big * (0.45 + k * 0.3), 0.45 + k * 0.15, 'shard', 0, 8 - k * 2);
+    sparks(p0.x, p0.y, 'shard', 24, 420);
+    s.shake = Math.max(s.shake, 12);
     s.enemies = [];
     // 分身もフェーズごとに消す（次のフェーズは分身なしから始まる）
     for (const g of s.ghosts) {
@@ -2939,7 +2945,8 @@ export function createGame() {
     s.big = null;
     s.enemyShots = [];
     s.shots = [];
-    s.pickups = [];
+    // 残っていたかけら：全部が本体に吸い寄せられて消える（数には入らない。見た目だけ）
+    s.pickups = s.pickups.map((k, i) => ({ ...k, gather: true, gt: 0, gd: Math.min(0.15, i * 0.006), sx: k.x, sy: k.y }));
     s.record.active = false;
     s.record.path = [];
     s.record.length = 0;
@@ -3453,6 +3460,7 @@ export function createGame() {
 
     s.phase++;
     s.shards = 0;
+    s.pickups = s.pickups.filter((k) => !k.gather);   // 吸い寄せの途中のものは片づける
     s.immortalUsed = false;   // 不老不死はフェーズごとに1回
     if (skLv('keeper') && skLv('shortcut')) skSfx('shortcut');
     // 貯金：たまっていたかけらが戻ってくる
@@ -3523,7 +3531,20 @@ export function createGame() {
 
   // フェーズクリアのあと：本体がなめらかに真ん中へ戻る（終わったらカード選び）
   const RETURN_TIME = 0.5;
+  // クリアのあと、残っていたかけらが本体へ吸い寄せられる
+  function updateGather() {
+    const p = s.player;
+    for (const k of s.pickups) {
+      if (!k.gather) continue;
+      k.gt += DT;
+      const u = clamp((k.gt - k.gd) / 0.32, 0, 1), e = u * u;   // 本体が真ん中へ戻る 0.5 秒の間に集まりきる
+      k.x = k.sx + (p.x - k.sx) * e; k.y = k.sy + (p.y - k.sy) * e; k.spin += DT * 12;
+      if (u >= 1) { k.done = true; sparks(p.x, p.y, 'shard', 2, 120); sfx('shard', 1.2 + Math.random() * 0.3); }
+    }
+    s.pickups = s.pickups.filter((k) => !k.done);
+  }
   function updateReturn() {
+    updateGather();
     const p = s.player, f = s.returnFrom || { x: p.x, y: p.y };
     s.returnT += DT;
     const k = Math.min(1, s.returnT / RETURN_TIME), e = 1 - Math.pow(1 - k, 3);   // はじめ速く、最後はゆっくり止まる
