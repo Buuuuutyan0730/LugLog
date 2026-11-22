@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122135537';
-import { spawnPop, stepParticle } from './pops.js?v=20261122135537';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122135537';
+import { CONFIG } from './config.js?v=20261122135705';
+import { spawnPop, stepParticle } from './pops.js?v=20261122135705';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122135705';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1131,8 +1131,8 @@ export function createGame() {
     ring(e.x, e.y, e.r * 0.5, e.r * 4.5, 0.45, 'enemy', 0, 5);
     sparks(e.x, e.y, 'white', 12, 220);
     flash(e.x, e.y, e.r * 3.5, 0.18, 'white');
-    // 即死だとわかるように、上に「即死」の文字が浮かぶ（多すぎるときは間引く）
-    if (s.floats.length < 12) s.floats.push({ x: e.x, y: e.y - e.r, text: '即死', t: 0.9, max: 0.9 });
+    // 即死だとわかるように、上に「即死」の文字が浮かぶ
+    s.floats.push({ x: e.x, y: e.y - e.r, text: '即死', t: 0.9, max: 0.9 });
     return true;
   }
   function reapRoll(e) {
