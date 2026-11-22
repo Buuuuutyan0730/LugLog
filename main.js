@@ -1,26 +1,26 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261122134853';
-import { createGame, DT } from './game.js?v=20261122134853';
-import { applyForms } from './talents.js?v=20261122134853';
-import { createRenderer } from './render.js?v=20261122134853';
-import { createHud } from './ui.js?v=20261122134853';
-import { createInput } from './input.js?v=20261122134853';
-import { setupDebugPanel } from './debug.js?v=20261122134853';
-import { createPreview } from './preview.js?v=20261122134853';
-import { createMenus } from './menus.js?v=20261122134853';
-import { createDemo } from './demo.js?v=20261122134853';
-import { loadSave, writeSave, recordRun } from './save.js?v=20261122134853';
-import { ensureDaily, addRun } from './missions.js?v=20261122134853';
-import { submitScore } from './online.js?v=20261122134853';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122134853';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122134853';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122134853';
-import { setEquipped } from './skinshot.js?v=20261122134853';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122134853';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122134853';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122134853';
+import { CONFIG } from './config.js?v=20261122135012';
+import { createGame, DT } from './game.js?v=20261122135012';
+import { applyForms } from './talents.js?v=20261122135012';
+import { createRenderer } from './render.js?v=20261122135012';
+import { createHud } from './ui.js?v=20261122135012';
+import { createInput } from './input.js?v=20261122135012';
+import { setupDebugPanel } from './debug.js?v=20261122135012';
+import { createPreview } from './preview.js?v=20261122135012';
+import { createMenus } from './menus.js?v=20261122135012';
+import { createDemo } from './demo.js?v=20261122135012';
+import { loadSave, writeSave, recordRun } from './save.js?v=20261122135012';
+import { ensureDaily, addRun } from './missions.js?v=20261122135012';
+import { submitScore } from './online.js?v=20261122135012';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122135012';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122135012';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122135012';
+import { setEquipped } from './skinshot.js?v=20261122135012';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122135012';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122135012';
+import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122135012';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -133,6 +133,8 @@ setupDebugPanel(CONFIG, {
 
 // カード選び。引き直しはコインを使い、押すたびに値段が上がる（1回目50、そのあと50ずつ）
 const rerollCost = (s) => 50 * (s.rerolls + 1);
+const REROLL_MAX = 10;   // 引き直しは1回のプレイで10回まで
+const rerollLeft = (s) => Math.max(0, REROLL_MAX - s.rerolls);
 function showCards(s) {
   hud.showSkills(s, (id) => {
     game.chooseSkill(id);
@@ -144,11 +146,12 @@ function showCards(s) {
   document.getElementById('skill').classList.add('with-reroll');
   document.getElementById('reroll-cost').textContent = cost.toLocaleString();
   document.getElementById('reroll-have').textContent = save.coins.toLocaleString();
-  document.getElementById('reroll-btn').classList.toggle('cant', save.coins < cost);
+  document.getElementById('reroll-btn').classList.toggle('cant', save.coins < cost || !rerollLeft(s));
+  document.getElementById('reroll-label').textContent = rerollLeft(s) ? `引き直す（あと${rerollLeft(s)}回）` : '引き直しは使い切った';
 }
 document.getElementById('reroll-btn').addEventListener('click', () => {
   const s = game.state, cost = rerollCost(s);
-  if (s.mode !== 'select' || save.coins < cost) return;
+  if (s.mode !== 'select' || save.coins < cost || !rerollLeft(s)) return;
   save.coins -= cost;
   writeSave(save);
   game.reroll();
