@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123025052';
-import { spawnPop, stepParticle } from './pops.js?v=20261123025052';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123025052';
+import { CONFIG } from './config.js?v=20261123044945';
+import { spawnPop, stepParticle } from './pops.js?v=20261123044945';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123044945';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -462,8 +462,8 @@ export function createGame() {
         p.ty = input.pointer.y - (input.isTouch ? T.touchOffset.value * s.zoom : 0);
       }
     } else {
-      // ドラッグ：指を動かした分だけ、本体もそのまま動く（指に遅れずについてくる）
-      //   前は最高速度で止めていたため、指を速く動かすと本体が置いていかれ、指との位置がずれていった
+      // ドラッグ：指を動かした分だけ、本体も動く（最高速を超えた分も捨てずにためて、あとから追いつく）
+      //   前は最高速を超えた分を捨てていたため、指を速く動かすほど指との位置がずれていった
       p.tx += input.dx * T.sensitivity.value;
       p.ty += input.dy * T.sensitivity.value;
     }
@@ -479,9 +479,8 @@ export function createGame() {
     aim(input);
     const dx = p.tx - p.x, dy = p.ty - p.y;
     const d = Math.hypot(dx, dy);
-    // ドラッグ操作は指にそのままついていく（とても速い指の動きだけ、一瞬で飛ばないよう P.dragMaxSpeed で抑える）
-    const drag = X.control.value === 'relative' && !(input.keyX || input.keyY);
-    const step = (drag ? P.dragMaxSpeed : T.moveSpeed.value) * s.zoom * (s.st.curse.chain ? 0.5 : 1) * DT;
+    // 最高速はスティックもドラッグも同じ。ドラッグで指がそれより速く動いた分は捨てずに残るので、少し遅れても指の動いた分だけ必ず進む
+    const step = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1) * DT;
     if (d <= step) { p.x = p.tx; p.y = p.ty; p.catching = false; }
     else { p.x += dx / d * step; p.y += dy / d * step; }
     if (p.inv > 0) p.inv -= DT;
