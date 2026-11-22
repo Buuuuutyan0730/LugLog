@@ -59,7 +59,9 @@ export const CONFIG = {
   // ===== ここから下は仮の数値。遊びながら調整する =====
 
   // 大きさ＝強さ：半径 = sizeK × √パワー（見た目の面積がパワーに比例）。本体・分身・弾・敵すべて共通
-  power: { sizeK: 2.2, minRadius: 4 },   // 攻撃力10→半径7、20→約10、80→約20
+  power: { sizeK: 2.2, minRadius: 4 },
+  ally: { damageMul: 1.8 },             // 味方（分身・スキル）が与えるダメージの倍率
+  enemySize: 1.15,                      // ふつうの敵の見た目と当たりの大きさの倍率（中ボス・ボスは変えない）   // 攻撃力10→半径7、20→約10、80→約20
 
   player: {
     stickAccelTime: 0.35,  // スティック：止まった状態から最高速度になるまでの秒数（急に速くならないように。0.2→0.35）
@@ -85,12 +87,16 @@ export const CONFIG = {
 
   // フェーズ
   phase: {
-    baseNeed: 15,          // フェーズ1のクリアに必要なかけら
-    needStep: 10,          // 1フェーズごとに増える数
+    // クリアに必要なかけら＝「そのフェーズで約 needSec 秒の間に出てくる敵が落とすかけら」× needRatio
+    //   （出てきた敵のおよそ6割を倒せば次へ進む。敵の量が増えれば必要な数も同じ割合で増える）
+    needSec: 28, needRatio: 0.6,
+    baseNeed: 15,          // （古い決め方。今は使わない）
+    needStep: 10,
     hpRateBase: 40,        // フェーズ1で1秒あたりに出てくる敵の体力の合計
     // 1フェーズごとの倍率（時期で変える）。序盤は自分が強くなる実感、後半はじわじわ押し負ける
     hpRateGrowth: [
-      { until: 10, rate: 1.12 },
+      { until: 2, rate: 1.12 },    // フェーズ1→2
+      { until: 10, rate: 1.07 },   // フェーズ3〜10は増え方をゆるやかに
       { until: 30, rate: 1.16 },
       { until: Infinity, rate: 1.2 },
     ],
@@ -101,7 +107,7 @@ export const CONFIG = {
 
   // かけら
   shard: {
-    hpPerShard: 20,        // 敵の体力20ごとに1個落とす（最低1個）
+    // 落とす数は敵の種類ごとに決まっている（enemyTypes の shards）。2倍・4倍の大きい敵はその倍
     life: 10,
     blinkAt: 3,
     magnet: 50,            // 吸い寄せ始める距離（本体の半径に足す）
@@ -111,21 +117,21 @@ export const CONFIG = {
   // 敵の種類。強さの違いは大きさ（＝体力）で表す。体力から半径が決まる。倒したときのスコア＝体力
   //   unlockPhase：出始めるフェーズ、weight：出やすさ、damage：触れた時のダメージの倍率
   enemies: {
-    drift:   { name: '漂い', hp: 15, sizeMul: 1.25, speed: 40, damage: 0,    unlockPhase: 1, weight: 6,
+    drift:   { name: '漂い', shards: 1, hp: 15, sizeMul: 1.25, speed: 40, damage: 0,    unlockPhase: 1, weight: 6,
                wander: [1.5, 3] },                              // 行き先を変えるまでの秒数（攻撃しない）
-    chaser:  { name: '追跡', hp: 20, sizeMul: 1.25, speed: 70, damage: 1.0,  unlockPhase: 1, weight: 12 },
-    shooter: { name: '射撃', hp: 30, sizeMul: 1.25, speed: 55, damage: 0.75, unlockPhase: 3, weight: 2,
+    chaser:  { name: '追跡', shards: 1, hp: 20, sizeMul: 1.25, speed: 70, damage: 1.0,  unlockPhase: 1, weight: 12 },
+    shooter: { name: '射撃', shards: 2, hp: 30, sizeMul: 1.25, speed: 55, damage: 0.75, unlockPhase: 3, weight: 2,
                keepDistance: 170, fireInterval: 2.4, windup: 0.4 },
-    swarm:   { name: '群れ', hp: 4,  speed: 85, damage: 0.4,  unlockPhase: 6, weight: 2,
+    swarm:   { name: '群れ', shards: 1, hp: 4,  speed: 85, damage: 0.4,  unlockPhase: 6, weight: 2,
                group: 10, spread: 26, sizeMul: 1.4 },          // 1回に固まって出る数と、散らばる広さ。sizeMul：見た目と当たりの大きさの倍率（ほかの敵も同じ）
-    shield:  { name: '盾持ち', hp: 40, speed: 45, damage: 1.0, unlockPhase: 16, weight: 2,
+    shield:  { name: '盾持ち', shards: 2, hp: 40, speed: 45, damage: 1.0, unlockPhase: 16, weight: 2,
                shield: 1.0, guard: 60 },                       // 盾の耐久（体力に対する割合）／防げる向き（正面から左右に何度まで）
-    thief:   { name: 'かけら泥棒', hp: 25, sizeMul: 1.25, speed: 80, damage: 0.5, unlockPhase: 18, weight: 1,
+    thief:   { name: 'かけら泥棒', shards: 2, hp: 25, sizeMul: 1.25, speed: 80, damage: 0.5, unlockPhase: 18, weight: 1,
                wander: [1.5, 3], escape: 30 },                 // かけらがないときのふらつき／画面の外へこれだけ出たら逃げ切り
-    bomber:  { name: '自爆', hp: 30, sizeMul: 1.25, speed: 75, damage: 0, unlockPhase: 23, weight: 2,
+    bomber:  { name: '自爆', shards: 2, hp: 30, sizeMul: 1.25, speed: 75, damage: 0, unlockPhase: 23, weight: 2,
                trigger: 40, windup: 0.8, blast: 65, blastDamage: 2, blastEnemy: 1.5 }, // 止まる距離／点滅する秒数／爆発の広さ／本体へのダメージ（ぶつかったときの何倍か）／敵へのダメージ（自分の体力の何倍か）
-    tank:    { name: '重量', hp: 80, sizeMul: 1.25, speed: 35, damage: 1.5,  unlockPhase: 8, weight: 1 },
-    dasher:  { name: '突進', hp: 30, speed: 45, damage: 1.25, unlockPhase: 13, weight: 2,
+    tank:    { name: '重量', shards: 4, hp: 80, sizeMul: 1.25, speed: 35, damage: 1.5,  unlockPhase: 8, weight: 1 },
+    dasher:  { name: '突進', shards: 2, hp: 30, speed: 45, damage: 1.25, unlockPhase: 13, weight: 2,
                triggerDistance: 210, windup: 0.6, dashSpeed: 430, dashTime: 0.5, recover: 0.8 },
     // ボス（ふつうには出てこない：weight 0）。動き方は boss の設定
     core:    { name: 'コア', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },

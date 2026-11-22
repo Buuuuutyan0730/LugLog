@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122035117';
-import { spawnPop, stepParticle } from './pops.js?v=20261122035117';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122035117';
+import { CONFIG } from './config.js?v=20261122124747';
+import { spawnPop, stepParticle } from './pops.js?v=20261122124747';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122124747';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -74,7 +74,7 @@ export function createGame() {
 
       phase: 1,
       shards: 0,
-      need: PH.baseNeed,
+      need: needOf(1),
       bossPhase: null,       // ボスのフェーズならボスの種類
       boss: null,            // 出ているボス（画面の上のHPバー）
       bossAppear: 0, bossDownT: 0,
@@ -371,6 +371,7 @@ export function createGame() {
     if (e.poisonN > 0 && skLv('corrode')) amount *= 1 + Math.min(s.st.evo.corrode ? SK.corrode.kiwamiCap : SK.corrode.cap, e.poisonN * SK.corrode.per);
     // 圧縮：引力の中の敵が多いほど、受けるダメージ↑
     if (e.inPullT > 0 && skLv('compress')) amount *= 1 + Math.min(s.st.evo.compress ? SK.compress.kiwamiCap : SK.compress.cap, (s.pullCount || 0) * SK.compress.per);
+    if (!raw) amount *= CONFIG.ally.damageMul;   // 味方の火力の倍率
     if (e.vuln) amount *= BOSS.vulnMul;   // ボスのすき：受けるダメージ↑
     e.hp -= amount;
     if (!dot) e.flash = 0.07;
@@ -2320,8 +2321,8 @@ export function createGame() {
     const t = ET[next.kind];
     let one = next.hp / (t.group || 1);   // 1体の体力
     let r = radiusOf(one) * (t.sizeMul || 1);
-    // 中ボス：1体だけ、体力が多く、少し大きい
-    if (elite) { r *= CONFIG.elite.size; one *= CONFIG.elite.hp; }
+    // 中ボス：1体だけ、体力が多く、少し大きい（大きさは今まで通り）。ふつうの敵だけ enemySize 倍
+    if (elite) { r *= CONFIG.elite.size; one *= CONFIG.elite.hp; } else r *= CONFIG.enemySize;
     const W = s.world.w, H = s.world.h;
     const m = r + 12;
     const side = Math.floor(rand(0, 4));
@@ -2598,6 +2599,20 @@ export function createGame() {
     ring(best.x, best.y, best.r, best.r + 16, 0.25, 'white', 0, 2);
   }
 
+  // クリアに必要なかけら：そのフェーズで needSec 秒の間に出てくる敵が落とすかけらの見込み × needRatio
+  //   見込み＝出てくる勢い（体力/秒）÷ 1体あたりの体力の平均 × 1体あたりのかけらの平均（出られる種類と、大きい敵の割合から計算）
+  function needOf(phase) {
+    const types = Object.entries(ET).filter(([, t]) => t.unlockPhase <= phase && t.weight > 0);
+    const n = phase;
+    const p4 = clamp((n - TIERS.x4.from + 1) * TIERS.x4.perPhase, 0, TIERS.x4.max);
+    const p2 = clamp((n - TIERS.x2.from + 1) * TIERS.x2.perPhase, 0, TIERS.x2.max);
+    const tierAvg = 4 * p4 + 2 * p2 + 1 * (1 - p4 - p2);
+    const W = types.reduce((v, [, t]) => v + t.weight, 0);
+    let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
+    for (const [, t] of types) { const g = t.group || 1; hpPer += (t.weight / W) * t.hp * g * tierAvg; shPer += (t.weight / W) * (t.shards || 1) * g * tierAvg; }
+    const rate = PH.hpRateBase * growthOf(phase);
+    return Math.max(1, Math.round((rate * PH.needSec / hpPer) * shPer * PH.needRatio));
+  }
   // フェーズ1からの敵の勢いの倍率。1フェーズ進むごとに、その時期の倍率を掛けていく
   function growthOf(phase) {
     let k = 1;
@@ -2800,7 +2815,8 @@ export function createGame() {
   function dropShards(e) {
     // かけら＋：割合で増やす。端数は確率で1個にする（例：1.3個 → 30%で2個）
     // 中ボス：同じ種類の何体分か（体力の割合ではなく決めた数）
-    const exact = (e.elite && e.burstOf ? Math.max(1, e.burstOf.hp / SH.hpPerShard) * CONFIG.elite.shards : Math.max(1, e.maxHp / SH.hpPerShard)) * s.st.shard;
+    const per = (ET[e.kind] && ET[e.kind].shards) || 1;   // 種類ごとに決まった数（大きい敵はその倍）
+    const exact = (e.elite && e.burstOf ? per * (e.burstOf.tier || 1) * CONFIG.elite.shards : per * (e.tier || 1)) * s.st.shard;
     const n = Math.floor(exact) + (Math.random() < exact % 1 ? 1 : 0);
     const drop = (worth) => {
       const a = rand(0, Math.PI * 2);
@@ -2888,7 +2904,7 @@ export function createGame() {
     }
     s.pickups = s.pickups.filter((k) => k.life > 0);
     // 近道：必要なかけらが減る（元の半分より少なくはならない）
-    const raw = PH.baseNeed + PH.needStep * (s.phase - 1);
+    const raw = needOf(s.phase);
     if (skLv('keeper') && skLv('shortcut')) { const C = SK.shortcut; s.need = Math.max(Math.ceil(raw * C.floor), Math.round(raw * (1 - C.base - C.per * (skLv('shortcut') - 1)))); }
     else s.need = raw;
     if (s.shards >= s.need && !s.bossPhase && s.mode === 'play') clearPhase();
@@ -3432,7 +3448,7 @@ export function createGame() {
     if (skLv('keeper') && skLv('shortcut')) skSfx('shortcut');
     // 貯金：たまっていたかけらが戻ってくる
     if (s.bank >= 1) { skSfx('savings'); s.shards = Math.floor(s.bank); s.bank -= Math.floor(s.bank); }
-    s.need = PH.baseNeed + PH.needStep * (s.phase - 1);
+    s.need = needOf(s.phase);
     let sub = '';
     if ((s.phase - 1) % PH.zoomEvery === 0) {
       widenStage();
