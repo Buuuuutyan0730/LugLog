@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122125031';
-import { spawnPop, stepParticle } from './pops.js?v=20261122125031';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122125031';
+import { CONFIG } from './config.js?v=20261122125205';
+import { spawnPop, stepParticle } from './pops.js?v=20261122125205';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122125205';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2602,7 +2602,13 @@ export function createGame() {
 
   // クリアに必要なかけら：そのフェーズで needSec 秒の間に出てくる敵が落とすかけらの見込み × needRatio
   //   見込み＝出てくる勢い（体力/秒）÷ 1体あたりの体力の平均 × 1体あたりのかけらの平均（出られる種類と、大きい敵の割合から計算）
+  // きれいな数字にする：5の倍数に丸め、前のフェーズより必ず5以上多くする（35, 40, 45, …）
   function needOf(phase) {
+    let v = 0;
+    for (let p = 1; p <= phase; p++) v = Math.max(Math.round(needRaw(p) / 5) * 5, v + 5);
+    return v;
+  }
+  function needRaw(phase) {
     const types = Object.entries(ET).filter(([, t]) => t.unlockPhase <= phase && t.weight > 0);
     const n = phase;
     const p4 = clamp((n - TIERS.x4.from + 1) * TIERS.x4.perPhase, 0, TIERS.x4.max);
