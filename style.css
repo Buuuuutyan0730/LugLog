@@ -1974,3 +1974,8 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
   text-shadow: 0 0.9cqw 0 var(--ink), 0 0 5cqw rgba(255, 216, 74, 0.55); animation: none; }
 .hint span { animation: blink 1.4s steps(2, jump-none) infinite; }
 .hint { animation: none; }
+/* 上の段：スコアを主役（大きめの板）、時間は小さな丸い札にして差をつける */
+.hud-top .box.score { width: 36cqw; height: 10.5cqw; }
+.hud-top .score-num { font-size: 3.6cqw; }
+.hud-top .box.clock { height: auto; top: 5.2cqw; padding: 1cqw 2.6cqw; border-radius: 99px; background: rgba(8, 10, 26, 0.4); border-color: rgba(143, 155, 214, 0.25); }
+.hud-top .clock-time { font-size: 2.6cqw; color: #c9d0f5; text-shadow: none; letter-spacing: 0.2cqw; }
