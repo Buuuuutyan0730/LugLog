@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122135012';
-import { makeForms } from './forms.js?v=20261122135012';
-import { CONFIG } from './config.js?v=20261122135012';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122135310';
+import { makeForms } from './forms.js?v=20261122135310';
+import { CONFIG } from './config.js?v=20261122135310';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1808,9 +1808,10 @@ export function createRenderer(canvas, view) {
     if (p.charge != null) drawCharge(p, t);
 
     // かけらを吸い取る範囲（白い枠だけ）
-    const reach = p.magnetR || p.r * 3;
+    // 吸い寄せない（腹ペコのカース）ときは描かない（前は代わりの大きさで描いていて、吸わないのに円が見えていた）
+    const reach = p.magnetR || 0;
     ctx.strokeStyle = THEME.magnetRing;
-    ctx.globalAlpha = main ? 0.22 : 0;
+    ctx.globalAlpha = main && reach > 0 ? 0.22 : 0;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(p.x, p.y, reach, 0, Math.PI * 2);
