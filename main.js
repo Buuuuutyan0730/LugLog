@@ -1,26 +1,26 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261122131126';
-import { createGame, DT } from './game.js?v=20261122131126';
-import { applyForms } from './talents.js?v=20261122131126';
-import { createRenderer } from './render.js?v=20261122131126';
-import { createHud } from './ui.js?v=20261122131126';
-import { createInput } from './input.js?v=20261122131126';
-import { setupDebugPanel } from './debug.js?v=20261122131126';
-import { createPreview } from './preview.js?v=20261122131126';
-import { createMenus } from './menus.js?v=20261122131126';
-import { createDemo } from './demo.js?v=20261122131126';
-import { loadSave, writeSave, recordRun } from './save.js?v=20261122131126';
-import { ensureDaily, addRun } from './missions.js?v=20261122131126';
-import { submitScore } from './online.js?v=20261122131126';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122131126';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122131126';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122131126';
-import { setEquipped } from './skinshot.js?v=20261122131126';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122131126';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122131126';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122131126';
+import { CONFIG } from './config.js?v=20261122131532';
+import { createGame, DT } from './game.js?v=20261122131532';
+import { applyForms } from './talents.js?v=20261122131532';
+import { createRenderer } from './render.js?v=20261122131532';
+import { createHud } from './ui.js?v=20261122131532';
+import { createInput } from './input.js?v=20261122131532';
+import { setupDebugPanel } from './debug.js?v=20261122131532';
+import { createPreview } from './preview.js?v=20261122131532';
+import { createMenus } from './menus.js?v=20261122131532';
+import { createDemo } from './demo.js?v=20261122131532';
+import { loadSave, writeSave, recordRun } from './save.js?v=20261122131532';
+import { ensureDaily, addRun } from './missions.js?v=20261122131532';
+import { submitScore } from './online.js?v=20261122131532';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122131532';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122131532';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122131532';
+import { setEquipped } from './skinshot.js?v=20261122131532';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122131532';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122131532';
+import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122131532';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -138,7 +138,7 @@ function showCards(s) {
     hud.hideSkills();
     document.getElementById('skill').classList.remove('with-reroll');
     skillShown = false;
-  }, (i) => playSound('deal', { pitch: 1 + i * 0.12 }));   // カードが1枚出るたびに「パン」（だんだん高く）
+  }, (i) => playSound(i < 0 ? 'pickBig' : 'deal', { pitch: i < 0 ? 1 : 1 + i * 0.12 }));   // カードが1枚出るたびに「パン」（だんだん高く）／選んだ瞬間に「キラーン」
   const cost = rerollCost(s);
   document.getElementById('skill').classList.add('with-reroll');
   document.getElementById('reroll-cost').textContent = cost.toLocaleString();

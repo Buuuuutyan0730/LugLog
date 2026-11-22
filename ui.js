@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122131126';
-import { choiceView, ownedViews } from './talents.js?v=20261122131126';
-import { iconSvg, snapIcons } from './icons.js?v=20261122131126';
+import { ghostColor } from './theme.js?v=20261122131532';
+import { choiceView, ownedViews } from './talents.js?v=20261122131532';
+import { iconSvg, snapIcons } from './icons.js?v=20261122131532';
 
 const $ = (id) => document.getElementById(id);
 
@@ -326,7 +326,14 @@ export function createHud() {
       const card = document.createElement('button');
       card.className = cls;
       card.innerHTML = html;
-      card.addEventListener('click', () => onPick(i), { once: true });
+      // 選んだとき：選んだカードが光って少し大きくなり、ほかのカードは沈んで消える。そのあと閉じる
+      card.addEventListener('click', () => {
+        if (el.skillCards.classList.contains('picking')) return;
+        el.skillCards.classList.add('picking');
+        [...el.skillCards.children].forEach((c) => { c.style.animationDelay = '0s'; c.classList.remove('deal'); c.classList.add(c === card ? 'chosen' : 'dropped'); });
+        if (onDeal) onDeal(-1);
+        setTimeout(() => { el.skillCards.classList.remove('picking'); onPick(i); }, PICK_TIME * 1000);
+      });
       el.skillCards.appendChild(card);
     });
     el.skill.classList.add('show');
@@ -344,7 +351,7 @@ export function createHud() {
     clearTimeout(dealTimer);
     dealTimer = setTimeout(() => el.skillCards.classList.remove('dealing'), (DEAL_FIRST + cards.length * DEAL_GAP + 0.15) * 1000);
   }
-  const DEAL_FIRST = 0.12, DEAL_GAP = 0.15;
+  const DEAL_FIRST = 0.12, DEAL_GAP = 0.15, PICK_TIME = 0.6;
   let dealTimer = 0;
 
   function hideSkills() {

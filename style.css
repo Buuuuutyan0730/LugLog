@@ -1933,5 +1933,16 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .ms-tabdot { top: -1cqw; right: -1cqw; width: 3cqw; height: 3cqw; }
 /* スキルのカード：1枚ずつはねるように出る */
 .skill-cards.dealing { pointer-events: none; }
-.skill-cards > .deal { opacity: 0; animation: deal-in 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.skill.show .skill-cards > .card.deal { opacity: 0; animation: deal-in 0.32s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
 @keyframes deal-in { 0% { opacity: 0; transform: translateY(6cqw) scale(0.7); } 60% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+/* 選んだカード：光って少し大きく。ほかは沈んで消える */
+.skill-cards.picking { pointer-events: none; }
+.skill.show .skill-cards > .card.chosen { animation: card-chosen 0.6s ease-out both; animation-delay: 0s; z-index: 2; position: relative; opacity: 1; }
+.skill.show .skill-cards > .card.dropped { animation: card-dropped 0.35s ease-in both; animation-delay: 0s; }
+@keyframes card-chosen {
+  0% { transform: scale(1); filter: brightness(1); }
+  25% { transform: scale(1.08); filter: brightness(1.8); box-shadow: 0 0 0 1cqw #fff, 0 0 8cqw rgba(255, 255, 255, 0.8); }
+  70% { transform: scale(1.06); filter: brightness(1.15); box-shadow: 0 0 0 0.8cqw var(--gold), 0 0 6cqw rgba(255, 216, 74, 0.6); }
+  100% { transform: scale(1.06); filter: brightness(1.1); box-shadow: 0 0 0 0.8cqw var(--gold), 0 0 6cqw rgba(255, 216, 74, 0.6); }
+}
+@keyframes card-dropped { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(4cqw) scale(0.9); } }
