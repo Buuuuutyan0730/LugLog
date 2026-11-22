@@ -1,10 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122173419';
-import { spawnPop, stepParticle } from './pops.js?v=20261122173419';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122173419';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261122173419';
+import { CONFIG } from './config.js?v=20261122222752';
+import { spawnPop, stepParticle } from './pops.js?v=20261122222752';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122222752';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -238,13 +237,11 @@ export function createGame() {
     }
   }
 
-  // 奥義の発動：名前を大きく出し、画面に広がる輪と光で「発動した」とわかるようにする
+  // 奥義の発動：文字は出さず、画面に広がる輪と光だけで「発動した」とわかるようにする（id・sub は呼ぶ側の目印）
   function ougiFx(id, sub, x = s.player.x, y = s.player.y) {
-    s.banner = { text: (SKILL_BY_ID[id] && SKILL_BY_ID[id].name) || id, sub, t: 1.2 };
     ring(x, y, 10, Math.hypot(s.world.w, s.world.h) * 0.6, 0.6, 'white', 0, 6);
-    ring(x, y, 10, Math.hypot(s.world.w, s.world.h) * 0.35, 0.45, 'player', 0, 3);
     flash(x, y, 120 * s.zoom, 0.3, 'white');
-    s.shake = Math.max(s.shake, 6);
+    s.shake = Math.max(s.shake, 5);
   }
   // 広がって消える光の輪
   function ring(x, y, r0, r1, dur, kind, idx = 0, width = 3) {
