@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122152011';
-import { makeForms } from './forms.js?v=20261122152011';
-import { CONFIG } from './config.js?v=20261122152011';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122160308';
+import { makeForms } from './forms.js?v=20261122160308';
+import { CONFIG } from './config.js?v=20261122160308';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -203,7 +203,7 @@ export function createRenderer(canvas, view) {
     const blinkAt = 3;
     for (const k of state.pickups) {
       if (k.life < blinkAt && Math.sin(t * 24) < 0) continue; // 消える前は点滅
-      const s = 4 * (state.zoom || 1);   // 大きさはどのかけらも同じ（ステージが広がっても画面の上で同じ大きさ）。金のかけらは色と光だけ変える
+      const s = (k.gold ? 7 : 4) * (state.zoom || 1);   // 金のかけらだけ大きく。ほかは敵の大きさに関係なく同じ（ステージが広がっても画面の上で同じ大きさ）
       ctx.save();
       ctx.translate(k.x, k.y);
       ctx.rotate(k.spin + t * 3);

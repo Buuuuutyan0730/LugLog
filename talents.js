@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261122152011';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122152011';
+import { CONFIG } from './config.js?v=20261122160308';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122160308';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -29,7 +29,7 @@ export const BOOSTS = [
   { id: 'hp', name: 'HP＋', icon: 'hp', per: 0.20, repeat: true,
     desc: '最大HP +20%', bonus: '不死身：一度だけ、倒れずに踏みとどまる' },
   { id: 'magnet', name: '磁石＋', icon: 'magnet', per: 0.40,
-    desc: 'かけらを吸い取る範囲 +40%', bonus: 'ブラックホール：ときどき画面中のかけらが集まる' },
+    desc: 'かけらを吸い取る範囲 +40%', bonus: 'ブラックホール：10秒ごとに、画面中のかけらが少し寄ってくる' },
   { id: 'shard', name: 'かけら＋', icon: 'shard', per: 0.10,
     desc: '敵が落とすかけら +10%', bonus: 'ゴールドラッシュ：大きな敵が金のかけらを落とす' },
   { id: 'limit', name: '限界突破', icon: 'limit', per: 0.05, repeat: true,

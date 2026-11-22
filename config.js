@@ -215,7 +215,7 @@ export const CONFIG = {
     lastStand:  { time: 3 },                                       // ラストスタンド：押し出された分身が戦い続ける秒数
     fullCharge: { mult: 1.3 },                                     // フルチャージ：上限まで描いた分身の攻撃力
     turnBurst:  { radius: 35, ofPower: 0.5 },                      // ターンバースト：折り返しで分身の攻撃力の50%
-    blackHole:  { every: 30 },                                     // ブラックホール：かけらが集まる間隔（秒）。12秒だと拾わなくても全部集まっていたので30へ
+    blackHole:  { every: 10, pull: 0.35 },                         // ブラックホール：間隔（秒）／画面中のかけらが、本体までの距離のこの割合だけ寄ってくる
     goldRush:   { worth: 5, minTier: 2 },                          // ゴールドラッシュ：大きな敵が落とす金のかけら（5個分）
   },
 
@@ -234,11 +234,11 @@ export const CONFIG = {
     crush: { base: 0.5, per: 0.25, kiwamiMult: 2, push: 40 }, // 押しつぶし：触れた敵へ毎秒（攻撃力×割合）。極は2倍で、はじく
     cannon: { base: 0.3, per: 0.1, radius: 40, radiusPer: 5, kiwamiRadius: 1.6 }, // 重砲：爆発の強さ（弾の強さに対する割合）と広さ
     awe: { per: 0.1, reach: 50, reachPer: 10, kiwamiReach: 1.5 },  // 威圧：1Lvで10%遅く／分身のふちから届く距離
-    swarm: { per: 0.03, perLv: 0.01, legion: 0.05 },        // 群れ：分身1体ごとの攻撃速度（Lv1 +3%、1Lvごとに +1%）／レギオン：1体ごとの攻撃力
-    split: { count: 2, kiwamiCount: 3, life: [4, 5, 6, 7, 8] }, // 分裂：分かれる数と、戦う秒数（Lvごと）
-    focus: { perHit: 0.05, cap: [0.25, 0.375, 0.5, 0.625, 0.75], kiwamiCap: 2, keep: 2 }, // 集中砲火：1回ごと +5%、上限（Lvごと）、当てないと消えるまでの秒数
+    swarm: { per: 0.015, perLv: 0.005, legion: 0.02, maxCount: 10 }, // 群れ：分身1体ごとの攻撃速度（Lv1 +1.5%、1Lvごとに +0.5%）／レギオン：1体ごとの攻撃力／数える分身の上限（上限なしだと分身が多いほど際限なく強くなる）
+    split: { count: 2, kiwamiCount: 3, life: [3, 3.5, 4, 4.5, 5], power: 0.5 }, // 分裂：分かれる数と、戦う秒数（Lvごと）／分かれた分身の攻撃力の倍率
+    focus: { perHit: 0.05, cap: [0.2, 0.3, 0.4, 0.5, 0.6], kiwamiCap: 1.4, keep: 2 }, // 集中砲火：1回ごと +5%、上限（Lvごと）、当てないと消えるまでの秒数
     mark: { time: 3, per: 0.1, jump: 120 },                  // 目印：印の秒数／1Lvで受けるダメージ +10%／極：印が移る距離
-    thousand: { count: 3 },                                   // 千の影：1回で生まれる数
+    thousand: { count: 3, power: 0.35 },                       // 千の影：1回で生まれる数／写しの攻撃力の倍率（そのままだと火力が3倍になる）
     turret: { per: 0.1 },                                     // 固定砲台：動く速さの倍率をそのまま攻撃速度に。さらに1Lvで +10%
     laser: { base: 0.5, per: 0.1, width: 5, kiwamiWidth: 2.2, life: 0.18 }, // レーザー：1体あたりの威力（攻撃力に対する割合）／光の太さ／見える秒数
     shotgun: { pellets: [3, 4, 5, 6, 7], gap: 0.22, power: 0.4 },        // 散弾：Lvごとの方向の数／1発ごとの角度の差／1発の威力
@@ -246,7 +246,7 @@ export const CONFIG = {
     heaven: { max: 3, every: 8, width: 26, warn: 0.5, life: 0.4 },       // 天の光：本数の上限／間隔／柱の半分の太さ／予告の秒数／光る秒数
     decoy: { hpPerPower: 8, per: 0.25, reach: 80, bite: 0.5, burst: 70, burstPower: 1 }, // おとり：分身のHP（攻撃力×8）、1Lvで +25%／引きつける距離（分身のふちから）／同じ敵にかまれる間隔／身代わりの衝撃波
     taunt: { per: 0.3, kiwami: 0.2 },                         // 挑発：1Lvで範囲 +30%／極：引きつけた敵が受けるダメージ +20%
-    counter: { ratio: [1, 1.5, 2, 2.5, 3], burst: 40, burstPower: 0.5 }, // 反撃：受けたダメージに対して返す割合（Lvごと）／極の衝撃波
+    counter: { ratio: [0.5, 0.75, 1, 1.25, 1.5], burst: 40, burstPower: 0.5 }, // 反撃：受けたダメージに対して返す割合（Lvごと）／極の衝撃波
     repair: { base: 0.05, per: 0.03, share: 0.2 },            // 修復：毎秒、最大HPの5%（1Lvで +3%）／極：回復量の20%を本体も
     // ---- 本体の道（本体の攻撃力＝本体の強さ20 × 攻撃力の倍率。攻撃力が上がるほど本体も当たり判定も大きくなる） ----
     aura: { radius: [3, 3.5, 4, 4.5, 5], base: 0.4, per: 0.15, push: 70 },    // 闘気：膜の大きさ（本体の半径の倍。Lv1〜5）／触れた敵へ毎秒（本体の攻撃力×割合）、1Lvで +15%／極：はじく強さ
@@ -256,7 +256,7 @@ export const CONFIG = {
     rush: { per: [0.1, 0.15, 0.2, 0.25, 0.3], max: 5, kiwamiMax: 10, keep: 3 }, // 連打：1段ごとのダメージ（Lvごと）／段の上限／途切れるまでの秒数
     shield: { back: [23, 21, 19, 17, 15], burst: 70, burstPower: 1 },   // シールド：破れてから戻るまでの秒数（Lvごと）／極の衝撃波の広さと強さ（本体の攻撃力×倍）
     shoot: { interval: 0.4, power: 0.5, kingLife: 3 },        // 射撃：撃つ間隔（秒）／1発の威力（本体の攻撃力×割合）／狙撃手：弾が飛び続ける秒数（画面の端まで届く）
-    rapid: { per: 0.2, spread: 0.1 },                         // 速射：1Lvで撃つ速さ +20%／極：2発目のずれ（ラジアン）
+    rapid: { per: 0.12, spread: 0.1, kiwamiPower: 0.5 },      // 速射：1Lvで撃つ速さ +12%／極：2発目のずれ（ラジアン）・2発目の威力（1発目に対する割合）
     snipe: { slow: 2, mult: 3, kiwamiMult: 1.5 },             // 狙撃：撃つ間隔の倍／威力の倍（貫通）／極：さらに威力の倍
     homing: { turn: 7, life: 1.4, bounce: 140 },              // 追尾弾：曲がる強さ／弾が飛ぶ時間の倍／極：はね返る先を探す距離
     barrage: { every: 1, count: 8, power: 0.5 },              // 弾幕：間隔／方向の数／1発の威力（本体の攻撃力×割合）
@@ -314,7 +314,7 @@ export const CONFIG = {
     float: { radius: 2.4, size: 0.38, speed: 1.5, power: 0.5, per: 0.15, again: 0.3 }, // 浮遊：回る輪の大きさ（本体の半径の倍）／玉の大きさ（同）／回る速さ（1秒の角度）／触れた敵へ（本体の攻撃力×割合）、1Lvで +15%／同じ敵に当たり直す間隔
     satellite: { planet: 1.6 },                                   // 衛星：玉の数は Lv+1／惑星系：外側の輪の大きさ（内側の輪の倍）
     bigsat: { kiwamiSize: 1.5 },                                  // 大衛星：極の大きさの倍
-    meteor: { every: 3, time: 0.6, reach: 160 },                  // 流星：間隔／飛び出して戻るまでの秒数／届く距離
+    meteor: { every: 3, kiwamiEvery: 5, time: 0.6, reach: 160 },  // 流星：間隔／極（全部の玉が飛ぶ）の間隔／飛び出して戻るまでの秒数／届く距離
     orbitshift: { min: 0.8, max: 1.8, period: 2, kiwamiSpeed: 2 }, // 軌道変化：輪の大きさの最小・最大（倍）／1回伸び縮みする秒数／極：回る速さの倍
     starfall: { every: 10, count: 20, delay: 0.4, radius: 22, power: 1.5 }, // 星の雨：間隔／数／落ちるまで／当たる広さ／威力（本体の攻撃力×倍）
     blade: { gap: 12, size: 6, speed: 4, power: 0.3, per: 0.1, again: 0.3, sawMult: 2 }, // 刃輪：分身のふちからの距離／刃の大きさ／回る速さ／威力（分身の攻撃力×割合）、1Lvで +10%／同じ敵に当たり直す間隔／回転鋸：大きさの倍（間隔は半分）
@@ -322,11 +322,11 @@ export const CONFIG = {
     twinblade: { count: 2, kiwamiCount: 4 },                      // 双刃：刃の枚数／極
     whet: { per: 0.02, cap: 1, kiwamiCap: 2, keep: 5 },           // 研磨：1回ごと／上限／極の上限／当たらないと戻るまでの秒数
     thousandblade: { every: 12, count: 30, power: 1 },            // 千刃：間隔／枚数／威力（分身の攻撃力の平均×倍）
-    drone: { count: [2, 2, 3, 3, 4], squad: 2, speed: 260, size: 5, reach: 260, power: 0.4, again: 0.4 }, // 子機：数（Lvごと）／編隊で増える数／速さ／大きさ／敵を探す距離（本体から）／体当たり（本体の攻撃力×割合）／同じ子機が当たり直す間隔
-    ramdrone: { mult: 2, push: 120 },                             // 突撃機：ダメージの倍／押し返す強さ
-    gundrone: { keep: 80, every: 0.6 },                           // 砲撃機：敵から離れる距離／撃つ間隔
+    drone: { count: [2, 2, 3, 3, 4], squad: 2, speed: 260, size: 5, reach: 260, power: 0.1, again: 0.4 }, // 子機：数（Lvごと）／編隊で増える数／速さ／大きさ／敵を探す距離（本体から）／体当たり（本体の攻撃力×割合）／同じ子機が当たり直す間隔
+    ramdrone: { mult: 1.2, push: 120 },                             // 突撃機：ダメージの倍／押し返す強さ
+    gundrone: { keep: 80, every: 0.8 },                           // 砲撃機：敵から離れる距離／撃つ間隔
     collector: { count: 1, kiwamiCount: 2 },                      // 回収機：かけらを拾う子機の数／極
-    mothership: { every: 10, count: 3, life: 10 },                // 母艦：間隔／出す数／出した子機が消えるまで
+    mothership: { every: 10, count: 2, life: 10 },                // 母艦：間隔／出す数／出した子機が消えるまで
     shieldsat: { count: 2, ring: 2.8, speed: 2, size: 9, per: 0.15 }, // 盾衛星：盾の数／回る輪の大きさ（本体の半径の倍）／回る速さ／盾の大きさ、1Lvで +15%
     reflect: { power: 0.5 },                                      // 反射盾：跳ね返した弾の威力（本体の攻撃力×割合）
     shockshield: { radius: 30, power: 0.5, kiwamiMult: 2 },       // 衝撃盾：衝撃波の広さ／強さ（本体の攻撃力×割合）／極：広さの倍

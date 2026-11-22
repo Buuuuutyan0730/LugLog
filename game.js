@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122152011';
-import { spawnPop, stepParticle } from './pops.js?v=20261122152011';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122152011';
+import { CONFIG } from './config.js?v=20261122160308';
+import { spawnPop, stepParticle } from './pops.js?v=20261122160308';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122160308';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -548,7 +548,7 @@ export function createGame() {
         };
         bodyShot(t, power, opts);
         sfx(snipe ? 'sk_snipe' : opts.homing ? 'sk_homing' : skLv('rapid') ? 'sk_rapid' : 'sk_shoot', rand(0.95, 1.05));
-        if (s.st.evo.rapid) bodyShot(t, power, { ...opts, ang: BS.rapid.spread });   // 極速射：2発ずつ
+        if (s.st.evo.rapid) bodyShot(t, power * BS.rapid.kiwamiPower, { ...opts, ang: BS.rapid.spread });   // 極速射：2発ずつ（2発目は弱め）
         const speed = s.st.rate * comboMul() * (1 + BS.rapid.per * skLv('rapid'));
         p.shootCd = BS.shoot.interval * (snipe ? BS.snipe.slow : 1) / speed;
       }
@@ -888,7 +888,7 @@ export function createGame() {
       if (p.meteorCd <= 0) {
         const t0 = nearestEnemy(p, M.reach * s.zoom);
         if (t0) {
-          p.meteorCd = M.every;
+          p.meteorCd = s.st.evo.meteor ? M.kiwamiEvery : M.every;
           skSfx('meteor');
           const which = s.st.evo.meteor ? orbs.map((_, i) => i) : [Math.floor(Math.random() * orbs.length)];
           p.meteors = which.map((i) => ({ i, t: 0, tx: t0.x, ty: t0.y }));
@@ -1076,7 +1076,8 @@ export function createGame() {
             sparks(e.x, e.y, 'white', 3, 150);
             if (ram) knock(e, e.x - d.x || 1, e.y - d.y, SK.ramdrone.push);
             // 極突撃機：突き抜けて、すぐ次の敵へ
-            if (ram && s.st.evo.ramdrone) { d.cd = 0.05; d.chase = s.enemies.filter((o) => o !== e && o.hp > 0).sort((a2, b2) => Math.hypot(a2.x - d.x, a2.y - d.y) - Math.hypot(b2.x - d.x, b2.y - d.y))[0] || null; }
+            //   ほかに敵がいないとき（ボスだけのとき）は、ふつうの間隔で当たり直す（すぐ同じ敵に当たり直すと、ボスが一瞬で溶ける）
+            if (ram && s.st.evo.ramdrone) { d.chase = s.enemies.filter((o) => o !== e && o.hp > 0).sort((a2, b2) => Math.hypot(a2.x - d.x, a2.y - d.y) - Math.hypot(b2.x - d.x, b2.y - d.y))[0] || null; d.cd = d.chase ? 0.05 : D.again; }
             else d.cd = D.again;
             break;
           }
@@ -1747,7 +1748,8 @@ export function createGame() {
   }
 
   // 群れ：分身1体ごとに攻撃速度が上がる／レギオン：攻撃力も上がる（分裂した小さい分身も数える）
-  const ghostNum = () => s.ghosts.length + s.splits.length;
+  //   数えるのは軌跡から生まれた分身だけ（千の影の写し・分裂した小さい分身は数えない）。10体まで
+  const ghostNum = () => { let n = 0; for (const g of s.ghosts) if (!g.echo) n++; return Math.min(SK.swarm.maxCount, n); };
   const swarmMul = () => {
     const lv = skLv('swarm');
     return lv ? 1 + (SK.swarm.per + SK.swarm.perLv * (lv - 1)) * ghostNum() : 1;
@@ -1953,6 +1955,8 @@ export function createGame() {
     // 巨大化：一番大きい分身が強くなる。タイタン：分身が1体だけのとき、さらに2倍
     if (g === s.big) g.power *= (1 + SK.giant.per * skLv('giant')) * (titanOn() ? SK.giant.titanMult : 1);
     g.power *= legionMul();
+    if (g.echo) g.power *= SK.thousand.power;    // 千の影の写しは弱め
+    if (g.split != null) g.power *= SK.split.power;   // 分裂した分身は弱め
     if (s.st.evo.turret) g.power *= s.st.ghostSpeed;
     g.r = radiusOf(g.power) * G.sizeMul;
     // おとり：分身がHPを持つ（最大HPは攻撃力に比例。受けたダメージ g.lost を引いた残りが今のHP）
@@ -2887,13 +2891,15 @@ export function createGame() {
   function updatePickups() {
     const p = s.player;
     const magnet = magnetRadius();
-    // ブラックホール：ときどき画面中のかけらがすべて本体へ集まる
+    // ブラックホール：ときどき画面中のかけらが本体へ少し寄ってくる
     if (s.st.blackHole) {
       s.blackHoleT -= DT;
       if (s.blackHoleT <= 0) {
         s.blackHoleT = BN.blackHole.every;
         if (s.pickups.length) {
-          for (const k of s.pickups) k.flying = true;
+          // 全部を吸い取るのではなく、本体へ少しだけ寄せる（毎フレーム0.9倍に減速するので、進む距離は 速さ×DT×10）
+          const k0 = BN.blackHole.pull / (DT * 10);
+          for (const k of s.pickups) { if (k.flying) continue; k.vx = (p.x - k.x) * k0; k.vy = (p.y - k.y) * k0; }
           ring(p.x, p.y, s.world.w * 0.6, p.r, 0.5, 'shard', 0, 4);
         }
       }
