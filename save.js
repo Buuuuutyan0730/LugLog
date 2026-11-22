@@ -8,7 +8,7 @@ function defaults() {
     icon: 0,                  // プロフィールのアイコン（ICONS の番号）
     id: `${1000 + Math.floor(Math.random() * 9000)}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
     howtoDone: false,         // 遊び方を一度見たか
-    settings: { bgm: true, bgmVol: 70, se: true, seVol: 85, control: 'stick', shake: true, glow: 1, v: 2 },
+    settings: { bgm: true, bgmVol: 70, se: true, seVol: 85, control: 'drag', shake: true, glow: 1, v: 3 },
     best: { score: 0, phase: 0 },
     stats: { plays: 0, time: 0, kills: 0, bosses: 0 },
     // 図鑑：スキルは取った回数・極めた回数・持っていた時の最高フェーズ、敵とボスは見た・倒した回数
@@ -29,8 +29,9 @@ export function loadSave() {
       Object.assign(d, raw);
       d.settings = { ...defaults().settings, ...(raw.settings || {}) };
       // スティックができる前の記録：操作方法をスティックにする
-      if (!(raw.settings && raw.settings.v >= 2)) { d.settings.control = 'stick'; d.settings.v = 2; }
-      if (d.settings.control !== 'stick' && d.settings.control !== 'drag') d.settings.control = 'stick';   // タップはなくした
+      // v3：ドラッグが指にそのままついていくようになったので、みんなドラッグに切りかえる
+      if (!(raw.settings && raw.settings.v >= 3)) { d.settings.control = 'drag'; d.settings.v = 3; }
+      if (d.settings.control !== 'stick' && d.settings.control !== 'drag') d.settings.control = 'drag';   // タップはなくした
       d.best = { ...defaults().best, ...(raw.best || {}) };
       d.stats = { ...defaults().stats, ...(raw.stats || {}) };
       d.zukan = { skills: {}, enemies: {}, bosses: {}, ...(raw.zukan || {}) };
