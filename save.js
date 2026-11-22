@@ -47,6 +47,7 @@ export function loadSave() {
 }
 
 export function writeSave(d) {
+  if (wiped) return;
   try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (_) { /* 保存できなくても続行 */ }
 }
 
@@ -89,4 +90,11 @@ export function recordSeen(d, s) {
     if (!box[k]) { box[k] = { seen: 0, kills: 0 }; changed = true; }
   }
   return changed;
+}
+
+// データを全部消す（手元の保存をなくす。開いたままの画面が書き戻さないよう、消したあとは保存しない）
+let wiped = false;
+export function wipeSave() {
+  wiped = true;
+  try { localStorage.removeItem(KEY); localStorage.removeItem(OLD_BEST); } catch {}
 }

@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122161033';
-import { snapIcons } from './icons.js?v=20261122161033';
-import { writeSave } from './save.js?v=20261122161033';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122161033';
-import { playSound } from './audio.js?v=20261122161033';
-import { createGachaFx } from './gachafx.js?v=20261122161033';
-import { titleOf } from './titles.js?v=20261122161033';
-import { frameOf } from './frames.js?v=20261122161033';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122161033';
-import { loadRanking, syncProfile, weekLabel, claimDev } from './online.js?v=20261122161033';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122161033';
-import { GACHA_POOL } from './skins.js?v=20261122161033';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122163815';
+import { snapIcons } from './icons.js?v=20261122163815';
+import { writeSave } from './save.js?v=20261122163815';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122163815';
+import { playSound } from './audio.js?v=20261122163815';
+import { createGachaFx } from './gachafx.js?v=20261122163815';
+import { titleOf } from './titles.js?v=20261122163815';
+import { frameOf } from './frames.js?v=20261122163815';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122163815';
+import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote } from './online.js?v=20261122163815';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122163815';
+import { GACHA_POOL } from './skins.js?v=20261122163815';
 
 // 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
 const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;
@@ -138,6 +138,15 @@ export function createMenus(save, hooks) {
       case 'frame': save.equip.frame = arg; writeSave(save); sync(); render(); break;
       case 'ttl': save.equip.title = arg === 'none' ? '' : arg; writeSave(save); sync(); st.ttlOpen = false; render(); break;
       case 'ttlopen': st.ttlOpen = true; render(); break;
+      case 'wipeopen': st.wipeOpen = true; render(); break;
+      case 'wipeclose': st.wipeOpen = false; render(); break;
+      case 'wipe': {
+        // ランキングの自分の記録を消してから（つながらなければ手元だけ）、手元のデータを消して最初からにする
+        if (st.wipeBusy) break;
+        st.wipeBusy = true; render();
+        Promise.race([wipeRemote(), new Promise((ok) => setTimeout(ok, 8000))]).catch(() => {}).finally(() => { hooks.wipeLocal(); location.reload(); });
+        break;
+      }
       case 'ttlclose': st.ttlOpen = false; render(); break;   // 称号を選ぶ（'title' はタイトルへ戻る操作）
       // ランキング
       case 'ranking': open('s_ranking', { rtab: 'week' }); loadRank('week'); break;

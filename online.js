@@ -2,6 +2,7 @@
 //   人の見分け：名前の登録なしで端末ごとに見分ける「匿名ログイン」
 //   全期間の最高は scores/<見分けの番号>、その週の最高は weeks/<週の番号>/scores/<見分けの番号> に1つずつ
 //   つながらないとき（電波がない・読みこめない）は、ゲームはそのまま遊べる。ランキングだけ「つながりません」と出す
+import { CONFIG as GAME } from './config.js?v=20261122163815';
 const CONFIG = {
   apiKey: 'AIzaSyA9JWRT-1pPiMH4wnL78nrt_7icvCd_v7M',
   authDomain: 'luglog.firebaseapp.com',
@@ -11,7 +12,7 @@ const CONFIG = {
   appId: '1:1095451978628:web:a8711e45bace2775aa8bd1',
 };
 // ありえない記録ははじく（サーバー側のきまりでも同じようにはじく）
-export const LIMITS = { phase: 300, name: 12 };
+export const LIMITS = { phase: 150, name: 12 };
 
 // 週の番号：月曜の朝4時で区切る（日本の時刻で数える）。例：2026-11-16 の週 → "20261116"
 export function weekKey(now = new Date()) {
@@ -43,12 +44,20 @@ function connect() {
 }
 const withTimeout = (p, ms = 15000) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
 
-// ありえない記録かどうか（サーバー側のきまりと同じ考え方。測った値の3〜4倍まで認める）
-//   スコアはフェーズの3乗にほぼ比例して伸びる（測った値：フェーズ10で約1.3万、20で約6万、30で約18万、40で約49万）
-export const scoreCap = (phase) => 30 * phase * phase * phase + 20000;
+// ありえない記録かどうか（サーバー側のきまりと同じ考え方）
+//   スコア＝倒した敵の体力の合計。敵は「1秒に出る体力の合計」（フェーズごとに増える）ずつ出てくるので、
+//   スコアは「今のフェーズの1秒の量 ×（遊んだ秒数×4 ＋ 120）＋ 5万」を超えない（ボス・中ボスの分も含めた余裕）
+//   ※前はフェーズだけで上限を決めていたが、敵を増やしたあと、ふつうの記録まではじいていた
+export const RATE = GAME.phase;
+export function rateAt(phase) {
+  let k = 1;
+  for (let n = 2; n <= phase; n++) k *= RATE.hpRateGrowth.find((g) => n <= g.until).rate;
+  return Math.ceil(RATE.hpRateBase * k);
+}
+export const scoreCap = (phase, sec) => (sec * 4 + 120) * rateAt(phase) + 50000;
 export function plausible(run) {
   const score = Math.floor(run.score), phase = run.phase, sec = Math.floor(run.time);
-  return score > 0 && phase >= 1 && phase <= LIMITS.phase && score <= scoreCap(phase) && sec >= phase * 8 && sec <= 6 * 3600;
+  return score > 0 && phase >= 1 && phase <= LIMITS.phase && score <= scoreCap(phase, sec) && sec >= phase * 8 && sec <= 6 * 3600;
 }
 
 // 記録の置き場所：全期間＝scores/<番号>、今週＝weeks/<週の番号>/scores/<番号>
@@ -132,4 +141,10 @@ export async function checkDev() {
   } catch (e) {
     return e && e.code === 'permission-denied' ? 'no' : 'offline';
   }
+}
+
+// データを全部消すとき：ランキングの自分の記録（全期間・今週）も消す
+export async function wipeRemote() {
+  const { fs, db, uid } = await withTimeout(connect());
+  for (const ref of [fs.doc(db, 'scores', uid), fs.doc(db, 'weeks', weekKey(), 'scores', uid)]) await withTimeout(fs.deleteDoc(ref)).catch(() => {});
 }
