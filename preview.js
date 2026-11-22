@@ -2,12 +2,13 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261122222752';
-import { CONFIG } from './config.js?v=20261122222752';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122222752';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261122222752';
-import { GACHA_POOL } from './skins.js?v=20261122222752';
-import { createGachaFx } from './gachafx.js?v=20261122222752';
+import { BOOSTS, CURSES } from './talents.js?v=20261122223926';
+import { CONFIG } from './config.js?v=20261122223926';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122223926';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261122223926';
+import { GACHA_POOL } from './skins.js?v=20261122223926';
+import { createGame } from './game.js?v=20261122223926';
+import { createGachaFx } from './gachafx.js?v=20261122223926';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -738,6 +739,24 @@ const OWNED = [
 ];
 
 // 見本の分類（上の段）と、その中の項目（下の段）
+// 奥義の発動演出の見本：本物のゲームを動かし、決まった間隔で奥義を発動させる
+//   cd：発動までの時間を持つ変数（s.〜 か p.〜）
+const OUGI_FX = [
+  { id: 'heaven', cd: 's.heavenT' }, { id: 'demon', cd: 'p.demonCd' }, { id: 'spikebed', cd: 's.spikebedCd' },
+  { id: 'skybolt', cd: 's.skyCd' }, { id: 'iceage', cd: 's.iceCd' }, { id: 'collapse', cd: 's.collapseCd' },
+  { id: 'pandemic', cd: 's.pandemicCd' }, { id: 'scythe', cd: 's.scytheCd' }, { id: 'starfall', cd: 's.starCd' },
+  { id: 'thousandblade', cd: 's.tbladeCd' }, { id: 'mothership', cd: 's.motherCd' }, { id: 'goldrain', cd: 's.goldrainCd' },
+].map((o) => {
+  const road = SKILL_ROADS.find((r) => r.skills.some((k) => k.id === o.id));
+  const list = road.skills, at = list.findIndex((k) => k.id === o.id);
+  let w = at; while (w > 0 && list[w].kind !== '目覚め') w--;   // その奥義の系統の目覚め
+  const skills = {};
+  if (list[0].kind === '入口') skills[list[0].id] = { lv: 3 };
+  for (let k = w; k <= at; k++) skills[list[k].id] = { lv: 3 };
+  return { ...o, name: list[at].name, skills };
+});
+const OUGI_EVERY = 3.5;   // 見本では、この秒数ごとに発動させる
+
 const CATS = [
   { id: 'card', label: 'カード', tabs: [['rarity', 'レア度'], ['mythic', 'ミシック'], ['curse', 'カース'], ['ghostcards', '巨像'], ['swarmcards', '群体1'], ['swarmcards2', '群体2'], ['turretcards', '砲台1'], ['turretcards2', '砲台2'], ['guardcards', '守護1'], ['guardcards2', '守護2'], ['bodycards', '本体1'], ['bodycards2', '本体2']] },
   { id: 'screens', label: '画面づくり', tabs: SCREEN_TABS },
@@ -751,6 +770,7 @@ const CATS = [
   { id: 'fx', label: 'エフェクト', tabs: [['effects', '共通']] },
   { id: 'items', label: 'ガチャの品', tabs: ITEM_TABS },
   { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_bossdown', 'ボス撃破']] },
+  { id: 'ougi', label: '奥義', tabs: OUGI_FX.map((o) => ['og_' + o.id, o.name]) },
 ];
 const TAB_LABEL = Object.fromEntries(CATS.flatMap((c) => c.tabs.map(([id, label]) => [id, `${c.label}／${label}`])));
 
@@ -777,6 +797,33 @@ export function createPreview(hud) {
     fx_gssr: () => [{ it: pool('SSR')[0], isNew: true }],
     fx_g10: () => [pool('N')[0], pool('R')[0], pool('N')[2], pool('SR')[1], pool('N')[1], pool('R')[2], pool('N')[3], pool('SSR')[1], pool('R')[1], pool('N')[4]].map((it, i) => ({ it, isNew: i % 3 !== 1 })),
   };
+  // 奥義の見本で動かす本物のゲーム
+  let og = null;
+  function startOugi(id) {
+    const o = OUGI_FX.find((x) => 'og_' + x.id === id);
+    const g = createGame(), s = g.state;
+    const inp = (held, x = 180, y = 330) => ({ held, pointer: held ? { x, y } : null, isTouch: false, dx: 0, dy: 0, keyX: 0, keyY: 0 });
+    g.step(inp(true));
+    s.phase = 7; g.debugClearPhase();
+    s.skills = JSON.parse(JSON.stringify(o.skills));
+    s.choices = [{ id: 'atk', kind: 'boost', rarity: 'normal' }]; g.chooseSkill(0);
+    og = { o, g, inp, t: 0, next: 1e9 };
+    for (let k = 0; k < 60 * 6; k++) stepOugi();   // 先に6秒進めて、敵と分身をそろえておく
+    og.next = og.t + 0.5;
+  }
+  function stepOugi() {
+    const { g, o, inp } = og, s = g.state;
+    if (s.mode === 'select' || s.mode === 'returning') { s.choices = [{ id: 'atk', kind: 'boost', rarity: 'normal' }]; g.chooseSkill(0); }
+    og.t += 1 / 60;
+    if (og.t >= og.next) { og.next = og.t + OUGI_EVERY; const [who, key] = o.cd.split('.'); (who === 'p' ? s.player : s)[key] = 0.001; }
+    s.player.inv = 99; s.hp = s.maxHp;
+    // 指は本体の少し先を回る（押し始めは本体の上から。離すと分身が生まれる）
+    const c = og.t % 1.6, held = c < 1.4, a = og.t * 2.5, r = c < 0.07 ? 0 : 70, p = s.player;
+    g.step(inp(held, Math.min(330, Math.max(30, p.x + Math.cos(a) * r)), Math.min(470, Math.max(60, p.y + Math.sin(a) * r))));
+    s.sfx.length = 0;
+    s.banner.t = 0;   // 「PHASE ○」の文字は出さない
+    return s;
+  }
   let active = false;
   let cat = 'enemy';
   let tab = 'enemies';
@@ -808,7 +855,7 @@ export function createPreview(hud) {
     // ガチャの演出：昇格は必ず見せる。10回引きは SR だけ昇格して見せる
     if (GACHA_SAMPLES[id]) { hud.hideSample(); gfx.play(GACHA_SAMPLES[id](), { replay: true, forceUp: id === 'fx_gup' ? true : id === 'fx_g10' ? [3] : [] }); return; }
     gfx.stop();
-    if (id === 'battle' || SCENES[id]) hud.hideSample();
+    if (id === 'battle' || SCENES[id] || id.startsWith('og_')) hud.hideSample();
     else if (id === 'ghostroad' || id === 'swarmroad' || id === 'turretroad' || id === 'guardroad' || id === 'bodyroad' || id === 'ghostforms' || FORM_SCENES[id]) hud.hideSample();
     else if (id === 'ghostcards') hud.showSample(CARD_SETS.ghostroad.title, CARD_SETS.ghostroad.sub, CARD_SETS.ghostroad.cards);
     else if (id === 'owned') { hud.hideSample(); hud.showOwnedSample(OWNED); }
@@ -841,6 +888,11 @@ export function createPreview(hud) {
 
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
   function view(base) {
+    if (tab.startsWith('og_')) {
+      if (!og || 'og_' + og.o.id !== tab) startOugi(tab);
+      const s = stepOugi();
+      return { ...s, labels: [], mode: 'play', over: false };
+    }
     const sc = LIVE_BG.has(tab) ? swarmScene : SCENES[tab] ? SCENES[tab] : FORM_SCENES[tab] ? FORM_SCENES[tab] : tab === 'ghostroad' || tab === 'ghostcards' ? ghostScene : tab.startsWith('swarm') ? swarmScene : tab.startsWith('turret') ? turretScene : tab.startsWith('guard') ? guardScene : tab.startsWith('body') ? bodyScene : tab === 'ghostforms' ? ghostFormScene : FORM_SCENES[tab] || scene;
     // ボスの登場・撃破の見本：時間でくり返す
     const fx = {};
