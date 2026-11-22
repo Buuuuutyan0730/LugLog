@@ -307,8 +307,8 @@ export const CONFIG = {
     corrode: { per: 0.03, cap: 0.3, kiwamiCap: 0.6 },             // 腐食：毒1つごとの被ダメージ↑／上限／極の上限
     fog: { every: 0.25, life: 1.5, radius: 16, again: 0.5, kiwamiMult: 2, max: 200 }, // 毒霧：分身が霧を残す間隔／残る秒数／広さ／同じ敵に重ね直す間隔／極：時間の倍／霧の数の上限
     pandemic: { every: 12 },                                      // パンデミック：間隔
-    reaper: { chance: 0.03, per: 0.005, refPower: 30, minMul: 0.1, hellReach: 50 }, // 死神：即死の確率、1Lvで +0.5%／この強さの敵の大きさを基準に、大きいほど確率↓（最低で1割）／冥府：道連れの距離
-    execute: { half: 2, low: 4, kiwamiLine: 0.1 },                // 処刑：HP半分以下・2割以下での確率の倍／極：必ず倒れるHPの割合
+    reaper: { chance: 0.03, per: 0.005, hellReach: 50 },        // 死神：即死の確率、1Lvで +0.5%（敵の大きさに関係なく同じ。ボス・中ボスには効かない）／冥府：道連れの距離
+    execute: { per: [0.004, 0.005, 0.006, 0.008, 0.01], max: 10, kiwamiMax: 20, keep: 3, kiwamiKeep: 5 }, // 死の連鎖：即死が起きるたびに即死の確率が上がる（1段ごと、Lvごと）／段の上限／極の上限／途切れるまでの秒数／極
     doom: { every: 10, time: 5, kiwamiCount: 2 },                 // 死の宣告：間隔／倒れるまで／極：印の数
     soulreap: { mult: 2, kiwamiMult: 3 },                         // 魂の収穫：即死で倒した敵のかけらの倍
     scythe: { every: 15, time: 1.2, height: 160, power: 5 },      // 大鎌：間隔／画面を横切る秒数／刃の高さ／威力（分身の攻撃力の平均×倍）

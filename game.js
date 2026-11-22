@@ -1,9 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122172409';
-import { spawnPop, stepParticle } from './pops.js?v=20261122172409';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122172409';
+import { CONFIG } from './config.js?v=20261122173419';
+import { spawnPop, stepParticle } from './pops.js?v=20261122173419';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122173419';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261122173419';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -237,6 +238,14 @@ export function createGame() {
     }
   }
 
+  // 奥義の発動：名前を大きく出し、画面に広がる輪と光で「発動した」とわかるようにする
+  function ougiFx(id, sub, x = s.player.x, y = s.player.y) {
+    s.banner = { text: (SKILL_BY_ID[id] && SKILL_BY_ID[id].name) || id, sub, t: 1.2 };
+    ring(x, y, 10, Math.hypot(s.world.w, s.world.h) * 0.6, 0.6, 'white', 0, 6);
+    ring(x, y, 10, Math.hypot(s.world.w, s.world.h) * 0.35, 0.45, 'player', 0, 3);
+    flash(x, y, 120 * s.zoom, 0.3, 'white');
+    s.shake = Math.max(s.shake, 6);
+  }
   // 広がって消える光の輪
   function ring(x, y, r0, r1, dur, kind, idx = 0, width = 3) {
     s.rings.push({ x, y, r0, r1, life: dur, max: dur, kind, idx, width });
@@ -499,7 +508,7 @@ export function createGame() {
     // 鬼神：一定の間隔で、数秒の無敵
     if (skLv('demon')) {
       if (p.demonT > 0) { p.demonT -= DT; if (p.demonT <= 0) p.demonCd = BS.demon.every; }
-      else { p.demonCd = (p.demonCd == null ? BS.demon.every : p.demonCd) - DT; if (p.demonCd <= 0) { p.demonT = BS.demon.time; skSfx('demon'); ring(p.x, p.y, p.r, p.r * 6, 0.5, 'player', 0, 5); s.shake = Math.max(s.shake, 6); } }
+      else { p.demonCd = (p.demonCd == null ? BS.demon.every : p.demonCd) - DT; if (p.demonCd <= 0) { p.demonT = BS.demon.time; skSfx('demon'); ougiFx('demon', '無敵になって一掃'); ring(p.x, p.y, p.r, p.r * 6, 0.5, 'player', 0, 5); s.shake = Math.max(s.shake, 6); } }
     } else p.demonT = 0;
     p.demon = p.demonT > 0 ? p.demonT : 0;
   }
@@ -569,11 +578,12 @@ export function createGame() {
   }
   // ---------- 罠の道 ----------
   const spikePower = (g) => g.power * SK.caltrop.power * (1 + SK.caltrop.per * (skLv('caltrop') - 1));
-  function placeTrap(x, y, kind, dmg, idx = 0) {
+  // size：光の罠（置き土産）の大きさ。押し出された分身の大きさに合わせる
+  function placeTrap(x, y, kind, dmg, idx = 0, size = 0) {
     s.traps = s.traps || [];
     const life = SK.trap.life * s.st.dur;
     const hits = kind === 'spike' && skLv('barb') ? (s.st.evo.barb ? Infinity : SK.barb.hits[skLv('barb') - 1]) : 1;
-    const tr = { x, y, kind, dmg, idx, life, max: life, hits, rot: Math.random() * Math.PI };
+    const tr = { x, y, kind, dmg, idx, life, max: life, hits, rot: Math.random() * Math.PI, size };
     if (kind === 'mine' && skLv('timebomb')) tr.fuse = SK.timebomb.time;   // 時限爆弾：置いてから時間で爆発
     s.traps.push(tr);
     if (s.traps.length > SK.trap.max) s.traps.shift();
@@ -594,7 +604,7 @@ export function createGame() {
       s.spikebedCd = (s.spikebedCd == null ? SK.spikebed.every : s.spikebedCd) - DT;
       if (s.spikebedCd <= 0) {
         s.spikebedCd = SK.spikebed.every;
-        skSfx('spikebed');
+        skSfx('spikebed'); ougiFx('spikebed', '剣山が降りそそぐ');
         const ref = s.big || s.ghosts[0];
         const dmg = ref ? spikePower(ref) : P.power * s.st.ghostAttack * SK.caltrop.power;
         for (let i = 0; i < SK.spikebed.count; i++) { const x = rand(20, s.world.w - 20), y = rand(20, s.world.h - 20); placeTrap(x, y, 'spike', dmg, ref ? ref.idx : 0); flash(x, y, 8, 0.2, 'white'); }
@@ -619,7 +629,7 @@ export function createGame() {
       tr.life -= DT;
       if (tr.life <= 0 || tr.hits <= 0) continue;
       for (const e of s.enemies) {
-        if (e.hp <= 0 || Math.hypot(e.x - tr.x, e.y - tr.y) >= e.r + reach) continue;
+        if (e.hp <= 0 || Math.hypot(e.x - tr.x, e.y - tr.y) >= e.r + reach + (tr.size || 0)) continue;
         // スロウフィールド（持続時間＋の最大ボーナス）：罠に触れた敵が遅くなる
         if (s.st.slowField) e.trapSlowT = SK.trap.slowTime;
         if ((e.trapHit || 0) > s.time && tr.hits > 1) continue;
@@ -712,7 +722,7 @@ export function createGame() {
       s.skyCd = (s.skyCd == null ? SK.skybolt.every : s.skyCd) - DT;
       if (s.skyCd <= 0) {
         s.skyCd = SK.skybolt.every;
-        skSfx('skybolt');
+        skSfx('skybolt'); ougiFx('skybolt', '天から雷が落ちる');
         s.shake = Math.max(s.shake, 6);
         for (const e of s.enemies) if (e.hp > 0) { bolt(e.x, e.y - 400, e.x, e.y, 0.3); zap(e, avg * SK.skybolt.power); }
       }
@@ -770,7 +780,7 @@ export function createGame() {
       s.iceCd = (s.iceCd == null ? SK.iceage.every : s.iceCd) - DT;
       if (s.iceCd <= 0) {
         s.iceCd = SK.iceage.every;
-        skSfx('iceage');
+        skSfx('iceage'); ougiFx('iceage', '画面中の敵が凍る');
         // 画面が真っ白にならないよう、中心から広がる輪だけで知らせる
         ring(s.world.w / 2, s.world.h / 2, 10, Math.hypot(s.world.w, s.world.h) / 2, 0.5, 'white', 0, 5);
         for (const e of s.enemies) if (e.hp > 0) {
@@ -850,7 +860,7 @@ export function createGame() {
     s.goldrainCd = (s.goldrainCd == null ? SK.goldrain.every : s.goldrainCd) - DT;
     if (s.goldrainCd <= 0) {
       s.goldrainCd = SK.goldrain.every;
-      skSfx('goldrain');
+      skSfx('goldrain'); ougiFx('goldrain', '金の雨が降る');
       const power = bodyAtk() * SK.goldrain.power;
       for (const e of s.enemies) if (e.hp > 0) s.goldDrops.push({ e, x: e.x, y: e.y, t: -rand(0, 0.5), max: SK.goldrain.delay, power });
     }
@@ -921,7 +931,7 @@ export function createGame() {
       s.starCd = (s.starCd == null ? F2.every : s.starCd) - DT;
       if (s.starCd <= 0) {
         s.starCd = F2.every;
-        skSfx('starfall');
+        skSfx('starfall'); ougiFx('starfall', '星が降りそそぐ');
         for (let i = 0; i < F2.count; i++) s.stars.push({ x: rand(20, s.world.w - 20), y: rand(20, s.world.h - 20), t: -rand(0, 0.8), max: F2.delay });
       }
     }
@@ -993,7 +1003,7 @@ export function createGame() {
       s.tbladeCd = (s.tbladeCd == null ? T3.every : s.tbladeCd) - DT;
       if (s.tbladeCd <= 0) {
         s.tbladeCd = T3.every;
-        skSfx('thousandblade');
+        skSfx('thousandblade'); ougiFx('thousandblade', '無数の刃が舞う');
         const p = s.player, power = avgGhostPower() * T3.power, sp = CONFIG.shot.speed;
         for (let i = 0; i < T3.count; i++) {
           const a = (i * Math.PI * 2) / T3.count;
@@ -1019,7 +1029,7 @@ export function createGame() {
       s.motherCd = (s.motherCd == null ? SK.mothership.every : s.motherCd) - DT;
       if (s.motherCd <= 0) {
         s.motherCd = SK.mothership.every;
-        skSfx('mothership');
+        skSfx('mothership'); ougiFx('mothership', '子機が出撃');
         for (let i = 0; i < SK.mothership.count; i++) s.drones.push({ x: p.x, y: p.y - 40 * s.zoom, cd: 0, shotCd: 0, temp: SK.mothership.life });
       }
     }
@@ -1156,17 +1166,25 @@ export function createGame() {
   function reapRoll(e) {
     if (e.boss) return;
     const R2 = SK.reaper;
-    const frac = e.hp / e.maxHp;
-    // 極処刑：HPが少ない敵は必ず倒れる
-    if (skLv('execute') && s.st.evo.execute && frac <= SK.execute.kiwamiLine) { skSfx('execute'); reapWith(e); return; }
-    const ref = radiusOf(R2.refPower) * s.zoom;
-    let chance = (R2.chance + R2.per * (skLv('reaper') - 1)) * clamp((ref / e.r) ** 2, R2.minMul, 1);
-    if (skLv('execute')) chance *= frac <= 0.2 ? SK.execute.low : frac <= 0.5 ? SK.execute.half : 1;
-    if (Math.random() < chance) { if (skLv('execute') && frac <= 0.5) skSfx('execute'); reapWith(e); }
+    // 確率は敵の大きさに関係なく同じ。死の連鎖：続けて即死が起きているほど上がる
+    let chance = R2.chance + R2.per * (skLv('reaper') - 1);
+    const xl = skLv('execute');
+    if (xl) chance += (s.reapChain || 0) * SK.execute.per[xl - 1];
+    if (Math.random() < chance) reapWith(e);
   }
   // 即死させ、冥府なら近くの敵を1体道連れにする
   function reapWith(e) {
     if (!reap(e)) return;
+    // 死の連鎖：即死が起きるたびに1段上がる（しばらく即死が起きないと0に戻る）
+    const xl = skLv('execute');
+    if (xl) {
+      const X = SK.execute, ev = s.st.evo.execute;
+      s.reapChain = Math.min(ev ? X.kiwamiMax : X.max, (s.reapChain || 0) + 1);
+      s.reapChainT = ev ? X.kiwamiKeep : X.keep;
+      if (s.reapChain >= 3) skSfx('execute');
+      const f = s.floats[s.floats.length - 1];
+      if (f && f.text === '即死' && s.reapChain > 1) f.text = `即死 ×${s.reapChain}`;
+    }
     if (s.st.evo.reaper) {
       let best = null, bd = SK.reaper.hellReach * s.zoom;
       for (const o of s.enemies) { if (o === e || o.hp <= 0 || o.boss) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < bd) { bd = d; best = o; } }
@@ -1175,6 +1193,7 @@ export function createGame() {
   }
   function updateReaper() {
     if (!skLv('reaper')) { s.scythe = null; return; }
+    if (s.reapChainT > 0) { s.reapChainT -= DT; if (s.reapChainT <= 0) s.reapChain = 0; }
     // 死の宣告：一番HPが多い敵に印、時間がたつと必ず倒れる
     for (const e of s.enemies) if (e.doomT > 0 && e.hp > 0) { e.doomT -= DT; if (e.doomT <= 0) reapWith(e); }
     if (skLv('doom')) {
@@ -1190,7 +1209,7 @@ export function createGame() {
       s.scytheCd = (s.scytheCd == null ? SK.scythe.every : s.scytheCd) - DT;
       if (s.scytheCd <= 0) {
         s.scytheCd = SK.scythe.every;
-        skSfx('scythe');
+        skSfx('scythe'); ougiFx('scythe', '大鎌が画面を横切る');
         const H = SK.scythe.height * s.zoom;
         s.scythe = { t: 0, y: rand(H / 2, s.world.h - H / 2), h: H, dir: Math.random() < 0.5 ? 1 : -1, power: avgGhostPower() * SK.scythe.power, hit: new Set() };
       }
@@ -1250,8 +1269,8 @@ export function createGame() {
       s.pandemicCd = (s.pandemicCd == null ? SK.pandemic.every : s.pandemicCd) - DT;
       if (s.pandemicCd <= 0) {
         s.pandemicCd = SK.pandemic.every;
-        skSfx('pandemic');
-        for (const e of s.enemies) if (e.poisonN > 0 && e.hp > 0) { e.poisonN *= 2; e.poisonT = SK.poison.time; sparks(e.x, e.y, 'white', 4, 120); }
+        skSfx('pandemic'); ougiFx('pandemic', '毒が一斉に2倍');
+        for (const e of s.enemies) if (e.poisonN > 0 && e.hp > 0) { e.poisonN *= 2; e.poisonT = SK.poison.time; sparks(e.x, e.y, 'white', 8, 160); ring(e.x, e.y, e.r, e.r * 3, 0.4, 'white', 0, 3); }
       }
     }
   }
@@ -1313,7 +1332,7 @@ export function createGame() {
     // 重力崩壊：画面中の敵が真ん中へ
     if (skLv('collapse')) {
       s.collapseCd = (s.collapseCd == null ? SK.collapse.every : s.collapseCd) - DT;
-      if (s.collapseCd <= 0) { skSfx('collapse'); s.collapseCd = SK.collapse.every; s.collapseT = SK.collapse.time; s.shake = Math.max(s.shake, 5); }
+      if (s.collapseCd <= 0) { skSfx('collapse'); ougiFx('collapse', '敵を一点に引きずり込む'); s.collapseCd = SK.collapse.every; s.collapseT = SK.collapse.time; s.shake = Math.max(s.shake, 5); }
       if (s.collapseT > 0) {
         s.collapseT -= DT;
         const cx = s.world.w / 2, cy = s.world.h / 2;
@@ -1656,7 +1675,7 @@ export function createGame() {
   function evictOldest(fx = true) {
     const old = s.ghosts.shift();
     // 置き土産：押し出された分身の場所に、光の罠が残る
-    if (skLv('keepsake')) placeTrap(old.x, old.y, 'light', old.power * SK.keepsake.power * (1 + SK.keepsake.per * (skLv('keepsake') - 1)), old.idx);
+    if (skLv('keepsake')) placeTrap(old.x, old.y, 'light', old.power * SK.keepsake.power * (1 + SK.keepsake.per * (skLv('keepsake') - 1)), old.idx, old.r);
     // 仕込み：押し出された分身の場所に、強い地雷
     if (skLv('mine') && skLv('rig')) skSfx('rig');
     if (skLv('mine') && skLv('rig')) placeTrap(old.x, old.y, 'mine', old.power * SK.rig.power * (s.st.evo.rig ? SK.rig.kiwamiMult : 1), old.idx);
@@ -2106,7 +2125,7 @@ export function createGame() {
       s.heavenT -= DT;
       if (s.heavenT <= 0) {
         s.heavenT = SK.heaven.every;
-        skSfx('heaven');
+        skSfx('heaven'); ougiFx('heaven', '光の柱が降る');
         const w = SK.heaven.width * s.st.area * s.zoom;
         const used = new Set();
         for (let k = 0; k < lv; k++) {
@@ -3002,6 +3021,9 @@ export function createGame() {
     s.big = null;
     s.enemyShots = [];
     s.shots = [];
+    // 地面に残るもの（マキビシ・地雷・光の罠・炎・火の粉・毒霧・引力・疾走の跡など）も、フェーズごとに消す
+    s.traps = []; s.fires = []; s.embers = []; s.firePillars = []; s.fogs = []; s.wells = [];
+    s.cuts = []; s.slashes = []; s.blinks = []; s.stars = []; s.goldDrops = [];
     // 残っていたかけら：全部が本体に吸い寄せられて消える（数には入らない。見た目だけ）
     s.pickups = s.pickups.map((k, i) => ({ ...k, gather: true, gt: 0, gd: Math.min(0.15, i * 0.006), sx: k.x, sy: k.y }));
     s.record.active = false;

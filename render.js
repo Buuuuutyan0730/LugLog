@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122172409';
-import { makeForms } from './forms.js?v=20261122172409';
-import { CONFIG } from './config.js?v=20261122172409';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122173419';
+import { makeForms } from './forms.js?v=20261122173419';
+import { CONFIG } from './config.js?v=20261122173419';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1148,12 +1148,14 @@ export function createRenderer(canvas, view) {
       } else if (tr.kind === 'light') {
         const k = 0.75 + 0.25 * Math.sin(t * 5 + tr.rot);
         glow(col, 12); ctx.fillStyle = ghostColor(tr.idx, 0.35); ctx.strokeStyle = col; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(0, 0, 9 * k, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); noGlow();
-        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, 2.5, 0, Math.PI * 2); ctx.fill();
+        // 大きさは押し出された分身と同じ
+        const R = (tr.size || 9) * k;
+        ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); noGlow();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0, 0, Math.max(2.5, R * 0.25), 0, Math.PI * 2); ctx.fill();
       } else {
-        // マキビシ：4本のとげ（返し針で何度も刺さるものは、ふちが分身の色）
+        // マキビシ：4本のとげ。色は分身に関係なく灰色（返し針で何度も刺さるものは、ふちが明るい）
         ctx.rotate(tr.rot);
-        ctx.fillStyle = '#e8eef8'; ctx.strokeStyle = tr.hits > 1 ? col : '#5a6478'; ctx.lineWidth = 1;
+        ctx.fillStyle = '#a3abb8'; ctx.strokeStyle = tr.hits > 1 ? '#e8eef8' : '#4a5263'; ctx.lineWidth = 1;
         ctx.beginPath();
         for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4, rr = i % 2 ? 1.6 : 5; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); }
         ctx.closePath(); ctx.fill(); ctx.stroke();
