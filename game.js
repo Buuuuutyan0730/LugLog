@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122140933';
-import { spawnPop, stepParticle } from './pops.js?v=20261122140933';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122140933';
+import { CONFIG } from './config.js?v=20261122141118';
+import { spawnPop, stepParticle } from './pops.js?v=20261122141118';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122141118';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2752,7 +2752,8 @@ export function createGame() {
     for (const e of s.enemies) {
       if (s.over || p.inv > 0) break;
       if (!ET[e.kind].damage || e.vanish) continue;   // 漂い：攻撃しない／消えている影
-      if (p.charge != null) continue;     // 突撃中：ぶつかっても無傷
+      // 突撃中でも、ぶつかっただけの敵からはダメージを受ける。無傷なのは、突撃で今まさに吹き飛ばした敵（当てた直後の0.4秒）だけ
+      if (p.charge != null && (e.chargeHit || 0) > s.time) continue;
       if (Math.hypot(e.x - p.x, e.y - p.y) < e.r * 0.8 + playerHitR()) {
         hurtPlayer(T.contactDamage.value * ET[e.kind].damage * Math.sqrt(e.tier), e);
       }
