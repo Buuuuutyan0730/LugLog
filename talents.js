@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261122135310';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122135310';
+import { CONFIG } from './config.js?v=20261122135537';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122135537';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -49,7 +49,7 @@ export const CURSES = [
     bans: ['gspeed', 'drag'], clash: ['gspeed', 'drag', 'brush', 'lonely', 'hourglass', 'trigger'] },
   { id: 'hourglass', name: '死の砂時計', bind: '分身が20秒で消える', reward: '分身の攻撃速度2倍',
     clash: ['lost'] },
-  { id: 'hungry', name: '飢えた手', bind: 'かけらに直接触れないと拾えない', reward: '落ちるかけら2倍',
+  { id: 'hungry', name: '飢えた手', bind: 'かけらを吸い寄せる範囲がとても狭くなる', reward: '落ちるかけら2倍',
     bans: ['magnet'], clash: ['magnet'] },
   { id: 'reaper', name: '死神の契約', bind: 'HPが自然に回復しない', reward: '攻撃に即死の力が宿る' },
   { id: 'trigger', name: '狂った引き金', bind: '分身の弾がでたらめな方向に飛ぶ', reward: '分身が撃つ回数3倍',

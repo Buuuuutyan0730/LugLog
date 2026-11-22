@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122135310';
-import { spawnPop, stepParticle } from './pops.js?v=20261122135310';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122135310';
+import { CONFIG } from './config.js?v=20261122135537';
+import { spawnPop, stepParticle } from './pops.js?v=20261122135537';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122135537';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -139,6 +139,7 @@ export function createGame() {
       shots: [],
       pickups: [],           // かけら
       particles: [],
+      floats: [],            // 浮かぶ文字（即死 など）
       rings: [],             // 広がる光の輪（演出）
       flashes: [],           // 一瞬の光（演出）
 
@@ -209,7 +210,8 @@ export function createGame() {
   const range = () => CONFIG.shot.range * s.zoom;
   // かけらを吸い取る範囲（本体の波紋が広がる大きさと同じ）
   // 飢えた手：吸い寄せない（直接触れたときだけ拾う）
-  const magnetRadius = () => (s.st.curse.hungry ? 0 : s.player.r + SH.magnet * s.st.magnet);
+  // 飢えた手：吸い寄せる範囲がとても狭い（本体の半径の3倍だけ）
+  const magnetRadius = () => (s.st.curse.hungry ? s.player.r * 3 : s.player.r + SH.magnet * s.st.magnet);
 
   // ---------- 小さな部品 ----------
   // kind：'ghost' | 'enemy' | 'player' | 'shard'、idx：分身の番号（色分け用）
@@ -477,7 +479,7 @@ export function createGame() {
     p.stillT = p.moving ? 0 : (p.stillT || 0) + DT;
     p.started = p.moving && wasStill;   // 止まった状態から動き出した瞬間
     if (d > 0.5) p.dir = Math.atan2(dy, dx);
-    p.aura = skLv('aura') ? p.r * BS.aura.radius : 0;
+    p.aura = skLv('aura') ? p.r * BS.aura.radius[Math.min(skLv('aura'), BS.aura.radius.length) - 1] : 0;   // Lvが上がるほど膜が広がる
     p.auraKw = !!(skLv('aura') && s.st.evo.aura);
     p.charge = skLv('charge') && p.moving ? p.dir : null;   // 突撃中（向き）
     // シールド：破れたあと、時間で戻る
@@ -1126,7 +1128,11 @@ export function createGame() {
     damageEnemy(e, e.hp + 1, true);
     e.hp = Math.min(e.hp, 0);
     ring(e.x, e.y, e.r, e.r * 3, 0.3, 'white', 0, 3);
-    sparks(e.x, e.y, 'white', 8, 180);
+    ring(e.x, e.y, e.r * 0.5, e.r * 4.5, 0.45, 'enemy', 0, 5);
+    sparks(e.x, e.y, 'white', 12, 220);
+    flash(e.x, e.y, e.r * 3.5, 0.18, 'white');
+    // 即死だとわかるように、上に「即死」の文字が浮かぶ（多すぎるときは間引く）
+    if (s.floats.length < 12) s.floats.push({ x: e.x, y: e.y - e.r, text: '即死', t: 0.9, max: 0.9 });
     return true;
   }
   function reapRoll(e) {
@@ -3537,6 +3543,7 @@ export function createGame() {
   }
 
   function updateEffects() {
+    if (s.floats && s.floats.length) { for (const f of s.floats) { f.t -= DT; f.y -= 28 * s.zoom * DT; } s.floats = s.floats.filter((f) => f.t > 0); }
     for (const pt of s.particles) stepParticle(pt, DT);
     s.particles = s.particles.filter((pt) => pt.life > 0);
     for (const r of s.rings) r.life -= DT;

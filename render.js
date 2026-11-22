@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122135310';
-import { makeForms } from './forms.js?v=20261122135310';
-import { CONFIG } from './config.js?v=20261122135310';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122135537';
+import { makeForms } from './forms.js?v=20261122135537';
+import { CONFIG } from './config.js?v=20261122135537';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1322,6 +1322,24 @@ export function createRenderer(canvas, view) {
     ctx.restore();
   }
   // 双子をつなぐ赤い糸（片方が倒れると切れる）と、影が作った敵の分身の道筋
+  // 浮かぶ文字（即死 など）：ぽんと大きく出て、上へ流れながら消える
+  function drawFloats(state) {
+    const F = state.floats;
+    if (!F || !F.length) return;
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of F) {
+      const k = 1 - f.t / f.max, pop = k < 0.15 ? 0.6 + (k / 0.15) * 0.6 : 1.2 - Math.min(0.2, (k - 0.15) * 0.4);
+      ctx.globalAlpha = Math.min(1, f.t / (f.max * 0.4));
+      ctx.font = `bold ${Math.round(15 * pop)}px 'DotGothic16', sans-serif`;
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(20, 0, 30, 0.9)';
+      ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = '#e8b8ff'; glow('#c060ff', 10);
+      ctx.fillText(f.text, f.x, f.y);
+      noGlow();
+    }
+    ctx.restore();
+  }
   // ボスの技の予告：赤く光る形。だんだん中が満ちていき、満ちたら技が来る。hot は当たっている最中（明るく）
   function drawWarns(state, t) {
     const W2 = state.warns;
@@ -2318,6 +2336,7 @@ export function createRenderer(canvas, view) {
     drawDashCuts(state, t);
     drawRings(state);
     drawParticles(state);
+    drawFloats(state);
     drawBossDownWorld(state);
     drawTimeStop(state, t);
     drawPlayer(state, t);
