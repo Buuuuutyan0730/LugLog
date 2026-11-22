@@ -1956,15 +1956,6 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 /* 上と下の帯：重たい紺の箱をやめ、暗く薄い帯＋光る細い線に */
 .phasebar { background: linear-gradient(180deg, rgba(8, 10, 26, 0.98), rgba(10, 13, 34, 0.92)); border-bottom: 0; box-shadow: 0 0.4cqw 0 rgba(63, 224, 255, 0.35), 0 0 4cqw rgba(63, 224, 255, 0.12); padding: 1.6cqw 4cqw 1.8cqw; }
 .dock { background: linear-gradient(0deg, rgba(8, 10, 26, 0.98), rgba(10, 13, 34, 0.92)); border-top: 0; box-shadow: 0 -0.4cqw 0 rgba(63, 224, 255, 0.35), 0 0 4cqw rgba(63, 224, 255, 0.12); }
-/* 戦う場所のふち */
-.arena { position: absolute; inset: 1.6cqw; border: 0.4cqw solid rgba(63, 224, 255, 0.22); border-radius: 2cqw; pointer-events: none; z-index: 1;
-  box-shadow: inset 0 0 6cqw rgba(63, 224, 255, 0.08), 0 0 0 60cqw rgba(4, 5, 14, 0.45); }
-.arena .ac { position: absolute; width: 7cqw; height: 7cqw; border: 0 solid var(--cyan); filter: drop-shadow(0 0 1.4cqw rgba(63, 224, 255, 0.9)); animation: arena-corner 2.4s ease-in-out infinite; }
-.arena .tl { left: -0.4cqw; top: -0.4cqw; border-left-width: 0.9cqw; border-top-width: 0.9cqw; border-top-left-radius: 2cqw; }
-.arena .tr { right: -0.4cqw; top: -0.4cqw; border-right-width: 0.9cqw; border-top-width: 0.9cqw; border-top-right-radius: 2cqw; }
-.arena .bl { left: -0.4cqw; bottom: -0.4cqw; border-left-width: 0.9cqw; border-bottom-width: 0.9cqw; border-bottom-left-radius: 2cqw; }
-.arena .br { right: -0.4cqw; bottom: -0.4cqw; border-right-width: 0.9cqw; border-bottom-width: 0.9cqw; border-bottom-right-radius: 2cqw; }
-@keyframes arena-corner { 50% { opacity: 0.55; } }
 #hud { z-index: 2; }
 /* 上の段：スコア・時間は半透明の細い板に。ボタンも小さく */
 .hud-top .box.score, .hud-top .box.clock { background: rgba(8, 10, 26, 0.55); border: 0.4cqw solid rgba(143, 155, 214, 0.35); box-shadow: none; height: 9.5cqw; border-radius: 2cqw; backdrop-filter: blur(2px); }
