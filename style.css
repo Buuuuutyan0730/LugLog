@@ -1979,3 +1979,10 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .hud-top .score-num { font-size: 3.6cqw; }
 .hud-top .box.clock { height: auto; top: 5.2cqw; padding: 1cqw 2.6cqw; border-radius: 99px; background: rgba(8, 10, 26, 0.4); border-color: rgba(143, 155, 214, 0.25); }
 .hud-top .clock-time { font-size: 2.6cqw; color: #c9d0f5; text-shadow: none; letter-spacing: 0.2cqw; }
+/* 上の段（決定）：まんなかに小さく SCORE・大きなスコア・小さく時間を縦に並べる。板はなし */
+.hud-top .box.score { position: absolute; left: 50%; top: 3cqw; transform: translateX(-50%); width: auto; min-width: 30cqw; height: auto; background: none; border: 0; padding: 0; text-align: center; backdrop-filter: none; box-shadow: none; }
+.hud-top .score-label { border: 0; padding: 0; font-size: 1.7cqw; letter-spacing: 0.4cqw; text-align: center; }
+.hud-top .score-num { text-align: center; font-size: 5.2cqw; margin-top: 0.8cqw; text-shadow: 0 0.6cqw 0 var(--ink), 0 0 3cqw rgba(0, 0, 0, 0.8); }
+.hud-top .box.clock { top: 13.4cqw; height: auto; border: 0; background: none; padding: 0; border-radius: 0; backdrop-filter: none; box-shadow: none; }
+.hud-top .clock-time { font-size: 2.5cqw; color: var(--muted); text-shadow: 0 0.4cqw 0 var(--ink); letter-spacing: 0.3cqw; }
+.hud-top .hud-right { margin-left: auto; }
