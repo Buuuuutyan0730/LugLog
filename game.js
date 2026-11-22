@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122150028';
-import { spawnPop, stepParticle } from './pops.js?v=20261122150028';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122150028';
+import { CONFIG } from './config.js?v=20261122150310';
+import { spawnPop, stepParticle } from './pops.js?v=20261122150310';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122150310';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3629,8 +3629,9 @@ export function createGame() {
     updateHp();
     updateRecord(input.held);
     // 時間停止（ボス「時計」）：分身と自分の攻撃は止まる
-    if (s.timeStop > 0) s.timeStop -= DT;
+    // ボスの技の予告：時間を進める（予告が出ていても、分身や自分の攻撃は止めない）
     if (s.warns.length) { for (const w of s.warns) { w.t -= DT; if (w.follow) { w.x = w.follow.x; w.y = w.follow.y; } } s.warns = s.warns.filter((w) => w.t > 0); }
+    if (s.timeStop > 0) s.timeStop -= DT;
     else {
       if (s.volleyCd > 0) s.volleyCd -= DT;
       updateGhosts();
