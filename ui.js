@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122130644';
-import { choiceView, ownedViews } from './talents.js?v=20261122130644';
-import { iconSvg, snapIcons } from './icons.js?v=20261122130644';
+import { ghostColor } from './theme.js?v=20261122131126';
+import { choiceView, ownedViews } from './talents.js?v=20261122131126';
+import { iconSvg, snapIcons } from './icons.js?v=20261122131126';
 
 const $ = (id) => document.getElementById(id);
 
@@ -318,7 +318,7 @@ export function createHud() {
 
 
   // 才能の選択：カードを出し、選ばれたら onPick(番号) を呼ぶ
-  function showSkills(state, onPick) {
+  function showSkills(state, onPick, onDeal) {
     el.skillTitle.textContent = state.firstPick ? 'はじめのスキル' : `PHASE ${state.phase} CLEAR!`;
     el.skillCards.innerHTML = '';
     state.choices.forEach((ch, i) => {
@@ -333,7 +333,19 @@ export function createHud() {
     el.skill.setAttribute('aria-hidden', 'false');
     fitLines(el.skillCards);
     snapIcons(el.skillCards);
+    // カードは1枚ずつ「パン、パン、パン」と出す。全部出そろうまで押せない（うっかり押さないように）
+    const cards = [...el.skillCards.children];
+    el.skillCards.classList.add('dealing');
+    cards.forEach((c, i) => {
+      c.classList.add('deal');
+      c.style.animationDelay = `${DEAL_FIRST + i * DEAL_GAP}s`;
+      setTimeout(() => onDeal && onDeal(i), (DEAL_FIRST + i * DEAL_GAP) * 1000);
+    });
+    clearTimeout(dealTimer);
+    dealTimer = setTimeout(() => el.skillCards.classList.remove('dealing'), (DEAL_FIRST + cards.length * DEAL_GAP + 0.15) * 1000);
   }
+  const DEAL_FIRST = 0.12, DEAL_GAP = 0.15;
+  let dealTimer = 0;
 
   function hideSkills() {
     el.skill.classList.remove('show');
