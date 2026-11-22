@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122170923';
-import { choiceView, ownedViews } from './talents.js?v=20261122170923';
-import { iconSvg, snapIcons } from './icons.js?v=20261122170923';
+import { ghostColor } from './theme.js?v=20261122172409';
+import { choiceView, ownedViews } from './talents.js?v=20261122172409';
+import { iconSvg, snapIcons } from './icons.js?v=20261122172409';
 
 const $ = (id) => document.getElementById(id);
 
@@ -101,7 +101,7 @@ export function createHud() {
     if (state.mode === 'ready' && el.hintPhase) setText(el.hintPhase, `PHASE ${state.phase}`);
     // 本体のすぐ上（まんなか）に出す。本体の位置は遊ぶ範囲の中の割合で決める
     if (state.mode === 'ready' && state.player && state.world) setStyle(el.hint, 'top', `calc(${(state.player.y / state.world.h) * 100}% - 25cqw)`);
-    setText(el.ownedCount, String(Object.keys(state.owned).length + Object.keys(state.skills).length + state.curses.length));  // 取った才能の数
+    setText(el.ownedCount, String(Object.values(state.owned).reduce((n, o) => n + (o.cycles || 0) + (o.lv > 0 || !o.cycles ? 1 : 0), 0) + Object.keys(state.skills).length + state.curses.length));  // 取った才能の数
     setText(el.time, fmtTime(state.time));
     setText(el.phase, `PHASE ${state.phase}`);
     // ボスのフェーズは、かけらではなくボスを倒すとクリア

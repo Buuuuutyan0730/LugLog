@@ -1,11 +1,11 @@
 // 才能の定義と、カードの抽選。
-//   ブースト（数値が上がる）11個・カース（縛りと引き換えに強くなる）11個・スキル（道ごとに足していく）。
+//   ブースト（数値が上がる）10個・カース（縛りと引き換えに強くなる）11個・スキル（道ごとに足していく）。
 //   取ったブーストは state.owned に { lv, cycles } で持つ（cycles＝「繰り返し」でLv5を超えた回数）。
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261122170923';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122170923';
+import { CONFIG } from './config.js?v=20261122172409';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122172409';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -20,10 +20,9 @@ export const BOOSTS = [
     desc: '残るものの時間 +15%', bonus: 'スロウフィールド：残るものに触れた敵が遅くなる',
     // 残るものを出すスキル（罠の道）を持っているときだけ出る
     when: (s) => hasLingering(s) },
-  { id: 'budget', name: '軌跡の総量＋', icon: 'budget', per: 0.15, repeat: true,
-    desc: '置いておける軌跡 +15%', bonus: 'ラストスタンド：押し出された分身が、少しの間戦い続ける' },
-  { id: 'drag', name: '軌跡の長さ＋', icon: 'drag', per: 0.12,
-    desc: '1回で描ける長さ +12%', bonus: 'フルチャージ：上限まで描いた分身が強くなる' },
+  // 軌跡＋：前の「軌跡の総量＋」と「軌跡の長さ＋」を1つにまとめたもの
+  { id: 'budget', name: '軌跡＋', icon: 'budget', per: 0.15, repeat: true,
+    desc: '置いておける軌跡と、1回で描ける長さ +15%', bonus: 'フルチャージ：上限まで描いた分身が強くなる' },
   { id: 'gspeed', name: '分身の速さ＋', icon: 'gspeed', per: 0.13,
     desc: '分身の動く速さ +13%', bonus: 'ターンバースト：分身が折り返すときに衝撃波を出す' },
   { id: 'hp', name: 'HP＋', icon: 'hp', per: 0.20, repeat: true,
@@ -33,7 +32,9 @@ export const BOOSTS = [
   { id: 'shard', name: 'かけら＋', icon: 'shard', per: 0.10,
     desc: '敵が落とすかけら +10%', bonus: 'ゴールドラッシュ：大きな敵が金のかけらを落とす' },
   { id: 'limit', name: '限界突破', icon: 'limit', per: 0.05, repeat: true,
-    desc: '攻撃力・攻撃速度・最大HP・軌跡の総量 +5%' },
+    desc: '攻撃力・攻撃速度・最大HP・軌跡 +5%',
+    // ほかのブーストのどれかがLv5になってから出る（最初からは出さない）
+    when: (s) => BOOSTS.some((o) => o.id !== 'limit' && completionsOf(s, o.id) > 0) },
 ];
 export const BOOST_MAX = 5;
 
@@ -46,7 +47,7 @@ export const CURSES = [
   { id: 'lonely', name: '孤独な王', bind: '分身が1体のみになる', reward: '軌跡を全部1体に使え、攻撃力 +50%',
     clash: ['lost'] },
   { id: 'lost', name: '失われた影', bind: '軌跡は描けるが、分身にならない', reward: '本体が体当たりで戦え、最大HP2倍',
-    bans: ['gspeed', 'drag'], clash: ['gspeed', 'drag', 'brush', 'lonely', 'hourglass', 'trigger'] },
+    bans: ['gspeed', 'budget'], clash: ['gspeed', 'budget', 'brush', 'lonely', 'hourglass', 'trigger'] },
   { id: 'hourglass', name: '死の砂時計', bind: '分身が20秒で消える', reward: '分身の攻撃速度2倍',
     clash: ['lost'] },
   { id: 'hungry', name: '飢えた手', bind: 'かけらを吸い寄せる範囲がとても狭くなる', reward: '落ちるかけら5倍',
@@ -295,12 +296,10 @@ export function ownedViews(s) {
   for (const b of BOOSTS) {
     const o = s.owned[b.id];
     if (!o) continue;
-    out.push({
-      kind: 'boost', road: '共通', color: 'boost', icon: b.icon, name: b.name,
-      lv: o.lv, max: BOOST_MAX, desc: b.desc,
-      bonus: o.lv >= BOOST_MAX || o.cycles > 0 ? b.bonus : '',
-      cycles: o.cycles,
-    });
+    // Lv5を超えて取り直した分は、Lv5になった1枚ずつと、今育てている1枚を別々に並べる
+    const one = (lv, bonus) => ({ kind: 'boost', road: '共通', color: 'boost', icon: b.icon, name: b.name, lv, max: BOOST_MAX, desc: b.desc, bonus: bonus ? b.bonus : '', cycles: 0 });
+    for (let i = 0; i < (o.cycles || 0); i++) out.push(one(BOOST_MAX, true));
+    if (o.lv > 0 || !o.cycles) out.push(one(o.lv, o.lv >= BOOST_MAX));
   }
   for (const k of SKILL_LIST) {
     const o = s.skills[k.id];

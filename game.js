@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122170923';
-import { spawnPop, stepParticle } from './pops.js?v=20261122170923';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122170923';
+import { CONFIG } from './config.js?v=20261122172409';
+import { spawnPop, stepParticle } from './pops.js?v=20261122172409';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122172409';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -174,7 +174,7 @@ export function createGame() {
       dur: up('dur'),
       slowField: completionsOf(s, 'dur') > 0,
       budget: up('budget') * lim,
-      drag: up('drag'),
+      drag: up('budget'),   // 軌跡＋：1回で描ける長さも同じだけ伸びる
       ghostSpeed: up('gspeed'),
       maxHp: Math.round(P.maxHp * up('hp') * lim * (has('doom') ? 0.5 : 1) * (has('lost') ? 2 : 1) * (has('chain') ? 2 : 1)),
       magnet: up('magnet'),
@@ -183,8 +183,8 @@ export function createGame() {
       crit: completionsOf(s, 'atk'),
       combo: completionsOf(s, 'rate'),
       shockwave: completionsOf(s, 'area') > 0,
-      lastStand: completionsOf(s, 'budget') > 0,
-      fullCharge: completionsOf(s, 'drag') > 0,
+      lastStand: false,   // ラストスタンドは、軌跡のブーストを1つにまとめたときになくした
+      fullCharge: completionsOf(s, 'budget') > 0,
       turnBurst: completionsOf(s, 'gspeed') > 0,
       undying: completionsOf(s, 'hp'),
       blackHole: completionsOf(s, 'magnet') > 0,
@@ -2354,13 +2354,17 @@ export function createGame() {
     for (const [k, t] of types) { roll -= t.weight; if (roll <= 0) { kind = k; break; } }
     const tier = rollTier();
     // 群れは、固まって出る全員の体力の合計で数える
-    return { kind, tier, hp: ET[kind].hp * tier * (ET[kind].group || 1) };
+    const scale = hpScaleOf(s.phase);
+    return { kind, tier, scale, hp: ET[kind].hp * tier * (ET[kind].group || 1) * scale };
   }
 
   function spawnEnemy(next, elite = false) {
     const t = ET[next.kind];
     let one = next.hp / (t.group || 1);   // 1体の体力
-    let r = radiusOf(one) * (t.sizeMul || 1);
+    // 大きさは、体力の倍率（後半の伸び）をかける前の体力で決める（後半でも見た目の大きさは変わらない）
+    let sc = next.scale;
+    if (sc == null) { sc = hpScaleOf(s.phase); one *= sc; }
+    let r = radiusOf(one / sc) * (t.sizeMul || 1);
     // 中ボス：1体だけ、体力が多く、少し大きい（大きさは今まで通り）。ふつうの敵だけ enemySize 倍
     if (elite) { r *= CONFIG.elite.size; one *= CONFIG.elite.hp; } else r *= CONFIG.enemySize;
     const W = s.world.w, H = s.world.h;
@@ -2404,7 +2408,7 @@ export function createGame() {
     for (let i = 0; i < 20 && !next; i++) { const c = pickNextEnemy(); if (!EL.skip.includes(c.kind)) next = c; }
     if (!next) next = { kind: 'chaser', tier: rollTier(), hp: ET.chaser.hp };
     const e = spawnEnemy(next, true);
-    e.burstOf = { kind: next.kind, tier: next.tier, hp: next.hp / (ET[next.kind].group || 1) };
+    e.burstOf = { kind: next.kind, tier: next.tier, hp: next.hp / (ET[next.kind].group || 1), scale: next.scale };
   }
   // 中ボスが倒れたとき：同じ種類の小さい敵がはじけ出る
   function eliteBurst(e) {
@@ -2412,7 +2416,7 @@ export function createGame() {
     const EL = CONFIG.elite, B0 = e.burstOf;
     const n = Math.round(rand(EL.burst[0], EL.burst[1]));
     for (let i = 0; i < n; i++) {
-      spawnEnemy({ kind: B0.kind, tier: B0.tier, hp: B0.hp * (ET[B0.kind].group || 1) });
+      spawnEnemy({ kind: B0.kind, tier: B0.tier, hp: B0.hp * (ET[B0.kind].group || 1), scale: B0.scale });
       // 群れの種類でも1体ずつ出す（spawnEnemy が足した分を、1体だけ残す）
       const add = s.enemies.splice(s.enemies.length - (ET[B0.kind].group || 1));
       const one = add[0];
@@ -2658,7 +2662,13 @@ export function createGame() {
     let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
     for (const [, t] of types) { const g = t.group || 1; hpPer += (t.weight / W) * t.hp * g * tierAvg; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * tierAvg; }
     const rate = PH.hpRateBase * growthOf(phase);
-    return Math.max(1, Math.round((rate * PH.needSec / hpPer) * shPer * PH.needRatio));
+    return Math.max(1, Math.round((rate * PH.needSec / (hpPer * hpScaleOf(phase))) * shPer * PH.needRatio));
+  }
+  // 1体ずつの体力の倍率：フェーズ countFrom からは、数の伸びを countGrowth に抑えて、残りを体力にまわす
+  function hpScaleOf(phase) {
+    const from = PH.countFrom;
+    if (phase < from) return 1;
+    return Math.max(1, growthOf(phase) / (growthOf(from - 1) * PH.countGrowth ** (phase - from + 1)));
   }
   // フェーズ1からの敵の勢いの倍率。1フェーズ進むごとに、その時期の倍率を掛けていく
   function growthOf(phase) {

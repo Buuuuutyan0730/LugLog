@@ -100,6 +100,8 @@ export const CONFIG = {
       { until: 30, rate: 1.16 },
       { until: Infinity, rate: 1.2 },
     ],
+    // 敵の数の伸び：フェーズ11からは、数はこの倍率までしか増やさず、残りは1体ずつの体力で伸ばす（多すぎて逃げ回るだけになるため）
+    countFrom: 11, countGrowth: 1.03,
     zoomEvery: 5,          // 何フェーズごとにステージが広がるか
     zoomFactor: 1.25,      // 1回で広がる倍率
     clearBonus: 100,       // フェーズクリアのスコア（× フェーズ数）
