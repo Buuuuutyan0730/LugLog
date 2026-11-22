@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122124747';
-import { spawnPop, stepParticle } from './pops.js?v=20261122124747';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122124747';
+import { CONFIG } from './config.js?v=20261122125031';
+import { spawnPop, stepParticle } from './pops.js?v=20261122125031';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122125031';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2336,12 +2336,13 @@ export function createGame() {
     seeKind(next.kind);
     const n = elite ? 1 : t.group || 1;
     const spread = (t.spread || 0) * s.zoom;
+    const pack = n > 1 ? { left: n } : null;   // 群れ：同じ固まりの残りの数（全部倒すと、かけらをまとめて落とす）
     for (let i = 0; i < n; i++) {
       const a = rand(0, Math.PI * 2), d = n > 1 ? rand(0, spread) : 0;
       const ex = x + Math.cos(a) * d, ey = y + Math.sin(a) * d;
       const wx = rand(0.15, 0.85) * W, wy = rand(0.15, 0.85) * H;   // 漂い：最初に向かう場所（ステージの中）
       s.enemies.push({
-        kind: next.kind, tier: next.tier, x: ex, y: ey, r, hp: one, maxHp: one,
+        kind: next.kind, tier: next.tier, pack, x: ex, y: ey, r, hp: one, maxHp: one,
         vx: 0, vy: 0, ang: Math.atan2(wy - ey, wx - ex), flash: 0,
         speedMul: rand(0.85, 1.15) / Math.pow(next.tier, 0.25), // 大きいほど少し遅い
         phase: 'move', timer: rand(0.5, 1.5) * (t.fireInterval || t.wander?.[0] || 1),
@@ -2609,7 +2610,7 @@ export function createGame() {
     const tierAvg = 4 * p4 + 2 * p2 + 1 * (1 - p4 - p2);
     const W = types.reduce((v, [, t]) => v + t.weight, 0);
     let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
-    for (const [, t] of types) { const g = t.group || 1; hpPer += (t.weight / W) * t.hp * g * tierAvg; shPer += (t.weight / W) * (t.shards || 1) * g * tierAvg; }
+    for (const [, t] of types) { const g = t.group || 1; hpPer += (t.weight / W) * t.hp * g * tierAvg; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * tierAvg; }
     const rate = PH.hpRateBase * growthOf(phase);
     return Math.max(1, Math.round((rate * PH.needSec / hpPer) * shPer * PH.needRatio));
   }
@@ -2815,7 +2816,9 @@ export function createGame() {
   function dropShards(e) {
     // かけら＋：割合で増やす。端数は確率で1個にする（例：1.3個 → 30%で2個）
     // 中ボス：同じ種類の何体分か（体力の割合ではなく決めた数）
-    const per = (ET[e.kind] && ET[e.kind].shards) || 1;   // 種類ごとに決まった数（大きい敵はその倍）
+    // 群れ：1匹ずつは落とさず、固まりを全部倒したときに packShards 個（大きい群れはその倍）
+    if (e.pack && !e.elite) { e.pack.left--; if (e.pack.left > 0) return; }
+    const per = e.pack && !e.elite ? ET[e.kind].packShards || 3 : (ET[e.kind] && ET[e.kind].shards) || 1;   // 種類ごとに決まった数（大きい敵はその倍）
     const exact = (e.elite && e.burstOf ? per * (e.burstOf.tier || 1) * CONFIG.elite.shards : per * (e.tier || 1)) * s.st.shard;
     const n = Math.floor(exact) + (Math.random() < exact % 1 ? 1 : 0);
     const drop = (worth) => {

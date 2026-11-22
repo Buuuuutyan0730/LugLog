@@ -122,7 +122,7 @@ export const CONFIG = {
     chaser:  { name: '追跡', shards: 1, hp: 20, sizeMul: 1.25, speed: 70, damage: 1.0,  unlockPhase: 1, weight: 12 },
     shooter: { name: '射撃', shards: 2, hp: 30, sizeMul: 1.25, speed: 55, damage: 0.75, unlockPhase: 3, weight: 2,
                keepDistance: 170, fireInterval: 2.4, windup: 0.4 },
-    swarm:   { name: '群れ', shards: 1, hp: 4,  speed: 85, damage: 0.4,  unlockPhase: 6, weight: 2,
+    swarm:   { name: '群れ', shards: 1, packShards: 3, hp: 4,  speed: 85, damage: 0.4,  unlockPhase: 6, weight: 2,
                group: 10, spread: 26, sizeMul: 1.4 },          // 1回に固まって出る数と、散らばる広さ。sizeMul：見た目と当たりの大きさの倍率（ほかの敵も同じ）
     shield:  { name: '盾持ち', shards: 2, hp: 40, speed: 45, damage: 1.0, unlockPhase: 16, weight: 2,
                shield: 1.0, guard: 60 },                       // 盾の耐久（体力に対する割合）／防げる向き（正面から左右に何度まで）
