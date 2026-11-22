@@ -1,17 +1,26 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122160308';
-import { snapIcons } from './icons.js?v=20261122160308';
-import { writeSave } from './save.js?v=20261122160308';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122160308';
-import { playSound } from './audio.js?v=20261122160308';
-import { createGachaFx } from './gachafx.js?v=20261122160308';
-import { titleOf } from './titles.js?v=20261122160308';
-import { frameOf } from './frames.js?v=20261122160308';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122160308';
-import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122160308';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122160308';
-import { GACHA_POOL } from './skins.js?v=20261122160308';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122160634';
+import { snapIcons } from './icons.js?v=20261122160634';
+import { writeSave } from './save.js?v=20261122160634';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122160634';
+import { playSound } from './audio.js?v=20261122160634';
+import { createGachaFx } from './gachafx.js?v=20261122160634';
+import { titleOf } from './titles.js?v=20261122160634';
+import { frameOf } from './frames.js?v=20261122160634';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122160634';
+import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122160634';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122160634';
+import { GACHA_POOL } from './skins.js?v=20261122160634';
+
+// 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
+const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;
+async function isDevKey(v) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('luglog-dev:' + v));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('') === DEV_HASH;
+  } catch { return false; }
+}
 
 export function createMenus(save, hooks) {
   const stage = document.getElementById('stage');
@@ -88,6 +97,11 @@ export function createMenus(save, hooks) {
     render();
   }
 
+  function finishName(v) {
+    const first = !save.name;
+    save.name = v; writeSave(save); sync();
+    if (first) home(); else back();
+  }
   function doAct(a) {
     const [cmd, arg, arg2] = a.split(':');
     switch (cmd) {
@@ -180,9 +194,15 @@ export function createMenus(save, hooks) {
       case 'name-ok': {
         const v = (st.draft ?? '').trim();
         if (!v || [...v].length > 10) { st.err = '1〜10文字で入れてください'; render(); break; }
-        const first = !save.name;
-        save.name = v; writeSave(save); sync();
-        if (first) home(); else back();
+        // 開発者の合言葉：名前としては使わず、この端末を開発者にする（調整パネルが出る）
+        if (!save.dev && v.length === DEV_LEN) {
+          isDevKey(v).then((ok) => {
+            if (ok) { save.dev = true; writeSave(save); hooks.devChanged?.(); st.draft = ''; st.err = null; st.note = '開発者モードになりました。名前を入れてください'; render(); }
+            else finishName(v);
+          });
+          break;
+        }
+        finishName(v);
         break;
       }
       case 'news': { const n = Math.max(0, NEWS.length - (save.newsRead || 0)); save.newsRead = NEWS.length; writeSave(save); open('s_news', { newsNew: n }); break; }

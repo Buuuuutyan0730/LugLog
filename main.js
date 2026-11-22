@@ -1,26 +1,26 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261122160308';
-import { createGame, DT } from './game.js?v=20261122160308';
-import { applyForms } from './talents.js?v=20261122160308';
-import { createRenderer } from './render.js?v=20261122160308';
-import { createHud } from './ui.js?v=20261122160308';
-import { createInput } from './input.js?v=20261122160308';
-import { setupDebugPanel } from './debug.js?v=20261122160308';
-import { createPreview } from './preview.js?v=20261122160308';
-import { createMenus } from './menus.js?v=20261122160308';
-import { createDemo } from './demo.js?v=20261122160308';
-import { loadSave, writeSave, recordRun } from './save.js?v=20261122160308';
-import { ensureDaily, addRun } from './missions.js?v=20261122160308';
-import { submitScore } from './online.js?v=20261122160308';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122160308';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122160308';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122160308';
-import { setEquipped } from './skinshot.js?v=20261122160308';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122160308';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122160308';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122160308';
+import { CONFIG } from './config.js?v=20261122160634';
+import { createGame, DT } from './game.js?v=20261122160634';
+import { applyForms } from './talents.js?v=20261122160634';
+import { createRenderer } from './render.js?v=20261122160634';
+import { createHud } from './ui.js?v=20261122160634';
+import { createInput } from './input.js?v=20261122160634';
+import { setupDebugPanel } from './debug.js?v=20261122160634';
+import { createPreview } from './preview.js?v=20261122160634';
+import { createMenus } from './menus.js?v=20261122160634';
+import { createDemo } from './demo.js?v=20261122160634';
+import { loadSave, writeSave, recordRun } from './save.js?v=20261122160634';
+import { ensureDaily, addRun } from './missions.js?v=20261122160634';
+import { submitScore } from './online.js?v=20261122160634';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122160634';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122160634';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122160634';
+import { setEquipped } from './skinshot.js?v=20261122160634';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122160634';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122160634';
+import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122160634';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -108,8 +108,12 @@ const menus = createMenus(save, {
   applySettings,
   applySkin,
   pauseInfo: () => ({ phase: game.state.phase, time: game.state.time }),
+  devChanged: showDevButton,
 });
 
+// 調整パネルのボタンは、開発者の端末だけに出す（名前登録で合言葉を入れると開発者になる）
+function showDevButton() { document.getElementById('open-debug').style.display = save.dev ? '' : 'none'; }
+showDevButton();
 setupDebugPanel(CONFIG, {
   onChange() {},
   onOpen() { pausedByDebug = true; },
