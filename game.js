@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122132737';
-import { spawnPop, stepParticle } from './pops.js?v=20261122132737';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122132737';
+import { CONFIG } from './config.js?v=20261122133057';
+import { spawnPop, stepParticle } from './pops.js?v=20261122133057';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122133057';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2295,7 +2295,19 @@ export function createGame() {
   // ---------- 敵 ----------
   function unlockedTypes() {
     const all = X.enemyPlan.value === 'all';
-    return Object.entries(ET).filter(([, t]) => t.weight > 0 && (all || s.phase >= t.unlockPhase));
+    if (all) return Object.entries(ET).filter(([, t]) => t.weight > 0);
+    return mixAt(s.phase);
+  }
+  // そのフェーズの敵の割合（CONFIG.enemyMix）を、[種類, {…設定, weight: 割合}] の並びにする
+  function mixAt(phase) {
+    const M = CONFIG.enemyMix.filter((m) => phase >= m.from).pop();
+    const out = [];
+    for (const [k, v] of Object.entries(M.fixed)) if (ET[k] && phase >= ET[k].unlockPhase) out.push([k, { ...ET[k], weight: v }]);
+    if (M.rest) {
+      const others = Object.entries(ET).filter(([k, t]) => t.weight > 0 && !(k in M.fixed) && phase >= t.unlockPhase);
+      for (const [k, t] of others) out.push([k, { ...t, weight: M.rest / others.length }]);
+    }
+    return out;
   }
 
   function rollTier() {
@@ -2610,7 +2622,7 @@ export function createGame() {
     return v;
   }
   function needRaw(phase) {
-    const types = Object.entries(ET).filter(([, t]) => t.unlockPhase <= phase && t.weight > 0);
+    const types = mixAt(phase);
     const n = phase;
     const p4 = clamp((n - TIERS.x4.from + 1) * TIERS.x4.perPhase, 0, TIERS.x4.max);
     const p2 = clamp((n - TIERS.x2.from + 1) * TIERS.x2.perPhase, 0, TIERS.x2.max);
