@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122143515';
-import { spawnPop, stepParticle } from './pops.js?v=20261122143515';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122143515';
+import { CONFIG } from './config.js?v=20261122150028';
+import { spawnPop, stepParticle } from './pops.js?v=20261122150028';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122150028';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -177,7 +177,7 @@ export function createGame() {
       ghostSpeed: up('gspeed'),
       maxHp: Math.round(P.maxHp * up('hp') * lim * (has('doom') ? 0.5 : 1) * (has('lost') ? 2 : 1) * (has('chain') ? 2 : 1)),
       magnet: up('magnet'),
-      shard: up('shard') * (has('hungry') ? 2 : 1),
+      shard: up('shard') * (has('hungry') ? 5 : 1),
       // 最大ボーナス（数字は「Lv5に達した回数」。0なら無し）
       crit: completionsOf(s, 'atk'),
       combo: completionsOf(s, 'rate'),

@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122143515';
-import { snapIcons } from './icons.js?v=20261122143515';
-import { writeSave } from './save.js?v=20261122143515';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122143515';
-import { playSound } from './audio.js?v=20261122143515';
-import { createGachaFx } from './gachafx.js?v=20261122143515';
-import { titleOf } from './titles.js?v=20261122143515';
-import { frameOf } from './frames.js?v=20261122143515';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122143515';
-import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122143515';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122143515';
-import { GACHA_POOL } from './skins.js?v=20261122143515';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto } from './screens.js?v=20261122150028';
+import { snapIcons } from './icons.js?v=20261122150028';
+import { writeSave } from './save.js?v=20261122150028';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261122150028';
+import { playSound } from './audio.js?v=20261122150028';
+import { createGachaFx } from './gachafx.js?v=20261122150028';
+import { titleOf } from './titles.js?v=20261122150028';
+import { frameOf } from './frames.js?v=20261122150028';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261122150028';
+import { loadRanking, syncProfile, weekLabel } from './online.js?v=20261122150028';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122150028';
+import { GACHA_POOL } from './skins.js?v=20261122150028';
 
 export function createMenus(save, hooks) {
   const stage = document.getElementById('stage');
