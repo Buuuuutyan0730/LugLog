@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122163815';
-import { makeForms } from './forms.js?v=20261122163815';
-import { CONFIG } from './config.js?v=20261122163815';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122170923';
+import { makeForms } from './forms.js?v=20261122170923';
+import { CONFIG } from './config.js?v=20261122170923';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -76,6 +76,9 @@ export function createRenderer(canvas, view) {
 
   const glow = (color, blur) => { ctx.shadowColor = color; ctx.shadowBlur = blur * PREFS.glow; };
   const noGlow = () => { ctx.shadowBlur = 0; };
+  // 設定の「光の強さ」（ひかえめ 0.4／ふつう 1／つよい 1.6）を、ぼかし以外の光（輪・粒・フラッシュ）にも効かせる
+  const glowAlpha = () => Math.min(1, 0.45 + 0.55 * PREFS.glow);   // ひかえめ 0.67／ふつう 1／つよい 1
+  const glowWidth = () => 0.6 + 0.4 * PREFS.glow;                  // ひかえめ 0.76／ふつう 1／つよい 1.24
 
   function polyline(pts, every = 1, start = 0) {
     if (!pts || pts.length - start < 2) return false;
@@ -733,8 +736,8 @@ export function createRenderer(canvas, view) {
     };
     // 弾がとても多いときは、下の光を省く（分身が多いと、弾だけで描く量が倍になる）
     if (PREFS.glow > 0 && state.shots.length < 120) {
-      ctx.globalAlpha = 0.28 * Math.min(1, PREFS.glow);
-      for (const g of groups.values()) { ctx.strokeStyle = g.halo; ctx.lineWidth = g.w * 2 + 5; path(g); ctx.stroke(); }
+      ctx.globalAlpha = Math.min(0.5, 0.28 * PREFS.glow);
+      for (const g of groups.values()) { ctx.strokeStyle = g.halo; ctx.lineWidth = g.w * 2 + 5 * PREFS.glow; path(g); ctx.stroke(); }
       ctx.globalAlpha = 1;
     }
     for (const g of groups.values()) { ctx.strokeStyle = g.c; ctx.lineWidth = g.w * 2; path(g); ctx.stroke(); }
@@ -1704,7 +1707,7 @@ export function createRenderer(canvas, view) {
     for (const pt of state.particles) {
       if (pt.delay > 0) continue;
       const a = Math.max(0, pt.life / pt.max);
-      ctx.globalAlpha = a;
+      ctx.globalAlpha = a * glowAlpha();
       const col = pt.col || particleColor(pt);
       if (pt.shape) { drawShapedParticle(pt, col, a); continue; }
       if (pt.streak) {
@@ -1755,9 +1758,9 @@ export function createRenderer(canvas, view) {
     for (const r of state.rings) {
       const k = 1 - r.life / r.max;              // 0→1
       const ease = 1 - (1 - k) * (1 - k);        // はじめ速く、だんだんゆっくり
-      ctx.globalAlpha = 1 - k;
+      ctx.globalAlpha = (1 - k) * glowAlpha();
       ctx.strokeStyle = particleColor(r);
-      ctx.lineWidth = r.width * (1 - k * 0.6);
+      ctx.lineWidth = r.width * (1 - k * 0.6) * glowWidth();
       ctx.beginPath();
       ctx.arc(r.x, r.y, r.r0 + (r.r1 - r.r0) * ease, 0, Math.PI * 2);
       ctx.stroke();
@@ -1765,7 +1768,7 @@ export function createRenderer(canvas, view) {
     for (const f of state.flashes) {
       const k = f.life / f.max;
       const g = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
-      g.addColorStop(0, particleColor(f, 0.9 * k));
+      g.addColorStop(0, particleColor(f, Math.min(1, 0.9 * k * PREFS.glow)));
       g.addColorStop(1, particleColor(f, 0));
       ctx.globalAlpha = 1;
       ctx.fillStyle = g;
