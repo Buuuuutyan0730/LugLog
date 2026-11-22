@@ -1951,3 +1951,35 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
   background: linear-gradient(180deg, #ff6b7f 0%, #e23a52 60%, #b8233c 100%);
   box-shadow: 0 1.2cqw 0 var(--ink), inset 0 0.6cqw 0 rgba(255, 255, 255, 0.25);
 }
+
+/* ===== バトル画面：戦う場所らしく（ホームと見た目を分ける） ===== */
+/* 上と下の帯：重たい紺の箱をやめ、暗く薄い帯＋光る細い線に */
+.phasebar { background: linear-gradient(180deg, rgba(8, 10, 26, 0.98), rgba(10, 13, 34, 0.92)); border-bottom: 0; box-shadow: 0 0.4cqw 0 rgba(63, 224, 255, 0.35), 0 0 4cqw rgba(63, 224, 255, 0.12); padding: 1.6cqw 4cqw 1.8cqw; }
+.dock { background: linear-gradient(0deg, rgba(8, 10, 26, 0.98), rgba(10, 13, 34, 0.92)); border-top: 0; box-shadow: 0 -0.4cqw 0 rgba(63, 224, 255, 0.35), 0 0 4cqw rgba(63, 224, 255, 0.12); }
+/* 戦う場所のふち */
+.arena { position: absolute; inset: 1.6cqw; border: 0.4cqw solid rgba(63, 224, 255, 0.22); border-radius: 2cqw; pointer-events: none; z-index: 1;
+  box-shadow: inset 0 0 6cqw rgba(63, 224, 255, 0.08), 0 0 0 60cqw rgba(4, 5, 14, 0.45); }
+.arena .ac { position: absolute; width: 7cqw; height: 7cqw; border: 0 solid var(--cyan); filter: drop-shadow(0 0 1.4cqw rgba(63, 224, 255, 0.9)); animation: arena-corner 2.4s ease-in-out infinite; }
+.arena .tl { left: -0.4cqw; top: -0.4cqw; border-left-width: 0.9cqw; border-top-width: 0.9cqw; border-top-left-radius: 2cqw; }
+.arena .tr { right: -0.4cqw; top: -0.4cqw; border-right-width: 0.9cqw; border-top-width: 0.9cqw; border-top-right-radius: 2cqw; }
+.arena .bl { left: -0.4cqw; bottom: -0.4cqw; border-left-width: 0.9cqw; border-bottom-width: 0.9cqw; border-bottom-left-radius: 2cqw; }
+.arena .br { right: -0.4cqw; bottom: -0.4cqw; border-right-width: 0.9cqw; border-bottom-width: 0.9cqw; border-bottom-right-radius: 2cqw; }
+@keyframes arena-corner { 50% { opacity: 0.55; } }
+#hud { z-index: 2; }
+/* 上の段：スコア・時間は半透明の細い板に。ボタンも小さく */
+.hud-top .box.score, .hud-top .box.clock { background: rgba(8, 10, 26, 0.55); border: 0.4cqw solid rgba(143, 155, 214, 0.35); box-shadow: none; height: 9.5cqw; border-radius: 2cqw; backdrop-filter: blur(2px); }
+.hud-top .box.score { padding: 0.9cqw 2.4cqw; }
+.hud-top .score-label { font-size: 1.6cqw; padding-bottom: 0.6cqw; border-bottom-width: 0.3cqw; }
+.hud-top .score-num { font-size: 2.8cqw; }
+.hud-top .clock-time { font-size: 3.8cqw; }
+.hud-right .btn-icon { width: 9.5cqw; height: 9.5cqw; padding: 2cqw; }
+.hud-right #open-pause { background: rgba(8, 10, 26, 0.55); border-color: rgba(255, 216, 74, 0.6); box-shadow: none; }
+.hud-right #open-pause .px-icon { fill: var(--gold); }
+.hud-right .btn-owned { background: rgba(8, 10, 26, 0.55); border-color: rgba(63, 224, 255, 0.6); box-shadow: none; }
+.hud-right .btn-owned .px-icon { fill: var(--cyan); }
+/* 始まる前：大きく PHASE と、ドラッグしてスタート */
+.hint { display: flex; flex-direction: column; align-items: center; gap: 2cqw; }
+.hint-phase { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 8cqw; color: var(--gold); letter-spacing: 0.6cqw;
+  text-shadow: 0 0.9cqw 0 var(--ink), 0 0 5cqw rgba(255, 216, 74, 0.55); animation: none; }
+.hint span { animation: blink 1.4s steps(2, jump-none) infinite; }
+.hint { animation: none; }

@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122133437';
-import { makeForms } from './forms.js?v=20261122133437';
-import { CONFIG } from './config.js?v=20261122133437';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122133935';
+import { makeForms } from './forms.js?v=20261122133935';
+import { CONFIG } from './config.js?v=20261122133935';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1747,7 +1747,22 @@ export function createRenderer(canvas, view) {
   }
 
   // 本体（見本では、状態の違う本体を並べて描けるように extraPlayers も描く）
+  // 始まる前：本体のまわりに、外へ広がって消える輪が脈打つ
+  function drawReadyPulse(state, t) {
+    if (state.mode !== 'ready' || !state.player) return;
+    const p = state.player;
+    ctx.save();
+    for (let k = 0; k < 2; k++) {
+      const u = (t * 0.8 + k * 0.5) % 1;
+      ctx.globalAlpha = (1 - u) * 0.7;
+      ctx.strokeStyle = THEME.playerRing || '#ffd84a';
+      ctx.lineWidth = 2.5 * (1 - u) + 0.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1.6 + u * 4), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
   function drawPlayer(state, t) {
+    drawReadyPulse(state, t);
     if (state.over) return;
     drawOnePlayer(state.player, t, true);
     for (const p of state.extraPlayers || []) drawOnePlayer(p, t, false);
