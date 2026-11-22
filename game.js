@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122130009';
-import { spawnPop, stepParticle } from './pops.js?v=20261122130009';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122130009';
+import { CONFIG } from './config.js?v=20261122130644';
+import { spawnPop, stepParticle } from './pops.js?v=20261122130644';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122130644';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -59,6 +59,7 @@ export function createGame() {
       mode: 'ready',
       sfx: [],          // 鳴らす音の順番待ち（main.js が毎フレーム取り出して鳴らす）         // 'ready'（操作待ち）| 'play' | 'select'（スキル選択中）
       over: false,
+      firstPick: false,      // 遊び始めの1枚を選んでいる最中
       time: 0,
       score: 0,
       kills: 0,
@@ -3451,6 +3452,13 @@ export function createGame() {
     if (s.mode === 'returning') finishReturn();
     if (s.mode !== 'select') return;
     const ch = s.choices[i];
+    // 遊び始めの1枚：取ったら、そのままフェーズ1の操作待ちへ
+    if (s.firstPick) {
+      if (ch) takeChoice(s, ch);
+      s.st = stats(); s.maxHp = s.st.maxHp; s.hp = s.maxHp;
+      s.firstPick = false; s.choices = []; s.mode = 'ready';
+      return;
+    }
     if (ch) takeChoice(s, ch);
     const before = s.maxHp;
     s.st = stats();
@@ -3601,7 +3609,7 @@ export function createGame() {
     sfx('reroll');
     if (s.mode === 'returning') finishReturn();
     if (s.mode !== 'select') return false;
-    s.choices = rollChoices(s, { afterBoss: !!s.choiceAfterBoss });
+    s.choices = rollChoices(s, { afterBoss: !!s.choiceAfterBoss, first: !!s.firstPick });
     s.rerolls++;
     return true;
   }
@@ -3612,5 +3620,11 @@ export function createGame() {
   }
 
   reset();
-  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase };
+  // 遊び始めに、スキルを1つ選ぶ（フェーズ1の前）
+  function firstPick() {
+    s.firstPick = true; s.choiceAfterBoss = false;
+    s.choices = rollChoices(s, { first: true });
+    s.mode = 'select';
+  }
+  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, firstPick };
 }

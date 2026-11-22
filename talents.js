@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261122130009';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122130009';
+import { CONFIG } from './config.js?v=20261122130644';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261122130644';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -178,12 +178,13 @@ const pickOut = (arr) => arr.splice(Math.floor(Math.random() * arr.length), 1)[0
 
 // フェーズクリアで出すカードを n 枚選ぶ。afterBoss ならスーパーレア以上だけ
 //   枠ごとに、先にレアリティを決めてから、そのレアリティで出せるものを選ぶ
-export function rollChoices(s, { afterBoss = false } = {}) {
+// first：遊び始めの1枚目（スキルだけ。強化・カースは出さない）
+export function rollChoices(s, { afterBoss = false, first = false } = {}) {
   // 豊年（近道の進化）：4枚から選べる
   const n = s.curses.includes('memory') ? 5 : s.skills && s.skills.shortcut && s.skills.shortcut.evo ? 4 : 3;
   const floor = afterBoss ? 'super' : 'normal';
-  const boosts = boostPool(s);
-  const curses = cursePool(s);
+  const boosts = first ? [] : boostPool(s);
+  const curses = first ? [] : cursePool(s);
   const used = new Set();
   const out = [];
   let curseShown = false;

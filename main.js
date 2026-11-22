@@ -1,26 +1,26 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261122130009';
-import { createGame, DT } from './game.js?v=20261122130009';
-import { applyForms } from './talents.js?v=20261122130009';
-import { createRenderer } from './render.js?v=20261122130009';
-import { createHud } from './ui.js?v=20261122130009';
-import { createInput } from './input.js?v=20261122130009';
-import { setupDebugPanel } from './debug.js?v=20261122130009';
-import { createPreview } from './preview.js?v=20261122130009';
-import { createMenus } from './menus.js?v=20261122130009';
-import { createDemo } from './demo.js?v=20261122130009';
-import { loadSave, writeSave, recordRun } from './save.js?v=20261122130009';
-import { ensureDaily, addRun } from './missions.js?v=20261122130009';
-import { submitScore } from './online.js?v=20261122130009';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122130009';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122130009';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122130009';
-import { setEquipped } from './skinshot.js?v=20261122130009';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122130009';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122130009';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122130009';
+import { CONFIG } from './config.js?v=20261122130644';
+import { createGame, DT } from './game.js?v=20261122130644';
+import { applyForms } from './talents.js?v=20261122130644';
+import { createRenderer } from './render.js?v=20261122130644';
+import { createHud } from './ui.js?v=20261122130644';
+import { createInput } from './input.js?v=20261122130644';
+import { setupDebugPanel } from './debug.js?v=20261122130644';
+import { createPreview } from './preview.js?v=20261122130644';
+import { createMenus } from './menus.js?v=20261122130644';
+import { createDemo } from './demo.js?v=20261122130644';
+import { loadSave, writeSave, recordRun } from './save.js?v=20261122130644';
+import { ensureDaily, addRun } from './missions.js?v=20261122130644';
+import { submitScore } from './online.js?v=20261122130644';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122130644';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261122130644';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261122130644';
+import { setEquipped } from './skinshot.js?v=20261122130644';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261122130644';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261122130644';
+import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261122130644';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -100,7 +100,7 @@ function restart() {
 }
 
 const menus = createMenus(save, {
-  start() { restart(); menus.close(); },
+  start() { restart(); game.firstPick(); menus.close(); },
   resume() {},
   restart,
   toTitle() { restart(); },
@@ -113,7 +113,7 @@ setupDebugPanel(CONFIG, {
   onChange() {},
   onOpen() { pausedByDebug = true; },
   onClose() { pausedByDebug = false; },
-  onRestart: () => { restart(); menus.close(); },
+  onRestart: () => { restart(); game.firstPick(); menus.close(); },
   onClearPhase: () => game.debugClearPhase(),
   onPreview: () => preview.open(),
   // 試作用：コインと着せ替えの持ち物を調整する

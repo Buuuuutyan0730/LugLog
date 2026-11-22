@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122130009';
-import { choiceView, ownedViews } from './talents.js?v=20261122130009';
-import { iconSvg, snapIcons } from './icons.js?v=20261122130009';
+import { ghostColor } from './theme.js?v=20261122130644';
+import { choiceView, ownedViews } from './talents.js?v=20261122130644';
+import { iconSvg, snapIcons } from './icons.js?v=20261122130644';
 
 const $ = (id) => document.getElementById(id);
 
@@ -319,7 +319,7 @@ export function createHud() {
 
   // 才能の選択：カードを出し、選ばれたら onPick(番号) を呼ぶ
   function showSkills(state, onPick) {
-    el.skillTitle.textContent = `PHASE ${state.phase} CLEAR!`;
+    el.skillTitle.textContent = state.firstPick ? 'はじめのスキル' : `PHASE ${state.phase} CLEAR!`;
     el.skillCards.innerHTML = '';
     state.choices.forEach((ch, i) => {
       const { cls, html } = cardView(choiceView(state, ch));
