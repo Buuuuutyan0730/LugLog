@@ -54,6 +54,7 @@ export function unlockAudio() {
   if (ctx) {
     const old = ctx;
     ctx = null; master = null; seBus = null; bgmBus = null; noiseBuf = null; live = 0;
+    lastAt.clear();   // 新しい土台は時刻が0から始まるので、前の土台の「最後に鳴らした時刻」を忘れる（残すと効果音が鳴らなくなる）
     try { old.close(); } catch { /* もう閉じている */ }
     ensure();
     for (const fn of resetHooks) fn();
@@ -130,7 +131,8 @@ export function playSound(id, opt = {}) {
   if (!opt.force && !prefs.se) return;
   const now = c.currentTime;
   const gap = r.gap ?? 0.04;
-  if (!opt.force && now - (lastAt.get(id) || -1) < gap) return;
+  const prev = lastAt.get(id);
+  if (!opt.force && prev != null && prev <= now && now - prev < gap) return;   // 前の時刻が今より先（土台が変わった）なら気にしない
   lastAt.set(id, now);
   const bus = opt.force && !prefs.se ? master : seBus;
   for (const v of r.v) voice(v, now, opt.pitch || 1, bus);
