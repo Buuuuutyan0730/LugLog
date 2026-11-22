@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122134300';
-import { choiceView, ownedViews } from './talents.js?v=20261122134300';
-import { iconSvg, snapIcons } from './icons.js?v=20261122134300';
+import { ghostColor } from './theme.js?v=20261122134353';
+import { choiceView, ownedViews } from './talents.js?v=20261122134353';
+import { iconSvg, snapIcons } from './icons.js?v=20261122134353';
 
 const $ = (id) => document.getElementById(id);
 
@@ -95,7 +95,7 @@ export function createHud() {
     el.hint.style.display = state.mode === 'ready' ? '' : 'none'; // 操作待ちの間だけ出す
     if (state.mode === 'ready' && el.hintPhase) el.hintPhase.textContent = `PHASE ${state.phase}`;
     // 本体のすぐ上（まんなか）に出す。本体の位置は遊ぶ範囲の中の割合で決める
-    if (state.mode === 'ready' && state.player && state.world) el.hint.style.top = `calc(${(state.player.y / state.world.h) * 100}% - 34cqw)`;
+    if (state.mode === 'ready' && state.player && state.world) el.hint.style.top = `calc(${(state.player.y / state.world.h) * 100}% - 25cqw)`;
     el.ownedCount.textContent = Object.keys(state.owned).length + Object.keys(state.skills).length + state.curses.length;  // 取った才能の数
     el.time.textContent = fmtTime(state.time);
     el.phase.textContent = `PHASE ${state.phase}`;
