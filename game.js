@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122223926';
-import { spawnPop, stepParticle } from './pops.js?v=20261122223926';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122223926';
+import { CONFIG } from './config.js?v=20261123015154';
+import { spawnPop, stepParticle } from './pops.js?v=20261123015154';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123015154';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -750,7 +750,8 @@ export function createGame() {
       if (e.frozenT > 0) e.frozenT -= DT;
       if (e.coldT > 0) e.coldT -= DT;
       if (e.frostT > 0) e.frostT -= DT;
-      if (e.status || e.frozenT > 0) (e.status || (e.status = {})).freeze = e.frozenT > 0;
+      const cold = !(e.frozenT > 0) && (e.chillT > 0 || e.coldT > 0 || e.frostT > 0);
+      if (e.status || e.frozenT > 0 || cold) { const st = e.status || (e.status = {}); st.freeze = e.frozenT > 0; st.chill = cold; }   // chill：遅くなっている（色を変えて見せる）
     }
     if (!skLv('freeze')) return;
     // 冷気：分身のまわり

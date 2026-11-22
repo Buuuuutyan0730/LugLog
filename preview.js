@@ -2,13 +2,13 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261122223926';
-import { CONFIG } from './config.js?v=20261122223926';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122223926';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261122223926';
-import { GACHA_POOL } from './skins.js?v=20261122223926';
-import { createGame } from './game.js?v=20261122223926';
-import { createGachaFx } from './gachafx.js?v=20261122223926';
+import { BOOSTS, CURSES } from './talents.js?v=20261123015154';
+import { CONFIG } from './config.js?v=20261123015154';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123015154';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123015154';
+import { GACHA_POOL } from './skins.js?v=20261123015154';
+import { createGame } from './game.js?v=20261123015154';
+import { createGachaFx } from './gachafx.js?v=20261123015154';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -30,8 +30,9 @@ function buildScene() {
     enemy('shooter', 180, 375, 30, 30, { mark: true }),
     enemy('chaser', 292, 375, 9, 20, { poison: true, burn: true, shock: true }),
     enemy('dasher', 140, 455, 30, 30, { pull: gravity }, { ang: 0 }),
+    enemy('chaser', 68, 190, 20, 20, { chill: true }),
   ];
-  const names = ['', '凍結', '痺れ', '毒', '燃焼', '目印', '重なり（毒・燃焼・痺れ）', '吸い寄せ'];
+  const names = ['', '凍結', '痺れ', '毒', '燃焼', '目印', '重なり（毒・燃焼・痺れ）', '吸い寄せ', '冷えて遅い'];
   const labels = enemies.map((e, i) => names[i] && { x: e.x, y: e.y + e.r + 7, text: names[i] }).filter(Boolean);
   labels.push({ x: gravity.x, y: gravity.y + 22, text: '分身（引力）' });
 

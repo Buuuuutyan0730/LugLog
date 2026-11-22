@@ -292,7 +292,7 @@ export const CONFIG = {
     strike: { every: 2, near: 40, power: 2, kiwamiCount: 2 },     // 落雷：間隔／雷の線からこの距離までの敵／威力（分身の攻撃力の平均×倍）／極：落ちる数
     charged: { stop: 0.3, kiwamiMult: 2, again: 1 },              // 帯電：止まる秒数／極の倍／同じ敵がまた止まるまでの間
     skybolt: { every: 8, power: 1 },                              // 天雷：間隔／威力（分身の攻撃力の平均×倍）
-    freeze: { time: 2, base: 0.3, per: 0.05, hits: 3, freezeTime: 1.5 }, // 氷結：遅くなる秒数／遅くなる割合（Lv1 30%、1Lvで +5%）／絶対零度：凍るまでの当てる回数と凍る秒数
+    freeze: { time: 2, base: 0.4, per: 0.05, hits: 3, freezeTime: 1.5 }, // 氷結：遅くなる秒数／遅くなる割合（Lv1 40%、1Lvで +5%）／絶対零度：凍るまでの当てる回数と凍る秒数
     shatter: { count: 4, kiwamiCount: 8, power: 0.5, life: 0.35 },  // 砕氷：破片の数／極／威力（分身の攻撃力の平均×倍）／破片が飛ぶ秒数
     chill: { reach: 40, slow: 0.2, kiwamiReach: 1.5 },            // 冷気：分身のふちから届く距離／遅くなる割合／極
     frostpath: { slow: 0.2, width: 6, gap: 10, kiwamiDamage: 0.2 }, // 霜の道：遅くなる割合／霜の太さ／霜を調べる間隔／極：受けるダメージ↑

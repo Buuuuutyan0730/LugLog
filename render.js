@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122223926';
-import { makeForms } from './forms.js?v=20261122223926';
-import { CONFIG } from './config.js?v=20261122223926';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123015154';
+import { makeForms } from './forms.js?v=20261123015154';
+import { CONFIG } from './config.js?v=20261123015154';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -17,6 +17,8 @@ function particleColor(pt, alpha = 1) {
 const STATUS = {
   iceBody: '#9fe8ff',
   iceEdge: '#1f6f99',
+  chillBody: '#3f86c4',   // 遅くなっている（凍る手前）：青っぽく
+  chillEdge: '#bff4ff',
   shock: '#ffe94a',
   poisonBody: '#b45cff',
   poisonEdge: '#45137a',
@@ -926,8 +928,8 @@ export function createRenderer(canvas, view) {
       ctx.rotate(e.kind === 'tank' || (e.boss && e.kind !== 'hunter' && e.kind !== 'twin') ? 0 : e.ang || 0);
       // 体の色：凍結＝水色、毒＝紫（両方なら凍結を優先）。影と敵の分身は黒い体
       const dark = e.kind === 'shade' || e.kind === 'echo';
-      const body = st.freeze ? STATUS.iceBody : st.poison ? STATUS.poisonBody : dark ? '#1a0a14' : THEME.enemy;
-      const edge = st.freeze ? STATUS.iceEdge : st.poison ? STATUS.poisonEdge : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
+      const body = st.freeze ? STATUS.iceBody : st.chill ? STATUS.chillBody : st.poison ? STATUS.poisonBody : dark ? '#1a0a14' : THEME.enemy;
+      const edge = st.freeze ? STATUS.iceEdge : st.chill ? STATUS.chillEdge : st.poison ? STATUS.poisonEdge : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
       // 中ボス：体の外に、もう1本の太い縁取り
       if (e.elite) { ctx.save(); ctx.scale(1.22, 1.22); enemyShape(e); ctx.strokeStyle = THEME.enemy; ctx.globalAlpha = 0.55; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
       // 怒った双子：赤く脈打つ光
