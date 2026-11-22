@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122135705';
-import { spawnPop, stepParticle } from './pops.js?v=20261122135705';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122135705';
+import { CONFIG } from './config.js?v=20261122140838';
+import { spawnPop, stepParticle } from './pops.js?v=20261122140838';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122140838';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1587,7 +1587,7 @@ export function createGame() {
         const dmg = bodyAtk() * BS.charge.mult[lv - 1] * mul;
         damageEnemy(e, dmg);
         addCombo();
-        e.chargeHit = s.time + BS.charge.again;
+        e.chargeHit = s.time + (e.boss ? BS.charge.bossAgain : BS.charge.again);   // ボスには当たり直しの間隔を長く
         skSfx(skLv('heavyfist') ? 'heavyfist' : skLv('rush') ? 'rush' : 'charge');
         s.hitstop = Math.max(s.hitstop, 0.03);
         s.shake = Math.max(s.shake, 3);
@@ -2432,7 +2432,7 @@ export function createGame() {
     s.hurtFlash = 1;
     s.hitstop = 0.07;
     burst(p.x, p.y, 'player', 14, 200);
-    if (from) {
+    if (from && !from.boss) {   // ボスは押し返されない
       const dx = from.x - p.x, dy = from.y - p.y;
       const d = Math.max(1, Math.hypot(dx, dy));
       from.x += dx / d * P.knockback;
