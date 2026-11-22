@@ -2,12 +2,12 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261122132021';
-import { CONFIG } from './config.js?v=20261122132021';
-import { SKILL_ROADS } from './skilldefs.js?v=20261122132021';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261122132021';
-import { GACHA_POOL } from './skins.js?v=20261122132021';
-import { createGachaFx } from './gachafx.js?v=20261122132021';
+import { BOOSTS, CURSES } from './talents.js?v=20261122132737';
+import { CONFIG } from './config.js?v=20261122132737';
+import { SKILL_ROADS } from './skilldefs.js?v=20261122132737';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261122132737';
+import { GACHA_POOL } from './skins.js?v=20261122132737';
+import { createGachaFx } from './gachafx.js?v=20261122132737';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
