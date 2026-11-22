@@ -215,7 +215,7 @@ export const CONFIG = {
     lastStand:  { time: 3 },                                       // ラストスタンド：押し出された分身が戦い続ける秒数
     fullCharge: { mult: 1.3 },                                     // フルチャージ：上限まで描いた分身の攻撃力
     turnBurst:  { radius: 35, ofPower: 0.5 },                      // ターンバースト：折り返しで分身の攻撃力の50%
-    blackHole:  { every: 12 },                                     // ブラックホール：かけらが集まる間隔（秒）
+    blackHole:  { every: 30 },                                     // ブラックホール：かけらが集まる間隔（秒）。12秒だと拾わなくても全部集まっていたので30へ
     goldRush:   { worth: 5, minTier: 2 },                          // ゴールドラッシュ：大きな敵が落とす金のかけら（5個分）
   },
 
@@ -300,8 +300,8 @@ export const CONFIG = {
     repel: { reach: 60, speed: 160, power: 0.5 },                 // 斥力：本体のふちから届く距離／押し返す速さ／極：毎秒（分身の攻撃力の平均×割合）
     gravshot: { time: 1, radius: 50, speed: 80, kiwamiMult: 2 },  // 重力弾：小さな引力が残る秒数／広さ／寄せる速さ／極の倍
     collapse: { every: 20, time: 2, speed: 160 },                 // 重力崩壊：間隔／吸い寄せる秒数／速さ
-    poison: { cap: 5, time: 3, power: 0.1, per: 0.1 },            // 毒：重なる上限／続く秒数／毒1つの毎秒（分身の攻撃力の平均×割合）、1Lvで +10%
-    contagion: { reach: 60, share: 0.5, kiwamiShare: 1 },         // 伝染：うつる距離／うつる割合／極
+    poison: { cap: 5, kiwamiCap: 10, time: 3, power: 0.1, per: 0.1 }, // 毒：重なる上限／猛毒の上限（上限なしだと分身が多いほど際限なく強くなる）／続く秒数／毒1つの毎秒（分身の攻撃力の平均×割合）、1Lvで +10%
+    contagion: { reach: 60, share: 0.5, kiwamiShare: 0.75, count: 2, kiwamiCount: 4 }, // 伝染：うつる距離／うつる割合／極／うつる相手の数（近い順）／極の数
     corrode: { per: 0.03, cap: 0.3, kiwamiCap: 0.6 },             // 腐食：毒1つごとの被ダメージ↑／上限／極の上限
     fog: { every: 0.25, life: 1.5, radius: 16, again: 0.5, kiwamiMult: 2, max: 200 }, // 毒霧：分身が霧を残す間隔／残る秒数／広さ／同じ敵に重ね直す間隔／極：時間の倍／霧の数の上限
     pandemic: { every: 12 },                                      // パンデミック：間隔

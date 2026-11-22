@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261122150310';
-import { choiceView, ownedViews } from './talents.js?v=20261122150310';
-import { iconSvg, snapIcons } from './icons.js?v=20261122150310';
+import { ghostColor } from './theme.js?v=20261122152011';
+import { choiceView, ownedViews } from './talents.js?v=20261122152011';
+import { iconSvg, snapIcons } from './icons.js?v=20261122152011';
 
 const $ = (id) => document.getElementById(id);
 
@@ -90,27 +90,32 @@ export function createHud() {
   // 才能カードの小窓は、どこを押しても閉じる
   document.getElementById('talent').addEventListener('click', () => hideTalent());
 
+  // 前と同じ値なら書きかえない（毎フレーム書きかえると、ページの配置の計算が走って重くなる）
+  const lastVal = new WeakMap();
+  const setText = (node, v) => { if (node && lastVal.get(node) !== v) { lastVal.set(node, v); node.textContent = v; } };
+  const setStyle = (node, k, v) => { if (!node) return; let m = lastVal.get(node.style); if (!m) lastVal.set(node.style, m = {}); if (m[k] !== v) { m[k] = v; node.style[k] = v; } };
+  let lastBar = '';
   function update(state) {
-    el.score.textContent = state.score.toLocaleString('en-US'); // 3桁ごとに区切る
-    el.hint.style.display = state.mode === 'ready' ? '' : 'none'; // 操作待ちの間だけ出す
-    if (state.mode === 'ready' && el.hintPhase) el.hintPhase.textContent = `PHASE ${state.phase}`;
+    setText(el.score, state.score.toLocaleString('en-US')); // 3桁ごとに区切る
+    setStyle(el.hint, 'display', state.mode === 'ready' ? '' : 'none'); // 操作待ちの間だけ出す
+    if (state.mode === 'ready' && el.hintPhase) setText(el.hintPhase, `PHASE ${state.phase}`);
     // 本体のすぐ上（まんなか）に出す。本体の位置は遊ぶ範囲の中の割合で決める
-    if (state.mode === 'ready' && state.player && state.world) el.hint.style.top = `calc(${(state.player.y / state.world.h) * 100}% - 25cqw)`;
-    el.ownedCount.textContent = Object.keys(state.owned).length + Object.keys(state.skills).length + state.curses.length;  // 取った才能の数
-    el.time.textContent = fmtTime(state.time);
-    el.phase.textContent = `PHASE ${state.phase}`;
+    if (state.mode === 'ready' && state.player && state.world) setStyle(el.hint, 'top', `calc(${(state.player.y / state.world.h) * 100}% - 25cqw)`);
+    setText(el.ownedCount, String(Object.keys(state.owned).length + Object.keys(state.skills).length + state.curses.length));  // 取った才能の数
+    setText(el.time, fmtTime(state.time));
+    setText(el.phase, `PHASE ${state.phase}`);
     // ボスのフェーズは、かけらではなくボスを倒すとクリア
-    el.shardNum.textContent = state.bossPhase ? 'BOSS' : `${Math.min(state.shards, state.need)}/${state.need}`;
-    el.shardFill.style.width = state.bossPhase ? '0%' : `${Math.min(1, state.shards / state.need) * 100}%`;
+    setText(el.shardNum, state.bossPhase ? 'BOSS' : `${Math.min(state.shards, state.need)}/${state.need}`);
+    setStyle(el.shardFill, 'width', state.bossPhase ? '0%' : `${Math.min(1, state.shards / state.need) * 100}%`);
 
     // フェーズ開始の表示（最初と最後は少しずつ消える）
     const bt = state.banner.t;
     if (bt > 0) {
-      el.bannerText.textContent = state.banner.text;
-      el.bannerSub.textContent = state.banner.sub;
-      el.banner.style.opacity = String(Math.min(1, bt / 0.4, (1.6 - bt) / 0.15 + 0.3));
+      setText(el.bannerText, state.banner.text);
+      setText(el.bannerSub, state.banner.sub);
+      setStyle(el.banner, 'opacity', String(Math.min(1, bt / 0.4, (1.6 - bt) / 0.15 + 0.3)));
     } else {
-      el.banner.style.opacity = '0';
+      setStyle(el.banner, 'opacity', '0');
     }
 
     // 軌跡の総量ゲージ
@@ -136,8 +141,8 @@ export function createHud() {
     }
     const minPos = ((pos + r.minLength) / budget) * 100;
     html += `<div class="bar-min${r.enough ? ' reached' : ''}" style="left:${minPos}%"></div>`;
-    el.bar.innerHTML = html;
-    el.budgetNum.textContent = `${Math.round(state.used + rec)}/${budget}`;
+    if (html !== lastBar) { lastBar = html; el.bar.innerHTML = html; }
+    setText(el.budgetNum, `${Math.round(state.used + rec)}/${budget}`);
 
     const phase = !r.active ? 'idle' : r.enough ? 'ok' : 'short';
     if (phase !== lastPhase) {
@@ -148,7 +153,7 @@ export function createHud() {
         : '指を離すと分身が生まれる';
       lastPhase = phase;
     }
-    el.count.textContent = `分身 ${state.ghosts.length}体`;
+    setText(el.count, `分身 ${state.ghosts.length}体`);
 
     // ボスのHPバー（ボスがいるときだけ）
     const boss = state.boss;
@@ -156,9 +161,9 @@ export function createHud() {
     if (boss) {
       const ratio = Math.max(0, boss.hp / boss.maxHp);
       bossLag = boss.lag != null ? boss.lag : ratio < bossLag ? Math.max(ratio, bossLag - 0.006) : ratio;
-      el.bossName.textContent = boss.name;
-      el.bossFill.style.width = `${ratio * 100}%`;
-      el.bossLag.style.width = `${bossLag * 100}%`;
+      setText(el.bossName, boss.name);
+      setStyle(el.bossFill, 'width', `${ratio * 100}%`);
+      setStyle(el.bossLag, 'width', `${bossLag * 100}%`);
     }
   }
 

@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122150310';
-import { spawnPop, stepParticle } from './pops.js?v=20261122150310';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122150310';
+import { CONFIG } from './config.js?v=20261122152011';
+import { spawnPop, stepParticle } from './pops.js?v=20261122152011';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122152011';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -12,6 +12,7 @@ const P = CONFIG.player;
 const G = CONFIG.ghost;
 const PH = CONFIG.phase;
 const SH = CONFIG.shard;
+const FX_MAX = { particles: 600, rings: 60, flashes: 40 };   // 同時に出せる演出の数
 const ET = CONFIG.enemies;
 const EB = CONFIG.enemyBullet;
 const TIERS = CONFIG.enemyTiers;
@@ -216,6 +217,7 @@ export function createGame() {
   // ---------- 小さな部品 ----------
   // kind：'ghost' | 'enemy' | 'player' | 'shard'、idx：分身の番号（色分け用）
   function burst(x, y, kind, n, speed, idx = 0) {
+    if (s.particles.length > FX_MAX.particles) n = Math.min(n, 2);   // 多すぎるときは少しだけ
     for (let i = 0; i < n; i++) {
       const a = rand(0, Math.PI * 2);
       const v = rand(speed * 0.3, speed);
@@ -226,6 +228,7 @@ export function createGame() {
 
   // 細長い火花（速さの向きに伸びて見える）
   function sparks(x, y, kind, n, speed, idx = 0) {
+    if (s.particles.length > FX_MAX.particles) n = Math.min(n, 2);
     for (let i = 0; i < n; i++) {
       const a = rand(0, Math.PI * 2);
       const v = rand(speed * 0.5, speed);
@@ -1208,7 +1211,7 @@ export function createGame() {
   }
 
   // ---- 現象の道：毒の型 ----
-  const poisonCap = () => (s.st.evo.poison ? Infinity : SK.poison.cap);
+  const poisonCap = () => (s.st.evo.poison ? SK.poison.kiwamiCap : SK.poison.cap);
   function addPoison(e, n) {
     const was = e.poisonN || 0;
     if (!(was > 0)) skSfx('poison');
@@ -2838,7 +2841,11 @@ export function createGame() {
         if (skLv('poison') && skLv('contagion') && e.poisonN > 0) {
           const n = Math.ceil(e.poisonN * (s.st.evo.contagion ? SK.contagion.kiwamiShare : SK.contagion.share));
           skSfx('contagion');
-          for (const o of s.enemies) if (o !== e && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < SK.contagion.reach * s.zoom + o.r) { addPoison(o, n); sparks(o.x, o.y, 'white', 3, 100); }
+          // 近い順に決まった数だけ（全員にうつると、毒が一気に広がって画面中の敵が倒れてしまう）
+          const near = [];
+          for (const o of s.enemies) { if (o === e || o.hp <= 0) continue; const d = Math.hypot(o.x - e.x, o.y - e.y); if (d < SK.contagion.reach * s.zoom + o.r) near.push([d, o]); }
+          near.sort((a, b) => a[0] - b[0]);
+          for (const [, o] of near.slice(0, s.st.evo.contagion ? SK.contagion.kiwamiCount : SK.contagion.count)) { addPoison(o, n); sparks(o.x, o.y, 'white', 3, 100); }
         }
         // 極目印：印のある敵が倒れると、近くの敵に印が移る
         if (e.markT > 0 && s.st.evo.mark) jumpMark(e);
@@ -3570,6 +3577,10 @@ export function createGame() {
     s.rings = s.rings.filter((r) => r.life > 0);
     for (const f of s.flashes) f.life -= DT;
     s.flashes = s.flashes.filter((f) => f.life > 0);
+    // 演出の数の上限：分身がとても多いと、光の粒や輪が増えすぎて重くなる。古いものから消す
+    if (s.particles.length > FX_MAX.particles) s.particles.splice(0, s.particles.length - FX_MAX.particles);
+    if (s.rings.length > FX_MAX.rings) s.rings.splice(0, s.rings.length - FX_MAX.rings);
+    if (s.flashes.length > FX_MAX.flashes) s.flashes.splice(0, s.flashes.length - FX_MAX.flashes);
     for (const g of s.ghosts) if (g.spawnGlow > 0) g.spawnGlow -= DT;
     if (s.shake > 0) s.shake = Math.max(0, s.shake - 40 * DT);
     if (s.hurtFlash > 0) s.hurtFlash = Math.max(0, s.hurtFlash - 2.5 * DT);

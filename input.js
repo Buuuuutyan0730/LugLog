@@ -17,7 +17,10 @@ export function createInput(target, extra = []) {
   let stickOX = 0, stickOY = 0;
   const KNOB = 0.7;
   const DEAD = 0.08;   // 止まっている扱いにする範囲（動かす距離の8%。指のごく小さなぶれだけ動かない）
-  const stickR = () => Math.max(30, target.getBoundingClientRect().width * 0.14);
+  // 画面の幅は大きさが変わったときだけ測る（毎フレーム測ると重くなる）
+  let widthCache = 0;
+  window.addEventListener('resize', () => { widthCache = 0; });
+  const stickR = () => Math.max(30, (widthCache || (widthCache = target.getBoundingClientRect().width)) * 0.14);
   const stickTravel = () => stickR() * (1 - KNOB);
   const listeners = [];
 

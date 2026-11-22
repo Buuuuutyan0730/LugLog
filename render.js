@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122150310';
-import { makeForms } from './forms.js?v=20261122150310';
-import { CONFIG } from './config.js?v=20261122150310';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261122152011';
+import { makeForms } from './forms.js?v=20261122152011';
+import { CONFIG } from './config.js?v=20261122152011';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -45,8 +45,15 @@ export function createRenderer(canvas, view) {
   let worldW = view.width, worldH = view.height;
   let lastT = 0;
 
+  // 画面の上での位置と大きさ：毎フレーム測ると、ページ全体の配置の計算をやり直させて重くなるので、
+  //   大きさが変わったとき・スクロールしたときだけ測り直す
+  let rectCache = null;
+  const canvasRect = () => rectCache || (rectCache = canvas.getBoundingClientRect());
+  window.addEventListener('scroll', () => { rectCache = null; }, { passive: true });
+  window.addEventListener('resize', () => { rectCache = null; });
   function resize() {
-    const rect = canvas.getBoundingClientRect();
+    rectCache = null;
+    const rect = canvasRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     canvas.width = Math.max(1, Math.round(rect.width * dpr));
     canvas.height = Math.max(1, Math.round(rect.height * dpr));
@@ -54,13 +61,13 @@ export function createRenderer(canvas, view) {
 
   // 画面上の1ピクセルがゲーム内でどれだけの長さか
   function pxToWorld() {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRect();
     return rect.width > 0 ? viewW / rect.width : 1;
   }
 
   // 画面上の位置 → ゲーム内の座標（画面の中心＝ステージの中心）
   function clientToWorld(cx, cy) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvasRect();
     if (rect.width <= 0) return { x: 0, y: 0 };
     const fx = (cx - rect.left) / rect.width - 0.5;
     const fy = (cy - rect.top) / rect.height - 0.5;
@@ -196,7 +203,7 @@ export function createRenderer(canvas, view) {
     const blinkAt = 3;
     for (const k of state.pickups) {
       if (k.life < blinkAt && Math.sin(t * 24) < 0) continue; // 消える前は点滅
-      const s = k.gold ? 7 : 4;   // 金のかけら（ゴールドラッシュ）は大きく、白く光る
+      const s = 4 * (state.zoom || 1);   // 大きさはどのかけらも同じ（ステージが広がっても画面の上で同じ大きさ）。金のかけらは色と光だけ変える
       ctx.save();
       ctx.translate(k.x, k.y);
       ctx.rotate(k.spin + t * 3);
@@ -699,21 +706,39 @@ export function createRenderer(canvas, view) {
   }
 
   // ---------- 弾 ----------
+  // 弾：1発ずつ影のぼかし（shadowBlur）で光らせるととても重いので、色ごとにまとめて描く。
+  //   光は「太くて薄い線」を下に重ねて見せる（ぼかしを使わない）
   function drawShots(state) {
-    ctx.lineCap = 'round';
+    if (!state.shots.length) return;
+    const groups = new Map();
     for (const sh of state.shots) {
-      ctx.lineWidth = sh.size * 2;
-      const tail = 0.02 + sh.size * 0.004;
       const ice = sh.owner === 'ice' || sh.owner === 'blade';   // 砕氷の破片・千刃：白っぽい水色
       const c = sh.gold ? '#ffd84a' : sh.owner === 'player' ? THEME.playerShot : ice ? '#bff4ff' : ghostColor(sh.idx);
-      glow(sh.owner === 'player' ? THEME.playerGlow : ice ? '#7fe3ff' : c, 10);
-      ctx.strokeStyle = c;
-      ctx.beginPath();
-      ctx.moveTo(sh.x - sh.vx * tail, sh.y - sh.vy * tail);
-      ctx.lineTo(sh.x, sh.y);
-      ctx.stroke();
+      const halo = sh.owner === 'player' ? THEME.playerGlow : ice ? '#7fe3ff' : c;
+      const w = Math.round(sh.size * 4) / 2;   // 太さも同じものをまとめる
+      const key = c + '|' + halo + '|' + w;
+      let g = groups.get(key);
+      if (!g) { g = { c, halo, w, list: [] }; groups.set(key, g); }
+      g.list.push(sh);
     }
-    noGlow();
+    ctx.save();
+    ctx.lineCap = 'round';
+    const path = (g) => {
+      ctx.beginPath();
+      for (const sh of g.list) {
+        const tail = 0.02 + sh.size * 0.004;
+        ctx.moveTo(sh.x - sh.vx * tail, sh.y - sh.vy * tail);
+        ctx.lineTo(sh.x, sh.y);
+      }
+    };
+    // 弾がとても多いときは、下の光を省く（分身が多いと、弾だけで描く量が倍になる）
+    if (PREFS.glow > 0 && state.shots.length < 120) {
+      ctx.globalAlpha = 0.28 * Math.min(1, PREFS.glow);
+      for (const g of groups.values()) { ctx.strokeStyle = g.halo; ctx.lineWidth = g.w * 2 + 5; path(g); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+    for (const g of groups.values()) { ctx.strokeStyle = g.c; ctx.lineWidth = g.w * 2; path(g); ctx.stroke(); }
+    ctx.restore();
   }
 
   // ---------- 敵 ----------
