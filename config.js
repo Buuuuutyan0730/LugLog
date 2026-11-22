@@ -161,7 +161,8 @@ export const CONFIG = {
     every: 10,
     order: ['core', 'hunter', 'twin', 'clock', 'shade'],
     ready: ['core', 'hunter', 'twin', 'clock', 'shade'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
-    hpSeconds: 54,            // ボスの体力＝そのフェーズで1秒に出てくる敵の体力の合計 × この秒数（味方の火力1.8倍に合わせて 30→54）
+    hpSeconds: 24,            // 1体目のボスの体力＝フェーズ10で1秒に出てくる敵の体力の合計 × この秒数
+    hpGrowth: 1.7,            // 2体目からは、1体ごとにこの倍率で体力が増える（ふつうの敵の伸び 4.4倍 だと、こちらの火力が追いつかないため）
     normalRate: 0.3,          // ボスのフェーズでの、ふつうの敵の出る勢い（倍）
     appear: 1.5,              // フェーズが始まってから、ボスが現れるまでの秒数
     clearDelay: 1.2,          // ボスを倒してから、カード選びになるまでの秒数
@@ -293,7 +294,7 @@ export const CONFIG = {
     shatter: { count: 4, kiwamiCount: 8, power: 0.5, life: 0.35 },  // 砕氷：破片の数／極／威力（分身の攻撃力の平均×倍）／破片が飛ぶ秒数
     chill: { reach: 40, slow: 0.2, kiwamiReach: 1.5 },            // 冷気：分身のふちから届く距離／遅くなる割合／極
     frostpath: { slow: 0.2, width: 6, gap: 10, kiwamiDamage: 0.2 }, // 霜の道：遅くなる割合／霜の太さ／霜を調べる間隔／極：受けるダメージ↑
-    iceage: { every: 15, time: 2 },                               // 氷河期：間隔／凍る秒数
+    iceage: { every: 15, time: 5, bossTime: 1.5, power: 0.6 },   // 氷河期：間隔／凍る秒数／ボスが凍る秒数（ダメージはふつうの敵と同じ秒数受ける）／凍っている間の毎秒ダメージ（分身の攻撃力の平均×割合）
     pull: { reach: 100, speed: 40, per: 0.1, holeReach: 1.5, core: 20, corePower: 0.5 }, // 引力：分身のふちから届く距離／吸い寄せる速さ、1Lvで +10%／特異点：範囲の倍・中心からの距離・毎秒（分身の攻撃力×割合）
     compress: { per: 0.05, cap: 0.5, kiwamiCap: 1 },              // 圧縮：中の敵1体ごと／上限／極の上限
     repel: { reach: 60, speed: 160, power: 0.5 },                 // 斥力：本体のふちから届く距離／押し返す速さ／極：毎秒（分身の攻撃力の平均×割合）

@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261122141438';
-import { spawnPop, stepParticle } from './pops.js?v=20261122141438';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122141438';
+import { CONFIG } from './config.js?v=20261122143255';
+import { spawnPop, stepParticle } from './pops.js?v=20261122143255';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261122143255';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -770,7 +770,17 @@ export function createGame() {
         skSfx('iceage');
         // 画面が真っ白にならないよう、中心から広がる輪だけで知らせる
         ring(s.world.w / 2, s.world.h / 2, 10, Math.hypot(s.world.w, s.world.h) / 2, 0.5, 'white', 0, 5);
-        for (const e of s.enemies) if (e.hp > 0) e.frozenT = Math.max(e.frozenT || 0, SK.iceage.time);
+        for (const e of s.enemies) if (e.hp > 0) {
+          e.frozenT = Math.max(e.frozenT || 0, e.boss ? SK.iceage.bossTime : SK.iceage.time);
+          e.iceAgeT = SK.iceage.time;
+        }
+      }
+      // 凍らせた敵へ、凍っている間ずっと持続ダメージ（ボスはすぐ動き出すが、ダメージは同じ秒数受ける）
+      const per = avgGhostPower() * SK.iceage.power;
+      for (const e of s.enemies) {
+        if (!(e.iceAgeT > 0)) continue;
+        e.iceAgeT -= DT;
+        if (e.hp > 0) damageEnemy(e, per * DT, false, true);
       }
     }
   }
@@ -3003,12 +3013,17 @@ export function createGame() {
     seeKind(kind);
     if (kind === 'twin') { spawnTwins(); return; }
     const B2 = BOSS[kind], W = s.world.w, H = s.world.h;
-    const hp = PH.hpRateBase * growthOf(s.phase) * BOSS.hpSeconds;
+    const hp = bossHp();
     const e = { kind, boss: true, name: B2.name, tier: 1, x: W / 2, y: H * B2.y, r: B2.radius * s.zoom, hp, maxHp: hp, vx: 0, vy: 0, ang: Math.PI / 2, flash: 0, speedMul: 1, phase: 'move', timer: B2.every || 0, strafe: 1, dashX: 0, dashY: 0, shield: 0, shieldMax: 0, spin: 0, fireCd: 1, callCd: B2.callEvery };
     s.enemies.push(e);
     s.boss = e;
     ring(e.x, e.y, 4, e.r * 3, 0.6, 'enemy', 0, 6);
     s.shake = Math.max(s.shake, 8);
+  }
+  // ボスの体力：1体目はフェーズ10の敵の量が基準。2体目からは、ふつうの敵よりゆるやかに増やす
+  function bossHp() {
+    const n = Math.max(1, Math.round(s.phase / BOSS.every));
+    return PH.hpRateBase * growthOf(BOSS.every) * BOSS.hpSeconds * BOSS.hpGrowth ** (n - 1);
   }
   function updateBoss() {
     if (s.bossAppear > 0) { s.bossAppear -= DT; if (s.bossAppear <= 0) spawnBoss(s.bossPhase); }
@@ -3191,7 +3206,7 @@ export function createGame() {
   }
   function spawnTwins() {
     const T2 = BOSS.twin, p = s.player;
-    const total = PH.hpRateBase * growthOf(s.phase) * BOSS.hpSeconds;
+    const total = bossHp();
     s.twin = { cx: p.x, cy: p.y, a: Math.PI, tether: { st: 'off', t: T2.tetherOff }, dead: null, total };
     for (const slot of [0, 1]) {
       const q = twinPos(slot, false);
