@@ -145,16 +145,16 @@ export const CONFIG = {
   // 中ボス：出始めるフェーズ／フェーズのどこまで進んだら出るか（必要なかけらの割合）／体力（同じ種類の何倍）／大きさ（何倍）
   //   かけら（何体分）／倒すとはじけ出る小さい敵の数／中ボスにしない種類
   // 敵の割合（%）。フェーズごとに、どの敵がどれくらいの割合で出るか（群れは1つの固まりを1回と数える）
-  //   from：このフェーズから。fixed：その時期の割合（合計100）。8からは漂い・追跡・重量で70%
+  //   from：このフェーズから。fixed：その時期の割合（合計100）。漂いがいちばん多く、追跡・重量が続く
   enemyMix: [
     { from: 1,  fixed: { drift: 60, chaser: 40 } },
     { from: 3,  fixed: { drift: 55, chaser: 35, shooter: 10 } },
-    { from: 6,  fixed: { drift: 45, chaser: 35, shooter: 10, swarm: 10 } },
-    { from: 8,  fixed: { drift: 30, chaser: 30, tank: 10, shooter: 15, swarm: 15 } },
-    { from: 13, fixed: { drift: 30, chaser: 30, tank: 10, shooter: 10, swarm: 10, dasher: 10 } },
-    { from: 16, fixed: { drift: 30, chaser: 30, tank: 10, shooter: 8, swarm: 8, dasher: 7, shield: 7 } },
-    { from: 18, fixed: { drift: 30, chaser: 30, tank: 10, shooter: 7, swarm: 7, dasher: 6, shield: 6, thief: 4 } },
-    { from: 23, fixed: { drift: 30, chaser: 30, tank: 10, shooter: 6, swarm: 6, dasher: 5, shield: 5, thief: 3, bomber: 5 } },
+    { from: 6,  fixed: { drift: 45, chaser: 40, shooter: 10, swarm: 5 } },
+    { from: 8,  fixed: { drift: 40, chaser: 30, tank: 15, shooter: 10, swarm: 5 } },
+    { from: 13, fixed: { drift: 35, chaser: 30, tank: 15, shooter: 8, swarm: 5, dasher: 7 } },
+    { from: 16, fixed: { drift: 35, chaser: 28, tank: 15, shooter: 7, swarm: 5, dasher: 5, shield: 5 } },
+    { from: 18, fixed: { drift: 33, chaser: 27, tank: 15, shooter: 7, swarm: 5, dasher: 5, shield: 5, thief: 3 } },
+    { from: 23, fixed: { drift: 30, chaser: 27, tank: 15, shooter: 6, swarm: 5, dasher: 5, shield: 5, thief: 2, bomber: 5 } },
   ],
   elite: { from: 12, at: 0.5, hp: 8, size: 1.5, shards: 5, burst: [5, 6], skip: ['thief', 'bomber'] },
   boss: {
