@@ -161,7 +161,7 @@ export const CONFIG = {
     { from: 18, fixed: { drift: 33, chaser: 27, tank: 15, shooter: 7, swarm: 5, dasher: 5, shield: 5, thief: 3 } },
     { from: 23, fixed: { drift: 30, chaser: 27, tank: 15, shooter: 6, swarm: 5, dasher: 5, shield: 5, thief: 2, bomber: 5 } },
   ],
-  elite: { from: 12, at: 0.5, hp: 6.4, size: 1.5, shards: 5, burst: [5, 6], skip: ['thief', 'bomber'] },
+  elite: { from: 12, at: 0.5, hp: 6.4, size: 1.5, shards: 5, burst: [5, 6], skip: ['thief', 'bomber', 'drift', 'swarm'] },
   boss: {
     every: 10,
     order: ['core', 'hunter', 'twin', 'clock', 'shade'],
@@ -200,6 +200,7 @@ export const CONFIG = {
   enemyTiers: {
     x2: { from: 3, perPhase: 0.06, max: 0.4 },
     x4: { from: 7, perPhase: 0.05, max: 0.3 },
+    noBig: ['drift', 'swarm'],   // 大きくならない種類（漂い・群れ）
   },
   enemyBullet: { speed: 140, radius: 5, damage: 10, life: 6 },
 

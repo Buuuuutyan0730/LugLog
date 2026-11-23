@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123174310';
-import { spawnPop, stepParticle } from './pops.js?v=20261123174310';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123174310';
+import { CONFIG } from './config.js?v=20261123174724';
+import { spawnPop, stepParticle } from './pops.js?v=20261123174724';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123174724';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2500,7 +2500,7 @@ export function createGame() {
     let roll = rand(0, types.reduce((sum, [, t]) => sum + t.weight, 0));
     let kind = types[0][0];
     for (const [k, t] of types) { roll -= t.weight; if (roll <= 0) { kind = k; break; } }
-    const tier = rollTier();
+    const tier = TIERS.noBig.includes(kind) ? 1 : rollTier();   // 漂い・群れは大きくならない
     // 群れは、固まって出る全員の体力の合計で数える
     const scale = hpScaleOf(s.phase);
     return { kind, tier, scale, hp: ET[kind].hp * tier * (ET[kind].group || 1) * scale };
@@ -2809,7 +2809,7 @@ export function createGame() {
     const tierAvg = 4 * p4 + 2 * p2 + 1 * (1 - p4 - p2);
     const W = types.reduce((v, [, t]) => v + t.weight, 0);
     let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
-    for (const [, t] of types) { const g = t.group || 1; hpPer += (t.weight / W) * t.hp * g * tierAvg; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * tierAvg; }
+    for (const [k, t] of types) { const g = t.group || 1, ta = TIERS.noBig.includes(k) ? 1 : tierAvg; hpPer += (t.weight / W) * t.hp * g * ta; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * ta; }
     const rate = PH.hpRateBase * growthOf(phase);
     return Math.max(1, Math.round((rate * PH.needSec / (hpPer * hpScaleOf(phase))) * shPer * PH.needRatio));
   }
