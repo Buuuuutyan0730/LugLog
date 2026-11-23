@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123135251';
-import { makeForms } from './forms.js?v=20261123135251';
-import { CONFIG } from './config.js?v=20261123135251';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123141413';
+import { makeForms } from './forms.js?v=20261123141413';
+import { CONFIG } from './config.js?v=20261123141413';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -53,10 +53,22 @@ export function createRenderer(canvas, view) {
   const canvasRect = () => rectCache || (rectCache = canvas.getBoundingClientRect());
   window.addEventListener('scroll', () => { rectCache = null; }, { passive: true });
   window.addEventListener('resize', () => { rectCache = null; });
+  // 重さに合わせた画面の細かさ：1フレームが長い状態が続くと下げ、短い状態が続くと上げる
+  let dprCap = 2, frameAvg = 16, slowFor = 0, fastFor = 0;
+  function adaptQuality(dt) {
+    if (!(dt > 0) || dt > 0.25) return;   // タブの切り替えなどで大きく空いたときは数えない
+    frameAvg = frameAvg * 0.9 + dt * 1000 * 0.1;
+    if (frameAvg > 24) { slowFor += dt; fastFor = 0; } else if (frameAvg < 15) { fastFor += dt; slowFor = 0; } else { slowFor = 0; fastFor = 0; }
+    const top = Math.min(window.devicePixelRatio || 1, 2);
+    if (slowFor > 1 && dprCap > 1) { dprCap = Math.max(1, Math.min(top, dprCap) - 0.25); slowFor = 0; resize(); }
+    else if (fastFor > 4 && dprCap < top) { dprCap = Math.min(top, dprCap + 0.25); fastFor = 0; resize(); }
+  }
   function resize() {
     rectCache = null;
     const rect = canvasRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    // 画面の細かさは2倍まで（スマホの3倍だと描く点の数が2倍以上になり、とても重い。見た目の差はほとんどない）
+    //   さらに、重くて間に合わないときは自動で少し粗くする（dprCap。軽くなれば戻す）
+    const dpr = Math.min(window.devicePixelRatio || 1, 2, dprCap);
     canvas.width = Math.max(1, Math.round(rect.width * dpr));
     canvas.height = Math.max(1, Math.round(rect.height * dpr));
   }
@@ -196,13 +208,20 @@ export function createRenderer(canvas, view) {
   }
 
 
+  // ふちを暗くする：毎フレーム作り直すと重いので、画面の大きさが変わったときだけ作って貼る
+  let vigCv = null;
   function drawVignette() {
     const W = canvas.width, H = canvas.height;
-    const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75);
-    g.addColorStop(0, 'rgba(0,0,0,0)');
-    g.addColorStop(1, 'rgba(0,0,0,0.55)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
+    if (!vigCv || vigCv.width !== W || vigCv.height !== H) {
+      vigCv = document.createElement('canvas'); vigCv.width = W; vigCv.height = H;
+      const c2 = vigCv.getContext('2d');
+      const g = c2.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75);
+      g.addColorStop(0, 'rgba(0,0,0,0)');
+      g.addColorStop(1, 'rgba(0,0,0,0.55)');
+      c2.fillStyle = g;
+      c2.fillRect(0, 0, W, H);
+    }
+    ctx.drawImage(vigCv, 0, 0);
   }
 
   // ---------- かけら ----------
@@ -781,6 +800,50 @@ export function createRenderer(canvas, view) {
 
   // ---------- 敵 ----------
   // 色は赤で統一し、形で種類を見分ける
+  // ふつうの敵の体の絵を、種類・大きさ・色ごとに一度だけ描いてとっておく（画面の細かさに合わせて描く）
+  // 使い回しは、遅い端末の試験では速くならなかったので、今は切っておく（スマホで試して速ければ true に）
+  const USE_SPRITES = false;
+  const spriteCache = new Map();
+  function drawEnemySprite(e, body, edge, hit, heavy) {
+    const m = ctx.getTransform(), sc = Math.hypot(m.a, m.b);      // ゲーム内の長さ1が、画面の何点か
+    const unrot = e.kind === 'bomber' || e.kind === 'thief';     // この2つは、体の向きに関係なく上向きに描く
+    const rq = Math.round(e.r * 2) / 2;
+    const gl = PREFS.glow;
+    const key = `${e.kind}|${rq}|${body}|${edge}|${hit ? 1 : 0}|${Math.round(sc * 20)}|${gl}`;
+    let sp = spriteCache.get(key);
+    if (!sp) {
+      if (spriteCache.size > 600) spriteCache.clear();
+      const blur = (heavy ? 16 : 12) * gl;
+      const half = rq * 1.7 + 4 + blur / sc;                     // 形のはみ出し＋縁＋光の分の余白（ゲーム内の長さ）
+      const px = Math.ceil(half * 2 * sc);
+      // 使い回す絵は、画面に貼るのが速い形（ImageBitmap）にしておく（ふつうのcanvasのままだと、貼るたびに中身を送り直して遅い）
+      const off = typeof OffscreenCanvas !== 'undefined';
+      const cv0 = off ? new OffscreenCanvas(px, px) : document.createElement('canvas');
+      if (!off) { cv0.width = px; cv0.height = px; }
+      const c2 = cv0.getContext('2d');
+      c2.translate(px / 2, px / 2); c2.scale(sc, sc);
+      const save = ctx; ctx = c2;
+      try {
+        const fake = { kind: e.kind, r: rq, ang: 0 };
+        if (blur > 0) { c2.shadowColor = body; c2.shadowBlur = blur; }
+        c2.fillStyle = hit ? '#ffffff' : body;
+        c2.strokeStyle = edge;
+        c2.lineWidth = e.kind === 'tank' ? 3.5 : 2.5;
+        enemyShape(fake);
+        c2.fill();
+        c2.shadowBlur = 0;
+        c2.stroke();
+        c2.fillStyle = 'rgba(255,255,255,0.85)';
+        c2.beginPath(); c2.arc(0, 0, heavy ? 4 : 2.5, 0, Math.PI * 2); c2.fill();
+      } finally { ctx = save; }
+      const cv = off && cv0.transferToImageBitmap ? cv0.transferToImageBitmap() : cv0;
+      sp = { cv, half };
+      spriteCache.set(key, sp);
+    }
+    if (unrot) { ctx.save(); ctx.rotate(-(e.ang || 0)); }
+    ctx.drawImage(sp.cv, -sp.half, -sp.half, sp.half * 2, sp.half * 2);
+    if (unrot) ctx.restore();
+  }
   function enemyShape(e) {
     const r = e.r;
     ctx.beginPath();
@@ -867,7 +930,11 @@ export function createRenderer(canvas, view) {
   }
 
   function drawEnemies(state, t) {
+    const VW = state.world.w, VH = state.world.h;
     state.enemies.forEach((e, i) => {
+      // 画面の外の敵は描かない（ボスの予告などは画面の外にも届くので、ボスは描く）
+      const pad = e.r * 2 + 8;
+      if (!e.boss && (e.x < -pad || e.x > VW + pad || e.y < -pad || e.y > VH + pad)) return;
       // 突進の予告線
       if (e.kind === 'dasher' && e.phase === 'windup') {
         ctx.save();
@@ -967,25 +1034,30 @@ export function createRenderer(canvas, view) {
       const edge = st.freeze ? STATUS.iceEdge : st.chill ? STATUS.chillEdge : st.poison ? STATUS.poisonEdge : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
       // 中ボス：体の外に、もう1本の太い縁取り
       if (e.elite) { ctx.save(); ctx.scale(1.22, 1.22); enemyShape(e); ctx.strokeStyle = THEME.enemy; ctx.globalAlpha = 0.55; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
-      // 怒った双子：赤く脈打つ光
-      if (e.rage) { const k = 0.5 + 0.5 * Math.sin(t * 10); glow(THEME.enemy, 30 * k); }
-      glow(body, heavy ? 16 : 12);
-      ctx.fillStyle = hit ? '#ffffff' : body;
-      ctx.strokeStyle = edge;
-      ctx.lineWidth = e.boss || e.elite ? 5 : e.kind === 'tank' ? 3.5 : 2.5;
-      enemyShape(e);
-      ctx.fill();
-      noGlow();
-      ctx.stroke();
+      // ふつうの敵：体（光・塗り・縁・まんなかの点）は、前に描いた絵を使い回して貼るだけにする（見た目は同じで、ずっと軽い）
+      if (USE_SPRITES && !e.boss && !e.elite && !e.vanish && !e.rage && e.kind !== 'echo') {
+        drawEnemySprite(e, body, edge, hit, heavy);
+      } else {
+        // 怒った双子：赤く脈打つ光
+        if (e.rage) { const k = 0.5 + 0.5 * Math.sin(t * 10); glow(THEME.enemy, 30 * k); }
+        glow(body, heavy ? 16 : 12);
+        ctx.fillStyle = hit ? '#ffffff' : body;
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = e.boss || e.elite ? 5 : e.kind === 'tank' ? 3.5 : 2.5;
+        enemyShape(e);
+        ctx.fill();
+        noGlow();
+        ctx.stroke();
+        if (!(e.boss && e.kind !== 'core') && e.kind !== 'echo') {
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.beginPath();
+          ctx.arc(0, 0, heavy ? 4 : 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       if (e.kind === 'core') drawCoreRing(e, t);
       else if (e.boss || e.kind === 'echo') drawBossDetail(e, t);
       if (e.kind === 'shield' && e.shield > 0) drawShieldPlate(e, t);
-      if (!(e.boss && e.kind !== 'core') && e.kind !== 'echo') {
-        ctx.fillStyle = 'rgba(255,255,255,0.85)';
-        ctx.beginPath();
-        ctx.arc(0, 0, heavy ? 4 : 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
       if (st.freeze) drawIceShell(e, t);
       ctx.restore();
 
@@ -1410,7 +1482,9 @@ export function createRenderer(canvas, view) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8, 10, 24, 0.85)'; ctx.lineJoin = 'round';
     let font = '';
+    const VW = state.world.w, VH = state.world.h;
     for (const f of D) {
+      if (f.x < -20 || f.x > VW + 20 || f.y < -20 || f.y > VH + 20) continue;   // 画面の外は描かない
       const k = f.t / f.max, crit = f.kind === 'crit';
       const size = Math.round((crit ? 14 : f.kind === 'aim' ? 11 : 10) * (k > 0.85 ? 1 + (k - 0.85) * 2 : 1));
       const want = `bold ${size}px 'DotGothic16', sans-serif`;
@@ -2469,6 +2543,7 @@ export function createRenderer(canvas, view) {
       lod = busy > 160 ? 0 : busy > 90 ? 0.5 : 1;
     }
     tickRainbow(t);   // 虹のセット：本体とかけらの色を回す
+    adaptQuality(t - lastT);
     const dt = Math.min(0.1, Math.max(0, t - lastT));
     lastT = t;
     worldW = state.world.w;

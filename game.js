@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123135251';
-import { spawnPop, stepParticle } from './pops.js?v=20261123135251';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123135251';
+import { CONFIG } from './config.js?v=20261123141413';
+import { spawnPop, stepParticle } from './pops.js?v=20261123141413';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123141413';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -387,7 +387,6 @@ export function createGame() {
   // dot：毎フレーム少しずつ削るダメージ（毒・炎・雷の線など）。白く光らせない（光りっぱなしになるので）
   // まとめたダメージを、敵の上に数字として出す
   const DN_WAIT = { hit: 0.1, crit: 0, poison: 0.5, burn: 0.5, shock: 0.4, ice: 0.5 };
-  const DN_MAX = 70;
   function flushDamage(e, all) {
     const d = e.dn;
     if (!d) return;
@@ -397,7 +396,6 @@ export function createGame() {
       delete d[kind];
       const n = Math.round(k.amt);
       if (n < 1) continue;
-      if (s.dnums.length >= DN_MAX) s.dnums.shift();
       s.dnums.push({ x: e.x + rand(-e.r * 0.4, e.r * 0.4), y: e.y - e.r - 4 * s.zoom, text: String(n), kind, t: 0.7, max: 0.7 });
     }
   }
@@ -2345,9 +2343,13 @@ export function createGame() {
       sh.x += sh.vx * DT;
       sh.y += sh.vy * DT;
       sh.life -= DT;
+      const shR = Math.max(sh.size, 3) + 1;
       for (const e of s.enemies) {
+        // 先に縦横の差だけで遠い敵をはじく（毎フレーム、弾の数×敵の数だけ調べるので）
+        const ddx = e.x - sh.x, ddy = e.y - sh.y, rr = e.r + shR;
+        if (ddx > rr || ddx < -rr || ddy > rr || ddy < -rr) continue;
         if (e.hp <= 0 || sh.hit.has(e)) continue;
-        if (Math.hypot(e.x - sh.x, e.y - sh.y) < e.r + Math.max(sh.size, 3) + 1) {
+        if (ddx * ddx + ddy * ddy < rr * rr) {
           if (sh.hit.size === 0) s.stats.hits++;
           releaseReservation(sh);
           sh.hit.add(e);
