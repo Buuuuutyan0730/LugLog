@@ -1,27 +1,27 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261123152406';
-import { createGame, DT } from './game.js?v=20261123152406';
-import { applyForms } from './talents.js?v=20261123152406';
-import { createRenderer } from './render.js?v=20261123152406';
-import { createHud } from './ui.js?v=20261123152406';
-import { createInput } from './input.js?v=20261123152406';
-import { setupDebugPanel } from './debug.js?v=20261123152406';
-import { createPreview } from './preview.js?v=20261123152406';
-import { createMenus } from './menus.js?v=20261123152406';
-import { createDemo } from './demo.js?v=20261123152406';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261123152406';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261123152406';
-import { ensureDaily, addRun } from './missions.js?v=20261123152406';
-import { submitScore, checkDev } from './online.js?v=20261123152406';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123152406';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261123152406';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123152406';
-import { setEquipped } from './skinshot.js?v=20261123152406';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261123152406';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261123152406';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123152406';
+import { CONFIG } from './config.js?v=20261123153029';
+import { createGame, DT } from './game.js?v=20261123153029';
+import { applyForms } from './talents.js?v=20261123153029';
+import { createRenderer } from './render.js?v=20261123153029';
+import { createHud } from './ui.js?v=20261123153029';
+import { createInput } from './input.js?v=20261123153029';
+import { setupDebugPanel } from './debug.js?v=20261123153029';
+import { createPreview } from './preview.js?v=20261123153029';
+import { createMenus } from './menus.js?v=20261123153029';
+import { createDemo } from './demo.js?v=20261123153029';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261123153029';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261123153029';
+import { ensureDaily, addRun } from './missions.js?v=20261123153029';
+import { submitScore, checkDev } from './online.js?v=20261123153029';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123153029';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261123153029';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123153029';
+import { setEquipped } from './skinshot.js?v=20261123153029';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261123153029';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261123153029';
+import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123153029';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -151,6 +151,17 @@ function showCards(s) {
     document.getElementById('skill').classList.remove('with-reroll');
     skillShown = false;
   }, (i) => playSound(i < 0 ? 'pickBig' : 'deal', { pitch: i < 0 ? 1 : 1 + i * 0.12 }));   // カードが1枚出るたびに「パン」（だんだん高く）／選んだ瞬間に「キラーン」
+  // チュートリアル：引き直しは出さず、カードの説明を出す
+  const subEl = document.querySelector('#skill .skill-sub');
+  if (s.tuto) {
+    document.getElementById('skill-title').textContent = 'カードを選ぼう';
+    subEl.textContent = TUTO_STEPS[s.tuto.step - 1].pick || '';
+    subEl.classList.add('tuto-pick');
+    document.getElementById('skill').classList.remove('with-reroll');
+    return;
+  }
+  subEl.classList.remove('tuto-pick');
+  subEl.textContent = '才能を1つ選ぼう';
   const cost = rerollCost(s);
   document.getElementById('skill').classList.add('with-reroll');
   document.getElementById('reroll-cost').textContent = cost.toLocaleString();
@@ -182,7 +193,7 @@ function syncTutorial(s) {
   if (preview.active) { tutoKey = ''; return; }   // 見本を開いている間は、見本にまかせる
   const T = s.tuto;
   if (T && T.done) { finishTutorial(); return; }
-  const show = T && !menus.id;
+  const show = T && !menus.id && s.mode !== 'select';   // カード選びの間は、カードの画面に説明を出す
   const ok = !!(T && T.okT > 0), last = T && T.step === TUTO_STEPS.length;
   const key = show ? `${T.step}:${ok}` : '';
   if (key === tutoKey) return;

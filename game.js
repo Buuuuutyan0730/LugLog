@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123152406';
-import { spawnPop, stepParticle } from './pops.js?v=20261123152406';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123152406';
+import { CONFIG } from './config.js?v=20261123153029';
+import { spawnPop, stepParticle } from './pops.js?v=20261123153029';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123153029';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3662,6 +3662,13 @@ export function createGame() {
     if (s.mode === 'returning') finishReturn();
     if (s.mode !== 'select') return;
     const ch = s.choices[i];
+    // チュートリアル：取ったら、そのまま練習を続ける（フェーズは進まない）
+    if (s.tuto) {
+      if (ch) takeChoice(s, ch);
+      s.st = stats(); s.maxHp = s.st.maxHp; s.hp = s.maxHp;
+      s.choices = []; s.mode = 'play'; s.tuto.picked = true;
+      return;
+    }
     // 遊び始めの1枚：取ったら、そのままフェーズ1の操作待ちへ
     if (s.firstPick) {
       if (ch) takeChoice(s, ch);
@@ -3847,10 +3854,10 @@ export function createGame() {
   // ---------- チュートリアル ----------
   //   練習場（敵は決まった数だけ・ダメージなし・フェーズは進まない）で、手順を1つずつこなす
   //   できたら緑に光って少し待ち、次の手順へ。最後まで終わると done（main.js が本番を始める）
-  const TUTO_LAST = 6, TUTO_OK = 1.1;
+  const TUTO_LAST = 7, TUTO_OK = 1.1;
   function startTutorial() {
     reset();
-    s.tuto = { step: 0, hold: false, okT: 0, born: [], lastG: null, spawned: false, done: false };
+    s.tuto = { step: 0, hold: false, okT: 0, born: [], lastG: null, spawned: false, dealt: false, picked: false, done: false };
     s.mode = 'play';
   }
   // 止めておくとき true：最初の説明（タップで手順1へ）／終わったあと
@@ -3885,7 +3892,12 @@ export function createGame() {
           if (s.shards > 0) ok = true; else T.spawned = false;
         }
         break;
-      case 6: ok = p.drawMode; break;                                     // 描くモードに戻った
+      case 6:
+        // カードを配る（遊び始めと同じ、入口のカード）。選んだらできた
+        if (!T.dealt) { T.dealt = true; s.choices = rollChoices(s, { first: true }); s.mode = 'select'; }
+        ok = T.picked;
+        break;
+      case 7: ok = p.drawMode; break;                                     // 描くモードに戻った
     }
     if (!ok) return;
     T.okT = T.step >= TUTO_LAST ? TUTO_OK + 0.8 : TUTO_OK;
