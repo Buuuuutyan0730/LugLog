@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123194529';
-import { spawnPop, stepParticle } from './pops.js?v=20261123194529';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123194529';
+import { CONFIG } from './config.js?v=20261123194925';
+import { spawnPop, stepParticle } from './pops.js?v=20261123194925';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123194925';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -4144,8 +4144,9 @@ export function createGame() {
     s.warns = [];
     s.bossDownT = 0;
     if (s.bossPhase) {
-      s.bossAppear = BOSS.appear;
-      s.bossIntro = { t: 0, name: (CONFIG.enemies[s.bossPhase] || {}).name || 'BOSS' };   // 警告の帯と名前（見出しの「BOSS」の代わり）
+      const fin = s.bossPhase === 'shuhitsu';
+      s.bossAppear = fin ? BOSS.finalAppear : BOSS.appear;
+      s.bossIntro = { t: 0, name: (CONFIG.enemies[s.bossPhase] || {}).name || 'BOSS', kind: fin ? 'shuhitsu' : undefined };   // 警告の帯と名前（見出しの「BOSS」の代わり）
       sfx('bossin');
     }
     s.banner = { text: `PHASE ${s.phase}`, sub, t: s.bossPhase ? 0 : 1.6 };   // ボスのフェーズは、登場の演出（警告の帯と名前）が代わりに出る

@@ -1,27 +1,27 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261123194529';
-import { createGame, DT } from './game.js?v=20261123194529';
-import { applyForms } from './talents.js?v=20261123194529';
-import { createRenderer } from './render.js?v=20261123194529';
-import { createHud } from './ui.js?v=20261123194529';
-import { createInput } from './input.js?v=20261123194529';
-import { setupDebugPanel } from './debug.js?v=20261123194529';
-import { createPreview } from './preview.js?v=20261123194529';
-import { createMenus } from './menus.js?v=20261123194529';
-import { createDemo } from './demo.js?v=20261123194529';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261123194529';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261123194529';
-import { ensureDaily, addRun } from './missions.js?v=20261123194529';
-import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261123194529';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123194529';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261123194529';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123194529';
-import { setEquipped } from './skinshot.js?v=20261123194529';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261123194529';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261123194529';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123194529';
+import { CONFIG } from './config.js?v=20261123194925';
+import { createGame, DT } from './game.js?v=20261123194925';
+import { applyForms } from './talents.js?v=20261123194925';
+import { createRenderer } from './render.js?v=20261123194925';
+import { createHud } from './ui.js?v=20261123194925';
+import { createInput } from './input.js?v=20261123194925';
+import { setupDebugPanel } from './debug.js?v=20261123194925';
+import { createPreview } from './preview.js?v=20261123194925';
+import { createMenus } from './menus.js?v=20261123194925';
+import { createDemo } from './demo.js?v=20261123194925';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261123194925';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261123194925';
+import { ensureDaily, addRun } from './missions.js?v=20261123194925';
+import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261123194925';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123194925';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261123194925';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123194925';
+import { setEquipped } from './skinshot.js?v=20261123194925';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261123194925';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261123194925';
+import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261123194925';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -65,6 +65,8 @@ function wantBgm(s) {
   if (id) return 'home';
   if (s.over) return 'result';   // やられてから結果の画面が出るまで
   if (s.time === 0 && (s.mode === 'ready' || s.mode === 'select')) return null;   // 遊び始め：ドラッグして動き出すまでは曲を流さない
+  // ラスボス（終筆）：登場の演出の間は曲を止めて静かにし、終わったら専用の曲。段階が進むほど曲も激しくなる
+  if (s.bossPhase === 'shuhitsu') { if (s.bossIntro) return null; setFinalLevel((s.boss && s.boss.stage) || 1); return 'final'; }
   return s.bossPhase || s.boss ? 'boss' : 'play';
 }
 function syncBgm(s) {
@@ -73,6 +75,9 @@ function syncBgm(s) {
   // 戦い・結果からホームへ戻るときは、前の曲をすぐ止める（ゆっくり消すと次の曲と重なって聞こえる）
   const now = bgmNow();
   const cut = w === 'home' && (now === 'play' || now === 'boss' || now === 'result');
+  // ラスボスの登場：前の曲はすぐ消して無音にし、演出のあとは太鼓からすぐ始める
+  if (w === 'final') { playBgm(w, { fade: 0.15, out: 0.1 }); return; }
+  if (w === null && s.bossIntro && s.bossIntro.kind === 'shuhitsu') { stopBgm(0.25); return; }
   if (w) playBgm(w, { fade: 2.5, out: cut ? 0.08 : 2.5 }); else stopBgm(1);
 }
 applySettings(save.settings);
@@ -278,7 +283,7 @@ function tick(now) {
   if (playing && !pausedByDebug && !pausedByOwned && !preview.active) {
     // ボスの演出は実時間で進める。撃破のあとは少しの間ゆっくりにする
     const gs = game.state;
-    if (gs.bossIntro) { gs.bossIntro.t += elapsed / CONFIG.boss.appear; if (gs.bossIntro.t >= 1) gs.bossIntro = null; }
+    if (gs.bossIntro) { gs.bossIntro.t += elapsed / (gs.bossIntro.kind === 'shuhitsu' ? CONFIG.boss.finalAppear : CONFIG.boss.appear); if (gs.bossIntro.t >= 1) gs.bossIntro = null; }
     if (gs.bossDown) { gs.bossDown.t += elapsed / 1.0; if (gs.bossDown.t >= 1) gs.bossDown = null; }
     const slow = gs.slowT > 0 ? 0.3 : 1;
     if (gs.slowT > 0) gs.slowT -= elapsed;
