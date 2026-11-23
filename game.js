@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123123153';
-import { spawnPop, stepParticle } from './pops.js?v=20261123123153';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123123153';
+import { CONFIG } from './config.js?v=20261123123929';
+import { spawnPop, stepParticle } from './pops.js?v=20261123123929';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123123929';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1132,17 +1132,25 @@ export function createGame() {
         break;
       }
     }
-    // 城壁：盾の輪の内側に敵を入れない（本体に体当たりさせない）
+    // 城壁：本体の盾に触れた敵を、外へはじき返す（盾のすき間からは近づけるので、体当たりは通る）
     if (s.st.evo.shieldsat) {
       for (const e of s.enemies) {
         if (e.hp <= 0 || e.boss) continue;
-        const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy), keep = Math.max(R, p.r + e.r + 2);
-        if (d < keep && d > 0.01) { e.x = p.x + dx / d * keep; e.y = p.y + dy / d * keep; }
+        for (const pl of plates) {
+          if (Math.hypot(e.x - pl.x, e.y - pl.y) >= e.r + pl.r) continue;
+          const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy) || 1;
+          e.kbx = dx / d * SK.shieldsat.wallPush * s.zoom; e.kby = dy / d * SK.shieldsat.wallPush * s.zoom;
+          break;
+        }
       }
     }
-    // 聖域：本体のまわりの弾をすべて消す
+    // 聖域：本体のまわりに入った敵の弾を、とても遅くする（消しはしない。よけやすくなる）
     p.sanctuary = skLv('sanctuary') ? SK.sanctuary.radius * s.zoom : 0;
-    if (p.sanctuary) for (const b of s.enemyShots) if (b.life > 0 && Math.hypot(b.x - p.x, b.y - p.y) < p.sanctuary) { b.life = 0; skSfx('sanctuary'); sparks(b.x, b.y, 'white', 2, 80); }
+    if (p.sanctuary) for (const b of s.enemyShots) {
+      if (b.life <= 0) continue;
+      const inside = Math.hypot(b.x - p.x, b.y - p.y) < p.sanctuary;
+      if (inside && !b.sanct) { b.sanct = true; b.vx *= SK.sanctuary.slow; b.vy *= SK.sanctuary.slow; b.life /= SK.sanctuary.slow; skSfx('sanctuary'); sparks(b.x, b.y, 'white', 2, 60); }
+    }
   }
 
   // ---- 現象の道：死神の型 ----
@@ -1308,16 +1316,23 @@ export function createGame() {
       }
     }
     // 斥力：本体の近くの敵を押し返す
+    // 斥力：決まった間隔で、本体の近くの敵を一度だけ押し返す波を出す（波と波の間は近づける）
     if (skLv('repel')) {
       const p = s.player, R = p.r + SK.repel.reach * s.zoom;
-      for (const e of s.enemies) {
-        if (e.hp <= 0 || e.boss) continue;
-        const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
-        if (d >= R + e.r || d < 0.01) continue;
-        if ((e.repelSfx || 0) <= s.time) { e.repelSfx = s.time + 1.5; skSfx('repel'); }
-        const m = SK.repel.speed * s.zoom * DT;
-        e.x += dx / d * m; e.y += dy / d * m;
-        if (s.st.evo.repel) damageEnemy(e, avgGhostPower() * SK.repel.power * DT, false, true);
+      p.repelCd = (p.repelCd == null ? 0.5 : p.repelCd) - DT;
+      if (p.repelCd <= 0) {
+        p.repelCd = SK.repel.every;
+        let hit = false;
+        for (const e of s.enemies) {
+          if (e.hp <= 0 || e.boss) continue;
+          const dx = e.x - p.x, dy = e.y - p.y, d = Math.hypot(dx, dy);
+          if (d >= R + e.r || d < 0.01) continue;
+          hit = true;
+          e.kbx = dx / d * SK.repel.push * s.zoom; e.kby = dy / d * SK.repel.push * s.zoom;
+          if (s.st.evo.repel) damageEnemy(e, avgGhostPower() * SK.repel.power);
+        }
+        ring(p.x, p.y, p.r, R, 0.35, 'player', 0, 3);
+        if (hit) skSfx('repel');
       }
       p.repel = R;
     } else s.player.repel = 0;
@@ -2384,6 +2399,7 @@ export function createGame() {
     let r = radiusOf(one / sc) * (t.sizeMul || 1);
     // 中ボス：1体だけ、体力が多く、少し大きい（大きさは今まで通り）。ふつうの敵だけ enemySize 倍
     if (elite) { r *= CONFIG.elite.size; one *= CONFIG.elite.hp; } else r *= CONFIG.enemySize;
+    r *= s.zoom;   // ステージが広がっても、画面の上での大きさは変わらない（本体・分身・ボスと同じ）
     const W = s.world.w, H = s.world.h;
     const m = r + 12;
     const side = Math.floor(rand(0, 4));
@@ -2753,13 +2769,29 @@ export function createGame() {
     s.enemies = s.enemies.filter((e) => !e.escaped);
 
     // 敵同士が重なりすぎないように押し合う（突進中は押されない）
+    //   全部の組を調べると敵の数の2乗の手間になるので、マス目に分けて、近くのマスどうしだけ調べる
     const es = frozen ? [] : s.enemies;   // 時間停止中は押し合わない
+    let maxR = 1;
+    for (const e of es) if (e.r > maxR) maxR = e.r;
+    const cell = maxR * 2, grid = new Map();
     for (let i = 0; i < es.length; i++) {
-      for (let j = i + 1; j < es.length; j++) {
+      const e = es[i], key = Math.floor(e.x / cell) * 4096 + Math.floor(e.y / cell);
+      let list = grid.get(key);
+      if (!list) grid.set(key, (list = []));
+      list.push(i);
+    }
+    for (let i = 0; i < es.length; i++) {
+      const cx = Math.floor(es[i].x / cell), cy = Math.floor(es[i].y / cell);
+      for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+        const list = grid.get((cx + ox) * 4096 + cy + oy);
+        if (!list) continue;
+        for (const j of list) {
+        if (j <= i) continue;
         const a = es[i], b = es[j];
         const dx = b.x - a.x, dy = b.y - a.y;
-        const d = Math.hypot(dx, dy);
         const min = a.r + b.r;
+        if (dx > min || dx < -min || dy > min || dy < -min) continue;
+        const d = Math.hypot(dx, dy);
         if (d > 0 && d < min) {
           // 大きい敵ほど押されにくい
           const wa = b.r / (a.r + b.r), wb = a.r / (a.r + b.r);
@@ -2768,6 +2800,7 @@ export function createGame() {
           const ka = a.boss ? 0 : b.boss ? 2 : 1, kb = b.boss ? 0 : a.boss ? 2 : 1;
           if (a.phase !== 'dash') { a.x -= dx / d * push * wa * ka; a.y -= dy / d * push * wa * ka; }
           if (b.phase !== 'dash') { b.x += dx / d * push * wb * kb; b.y += dy / d * push * wb * kb; }
+        }
         }
       }
     }
@@ -3132,7 +3165,7 @@ export function createGame() {
   function coreCall(e, n) {
     for (let k = 0; k < n; k++) {
       const a = (k * Math.PI * 2) / n + e.spin, d = e.r * 1.8;
-      const one = ET.chaser.hp, r = radiusOf(one) * (ET.chaser.sizeMul || 1);
+      const one = ET.chaser.hp * hpScaleOf(s.phase), r = radiusOf(ET.chaser.hp) * (ET.chaser.sizeMul || 1) * CONFIG.enemySize * s.zoom;
       const x = e.x + Math.cos(a) * d, y = e.y + Math.sin(a) * d;
       s.enemies.push({ kind: 'chaser', tier: 1, x, y, r, hp: one, maxHp: one, vx: 0, vy: 0, ang: a, flash: 0, speedMul: 1, phase: 'move', timer: 1, strafe: 1, dashX: 0, dashY: 0, wx: x, wy: y, shield: 0, shieldMax: 0 });
       ring(x, y, 4, r * 2.5, 0.35, 'enemy', 0, 3);

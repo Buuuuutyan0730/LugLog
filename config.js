@@ -267,7 +267,7 @@ export const CONFIG = {
     gust: { still: 0.25, again: 0.8, radius: 60, power: 1, push: 260, kiwamiRadius: 1.5 }, // 突風：止まっているとみなす秒数／出直せる間隔／広さ／ダメージ／吹き飛ばす強さ
     nimble: { base: 0.3, per: 0.05 },                         // 身軽：動いている間、当たり判定が小さくなる割合（Lv1 30%、1Lvで +5%）
     blink: { every: 4, dist: 80, power: 3, width: 14 },       // 瞬身：間隔／瞬間移動する距離／通り道の敵へのダメージ（本体の攻撃力×倍）／通り道の太さ
-    demon: { every: 20, time: 4, power: 3, again: 0.3, reach: 1.9 }, // 鬼神
+    demon: { every: 20, time: 2, power: 3, again: 0.3, reach: 1.9 }, // 鬼神
     // ---- 罠の道（罠は踏まれるまでその場に残る。数は max まで、超えたら古いものから消える） ----
     trap: { life: 8, max: 200, reach: 5, slow: 0.5, slowTime: 0.5 }, // 罠が残る秒数／罠の数の上限／踏んだとみなす距離（敵のふちから）／スロウフィールド：遅くする倍率と秒数
     keepsake: { power: 1, per: 0.25, blast: 45, blastPower: 1 },     // 置き土産：踏んだ敵へ（押し出された分身の攻撃力×倍）、1Lvで +25%／極の爆発の広さと強さ
@@ -299,7 +299,7 @@ export const CONFIG = {
     iceage: { every: 15, time: 5, bossTime: 1.5, power: 0.6 },   // 氷河期：間隔／凍る秒数／ボスが凍る秒数（ダメージはふつうの敵と同じ秒数受ける）／凍っている間の毎秒ダメージ（分身の攻撃力の平均×割合）
     pull: { reach: 100, speed: 40, per: 0.1, holeReach: 1.5, core: 20, corePower: 0.5 }, // 引力：分身のふちから届く距離／吸い寄せる速さ、1Lvで +10%／特異点：範囲の倍・中心からの距離・毎秒（分身の攻撃力×割合）
     compress: { per: 0.05, cap: 0.5, kiwamiCap: 1 },              // 圧縮：中の敵1体ごと／上限／極の上限
-    repel: { reach: 60, speed: 160, power: 0.5 },                 // 斥力：本体のふちから届く距離／押し返す速さ／極：毎秒（分身の攻撃力の平均×割合）
+    repel: { reach: 60, every: 3, push: 420, power: 1.5 },        // 斥力：本体のふちから届く距離／押し返す波の間隔（秒）／押し返す強さ／極：波が当たった敵へのダメージ（分身の攻撃力の平均×倍）
     gravshot: { time: 1, radius: 50, speed: 80, kiwamiMult: 2 },  // 重力弾：小さな引力が残る秒数／広さ／寄せる速さ／極の倍
     collapse: { every: 20, time: 2, speed: 160 },                 // 重力崩壊：間隔／吸い寄せる秒数／速さ
     poison: { cap: 5, kiwamiCap: 10, time: 3, power: 0.1, per: 0.1 }, // 毒：重なる上限／猛毒の上限（上限なしだと分身が多いほど際限なく強くなる）／続く秒数／毒1つの毎秒（分身の攻撃力の平均×割合）、1Lvで +10%
@@ -329,11 +329,11 @@ export const CONFIG = {
     gundrone: { keep: 80, every: 0.8 },                           // 砲撃機：敵から離れる距離／撃つ間隔
     collector: { count: 1, kiwamiCount: 2 },                      // 回収機：かけらを拾う子機の数／極
     mothership: { every: 10, count: 2, life: 10 },                // 母艦：間隔／出す数／出した子機が消えるまで
-    shieldsat: { count: 2, ring: 2.8, speed: 2, size: 9, per: 0.15 }, // 盾衛星：盾の数／回る輪の大きさ（本体の半径の倍）／回る速さ／盾の大きさ、1Lvで +15%
+    shieldsat: { count: 2, ring: 2.8, speed: 2, size: 9, per: 0.15, wallPush: 260 }, // 盾衛星：盾の数／回る輪の大きさ（本体の半径の倍）／回る速さ／盾の大きさ、1Lvで +15%
     reflect: { power: 0.5 },                                      // 反射盾：跳ね返した弾の威力（本体の攻撃力×割合）
     shockshield: { radius: 30, power: 0.5, kiwamiMult: 2 },       // 衝撃盾：衝撃波の広さ／強さ（本体の攻撃力×割合）／極：広さの倍
     escort: { gap: 10, count: 1, kiwamiCount: 2 },                // 護衛：分身のふちからの距離／盾の数／極
-    sanctuary: { radius: 70 },                                    // 聖域：弾が消える広さ（本体の中心から）
+    sanctuary: { radius: 70, slow: 0.3 },                         // 聖域：弾が遅くなる広さ（本体の中心から）／遅くなった弾の速さ（元の何倍か）
     // ---- 収穫の道 ----
     keeper: { per: 2 },                                           // 拾い上手：かけらが消えるまでの時間が、1Lvで +2秒（極：消えない）
     shortcut: { base: 0.1, per: 0.05, floor: 0.5, cards: 4 },     // 近道：必要なかけらが減る割合（Lv1 10%、1Lvで +5%）／これより少なくならない（元の半分）／豊年：カードの枚数

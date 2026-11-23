@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123123153';
-import { makeForms } from './forms.js?v=20261123123153';
-import { CONFIG } from './config.js?v=20261123123153';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123123929';
+import { makeForms } from './forms.js?v=20261123123929';
+import { CONFIG } from './config.js?v=20261123123929';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -76,7 +76,9 @@ export function createRenderer(canvas, view) {
     return { x: worldW / 2 + fx * viewW, y: worldH / 2 + fy * viewW * (rect.height / rect.width) };
   }
 
-  const glow = (color, blur) => { ctx.shadowColor = color; ctx.shadowBlur = blur * PREFS.glow; };
+  // 混み具合で光のぼかしを減らす（ぼかしは描く手間が大きい。敵・弾・分身が多いときほど省く）
+  let lod = 1;
+  const glow = (color, blur) => { if (lod <= 0) { ctx.shadowBlur = 0; return; } ctx.shadowColor = color; ctx.shadowBlur = blur * PREFS.glow * lod; };
   const noGlow = () => { ctx.shadowBlur = 0; };
   // 設定の「光の強さ」（ひかえめ 0.4／ふつう 1／つよい 1.6）を、ぼかし以外の光（輪・粒・フラッシュ）にも効かせる
   const glowAlpha = () => Math.min(1, 0.45 + 0.55 * PREFS.glow);   // ひかえめ 0.67／ふつう 1／つよい 1
@@ -2323,6 +2325,10 @@ export function createRenderer(canvas, view) {
   }
 
   function draw(state, t) {
+    {
+      const busy = state.enemies.length + (state.shots ? state.shots.length : 0) * 0.5 + (state.ghosts ? state.ghosts.length : 0) * 3 + (state.enemyShots ? state.enemyShots.length : 0) * 0.5;
+      lod = busy > 160 ? 0 : busy > 90 ? 0.5 : 1;
+    }
     tickRainbow(t);   // 虹のセット：本体とかけらの色を回す
     const dt = Math.min(0.1, Math.max(0, t - lastT));
     lastT = t;
