@@ -31,6 +31,7 @@ html, body {
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;   /* iPhone：長押しのメニューを出さない */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -2015,3 +2016,8 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 @keyframes tutoBlink { 50% { opacity: 0.35; } }
 .tuto-sub { white-space: pre-line; }
 .skill-sub.tuto-pick { white-space: pre-line; font-size: 3.6cqw; line-height: 1.55; color: #e3e8ff; }
+/* ランキングの記録を直す（開発者） */
+.ms-rkrow { display: flex; align-items: center; gap: 3cqw; margin: 1.2cqw 0; font-size: 3.6cqw; }
+.ms-rkrow span { width: 18cqw; color: var(--muted); }
+.ms-rkin { flex: 1; min-width: 0; font-family: inherit; font-size: 4cqw; color: var(--text); background: #0b0f26; border: 0.5cqw solid #3a4280; border-radius: 1.6cqw; padding: 1.6cqw 2.4cqw; outline: none; -webkit-user-select: text; user-select: text; }
+.ms-rkmsg { color: #ff8a9a; }

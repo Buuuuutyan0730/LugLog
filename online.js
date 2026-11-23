@@ -2,7 +2,7 @@
 //   人の見分け：名前の登録なしで端末ごとに見分ける「匿名ログイン」
 //   全期間の最高は scores/<見分けの番号>、その週の最高は weeks/<週の番号>/scores/<見分けの番号> に1つずつ
 //   つながらないとき（電波がない・読みこめない）は、ゲームはそのまま遊べる。ランキングだけ「つながりません」と出す
-import { CONFIG as GAME } from './config.js?v=20261123153622';
+import { CONFIG as GAME } from './config.js?v=20261123154100';
 const CONFIG = {
   apiKey: 'AIzaSyA9JWRT-1pPiMH4wnL78nrt_7icvCd_v7M',
   authDomain: 'luglog.firebaseapp.com',
@@ -141,6 +141,18 @@ export async function checkDev() {
   } catch (e) {
     return e && e.code === 'permission-denied' ? 'no' : 'offline';
   }
+}
+
+// 開発者だけ：ランキングの記録を直す・消す（サーバー側のきまりで、開発者の端末でなければはじかれる）
+//   tab：'week'（今週）・'all'（全期間）。v：{ name, score, phase }
+const rankRef = (fs, db, tab, uid) => (tab === 'week' ? fs.doc(db, 'weeks', weekKey(), 'scores', uid) : fs.doc(db, 'scores', uid));
+export async function adminSetScore(tab, uid, v) {
+  const { fs, db } = await withTimeout(connect());
+  await withTimeout(fs.updateDoc(rankRef(fs, db, tab, uid), v));
+}
+export async function adminDeleteScore(tab, uid) {
+  const { fs, db } = await withTimeout(connect());
+  await withTimeout(fs.deleteDoc(rankRef(fs, db, tab, uid)));
 }
 
 // データを全部消すとき：ランキングの自分の記録（全期間・今週）も消す

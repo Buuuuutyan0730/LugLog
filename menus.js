@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261123153622';
-import { snapIcons } from './icons.js?v=20261123153622';
-import { writeSave } from './save.js?v=20261123153622';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261123153622';
-import { playSound } from './audio.js?v=20261123153622';
-import { createGachaFx } from './gachafx.js?v=20261123153622';
-import { titleOf } from './titles.js?v=20261123153622';
-import { frameOf } from './frames.js?v=20261123153622';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261123153622';
-import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote } from './online.js?v=20261123153622';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123153622';
-import { GACHA_POOL } from './skins.js?v=20261123153622';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261123154100';
+import { snapIcons } from './icons.js?v=20261123154100';
+import { writeSave } from './save.js?v=20261123154100';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261123154100';
+import { playSound } from './audio.js?v=20261123154100';
+import { createGachaFx } from './gachafx.js?v=20261123154100';
+import { titleOf } from './titles.js?v=20261123154100';
+import { frameOf } from './frames.js?v=20261123154100';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261123154100';
+import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote, adminSetScore, adminDeleteScore } from './online.js?v=20261123154100';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123154100';
+import { GACHA_POOL } from './skins.js?v=20261123154100';
 
 // 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
 const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;
@@ -68,6 +68,10 @@ export function createMenus(save, hooks) {
     root.classList.add('show');
     stage.classList.toggle('menu-full', FULL.has(id));
     snapIcons(root);
+    // ランキングの記録を直す（開発者）：入力欄の中身を覚えておく
+    if (id === 's_ranking' && st.rk) {
+      root.querySelectorAll('.ms-rkin').forEach((inp) => inp.addEventListener('input', () => { st.rk.draft[inp.dataset.k] = inp.value; }));
+    }
     if (id === 's_name') {
       const inp = root.querySelector('.ms-nameinput');
       const cnt = root.querySelector('.ms-namecount');
@@ -139,6 +143,32 @@ export function createMenus(save, hooks) {
       case 'frame': save.equip.frame = arg; writeSave(save); sync(); render(); break;
       case 'ttl': save.equip.title = arg === 'none' ? '' : arg; writeSave(save); sync(); st.ttlOpen = false; render(); break;
       case 'ttlopen': st.ttlOpen = true; render(); break;
+      // ランキングの記録を直す・消す（開発者だけ）
+      case 'rkedit': {
+        const R = rank[st.rtab || 'week'];
+        const e = R && [...R.list, R.me].find((x) => x && x.uid === arg);
+        if (!save.dev || !e) break;
+        st.rk = { uid: e.uid, name: e.name, draft: { name: e.name, score: String(e.score), phase: String(e.phase) }, msg: '', confirm: false, busy: false };
+        render(); break;
+      }
+      case 'rkclose': st.rk = null; render(); break;
+      case 'rksave': case 'rkdel': {
+        const k = st.rk, tab = st.rtab || 'week';
+        if (!k || k.busy) break;
+        if (cmd === 'rkdel' && !k.confirm) { k.confirm = true; render(); break; }
+        let job;
+        if (cmd === 'rksave') {
+          const name = k.draft.name.trim(), score = Number(k.draft.score), phase = Number(k.draft.phase);
+          if (!name || [...name].length > 12) { k.msg = '名前は1〜12文字にしてください'; render(); break; }
+          if (!Number.isInteger(score) || score < 0) { k.msg = 'スコアは0以上の整数にしてください'; render(); break; }
+          if (!Number.isInteger(phase) || phase < 1 || phase > 150) { k.msg = 'フェーズは1〜150の整数にしてください'; render(); break; }
+          job = adminSetScore(tab, k.uid, { name, score, phase });
+        } else job = adminDeleteScore(tab, k.uid);
+        k.busy = true; k.msg = ''; render();
+        job.then(() => { st.rk = null; loadRank(tab); render(); },
+          (e) => { k.busy = false; k.confirm = false; k.msg = `できませんでした（${String((e && (e.code || e.message)) || 'unknown').replace(/[<>&]/g, '').slice(0, 60)}）`; render(); });
+        break;
+      }
       case 'wipeopen': st.wipeOpen = true; render(); break;
       case 'wipeclose': st.wipeOpen = false; render(); break;
       case 'wipe': {

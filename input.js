@@ -44,6 +44,8 @@ export function createInput(target, extra = []) {
   target.addEventListener('pointerdown', onDown);
   // 軌跡のバーの枠の上でも操作できる（ボタンの上は除く）
   for (const el of extra) el.addEventListener('pointerdown', (e) => { if (!e.target.closest('button')) onDown(e); });
+  // iPhone：長押しや、すばやいタップの重なりで出る「拡大鏡（透明な丸い虫めがね）」と拡大を止める（ボタンの上は除く）
+  for (const el of [target, ...extra]) el.addEventListener('touchstart', (e) => { if (!e.target.closest('button')) e.preventDefault(); }, { passive: false });
 
   target.addEventListener('pointermove', (e) => {
     if (e.pointerId !== pointerId) return;
