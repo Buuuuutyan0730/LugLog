@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124043525';
-import { spawnPop, stepParticle } from './pops.js?v=20261124043525';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124043525';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124043525';
+import { CONFIG } from './config.js?v=20261124044212';
+import { spawnPop, stepParticle } from './pops.js?v=20261124044212';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124044212';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124044212';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -27,6 +27,8 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 // 大きさ＝強さ：面積がパワーに比例するように半径を決める
+// 弾の太さ：強さに比例して太くなるが、上限（shot.maxSize）まで。後半に弾が大きくなりすぎないように
+export const shotSize = (power) => Math.min(CONFIG.shot.maxSize, radiusOf(power) * 0.3);
 export function radiusOf(power) {
   return Math.max(CONFIG.power.minRadius, CONFIG.power.sizeK * Math.sqrt(Math.max(0, power)));
 }
@@ -366,7 +368,7 @@ export function createGame() {
       vy: ay * CONFIG.shot.speed,
       life: 0.8 * s.zoom, owner, idx, src: s.dmgSrc,
       power,                                   // 残りの攻撃力（余れば貫通する）
-      size: radiusOf(power) * 0.3,             // 弾の太さも強さに比例
+      size: shotSize(power),                   // 弾の太さも強さに比例（上限あり）
       target,
       reserved: Math.abs(spread) > 0.05 ? 0 : Math.min(power, target.hp - (target.incoming || 0)),   // 大きくぶれた弾は、当たる前提で予約しない
       hit: new Set(),
@@ -622,7 +624,7 @@ export function createGame() {
         const n = BS.barrage.count, power = bodyAtk() * BS.barrage.power, sp = CONFIG.shot.speed;
         for (let i = 0; i < n; i++) {
           const a = (i * Math.PI * 2) / n + s.time;
-          s.shots.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.8 * s.zoom, owner: 'player', idx: 0, src: s.dmgSrc, power, size: radiusOf(power) * 0.3, target: null, reserved: 0, hit: new Set(), base: power, blast: 0, pierce: false });
+          s.shots.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.8 * s.zoom, owner: 'player', idx: 0, src: s.dmgSrc, power, size: shotSize(power), target: null, reserved: 0, hit: new Set(), base: power, blast: 0, pierce: false });
         }
       }
     }

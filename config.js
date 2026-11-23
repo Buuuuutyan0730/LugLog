@@ -88,7 +88,7 @@ export const CONFIG = {
     compressFrom: 2,     // 軌跡の総量がこの倍（最初の量の）を超えたら、超えた分は画面に置かず、分身の強さに回す
   },
 
-  shot: { speed: 460, range: 250 },
+  shot: { speed: 460, range: 250, maxSize: 5 },   // maxSize：弾の太さ（半径）の上限。最初の弾は約3、強くなっても5まで
   record: { minStroke: 50 },
 
   // フェーズ
