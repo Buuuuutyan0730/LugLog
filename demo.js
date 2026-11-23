@@ -1,8 +1,8 @@
 // ホームなどの後ろで流す「自動で遊ぶ様子」。本物のゲームを、決まった動きの指で動かす
-import { CONFIG } from './config.js?v=20261123160018';
-import { createGame, DT } from './game.js?v=20261123160018';
+import { CONFIG } from './config.js?v=20261123160602';
+import { createGame, DT } from './game.js?v=20261123160602';
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261123160018';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123160602';
 
 // 流すたびに、ちがう組み合わせのスキルで遊ぶ（毎回同じにならないように）
 const BUILDS = [
@@ -33,6 +33,7 @@ export function createDemo() {
     g.reset();
     t = 0;
     const s = g.state;
+    s.demo = true;   // ホームの自動プレイ（行き先の印などは出さない）
     g.step(input(true));
     s.phase = 7; g.debugClearPhase();
     let k; do { k = Math.floor(Math.random() * BUILDS.length); } while (k === last && BUILDS.length > 1);

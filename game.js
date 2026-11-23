@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123160018';
-import { spawnPop, stepParticle } from './pops.js?v=20261123160018';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123160018';
+import { CONFIG } from './config.js?v=20261123160602';
+import { spawnPop, stepParticle } from './pops.js?v=20261123160602';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123160602';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -494,6 +494,13 @@ export function createGame() {
       //   前は最高速を超えた分を捨てていたため、指を速く動かすほど指との位置がずれていった
       p.tx += input.dx * T.sensitivity.value;
       p.ty += input.dy * T.sensitivity.value;
+      // 画面の端：指が端に着いたあとも押さえていれば、その向きへ進み続ける（親指の下の余白が少なくても、下まで行ける）
+      if (input.edgeX || input.edgeY) {
+        const max = T.moveSpeed.value * s.zoom * Math.min(s.st.curse.chain ? 0.5 : 1, p.drawMode ? DM.speed : 1);
+        // 行き先が本体より先に行きすぎないように（離したときに飛んでいかない）
+        const ahead = Math.hypot(p.tx - p.x, p.ty - p.y);
+        if (ahead < max * 0.1) { p.tx += input.edgeX * max * DT; p.ty += input.edgeY * max * DT; }
+      }
     }
     const m = p.r + 2;
     p.tx = clamp(p.tx, m, s.world.w - m);
@@ -511,27 +518,10 @@ export function createGame() {
     const max = T.moveSpeed.value * s.zoom * Math.min(s.st.curse.chain ? 0.5 : 1, p.drawMode ? DM.speed : 1);   // 描くモードは遅い
     const step = max * DT;
     const ox = p.x, oy = p.y;
-    if (X.control.value === 'stick' && !input.keyX && !input.keyY) {
-      // スティック：速さは aim でなめらかに上げてあるので、そのまま進む
-      if (d <= step) { p.x = p.tx; p.y = p.ty; p.catching = false; }
-      else { p.x += dx / d * step; p.y += dy / d * step; }
-      p.vx = p.vy = 0;
-    } else {
-      // ドラッグ・キー：行き先へ向かう速さを、加速度（最高速度÷accelTime）で変える。
-      //   行き先の手前では、ちょうど止まれる速さまで落とす（行きすぎない）。向きを変える・止まるときは2倍の速さで変える
-      const acc = max / P.accelTime;
-      const want = d > 0.01 ? Math.min(max, Math.sqrt(2 * acc * d)) : 0;
-      const wx = d > 0.01 ? dx / d * want : 0, wy = d > 0.01 ? dy / d * want : 0;
-      const vx = p.vx || 0, vy = p.vy || 0;
-      let ex = wx - vx, ey = wy - vy;
-      const el = Math.hypot(ex, ey), lim = acc * DT * (ex * vx + ey * vy < 0 ? 2 : 1);
-      if (el > lim) { ex *= lim / el; ey *= lim / el; }
-      p.vx = vx + ex; p.vy = vy + ey;
-      const sp = Math.hypot(p.vx, p.vy);
-      if (sp > max) { p.vx *= max / sp; p.vy *= max / sp; }
-      if (d <= Math.hypot(p.vx, p.vy) * DT || d < 0.3) { p.x = p.tx; p.y = p.ty; p.vx = wx; p.vy = wy; if (d < 0.3) { p.vx = p.vy = 0; } p.catching = false; }
-      else { p.x += p.vx * DT; p.y += p.vy * DT; }
-    }
+    // スティック：速さは aim でなめらかに上げてあるので、そのまま進む
+    // ドラッグ：加速はつけず、指と同時に動く（指が最高速度より遅ければ、遅れずに指と同じだけ動く）
+    if (d <= step) { p.x = p.tx; p.y = p.ty; p.catching = false; }
+    else { p.x += dx / d * step; p.y += dy / d * step; }
     const movedNow = Math.hypot(p.x - ox, p.y - oy);
     if (p.inv > 0) p.inv -= DT;
     // 本体の道の見た目と状態（描画もこれを使う）

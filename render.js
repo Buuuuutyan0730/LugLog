@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123160018';
-import { makeForms } from './forms.js?v=20261123160018';
-import { CONFIG } from './config.js?v=20261123160018';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123160602';
+import { makeForms } from './forms.js?v=20261123160602';
+import { CONFIG } from './config.js?v=20261123160602';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1955,8 +1955,27 @@ export function createRenderer(canvas, view) {
   function drawPlayer(state, t) {
     drawReadyPulse(state, t);
     if (state.over) return;
+    if (!state.demo && state.mode === 'play') drawMoveTarget(state.player);
     drawOnePlayer(state.player, t, true);
     for (const p of state.extraPlayers || []) drawOnePlayer(p, t, false);
+  }
+
+  // ドラッグで本体が指に置いていかれているとき：向かっている先に薄い輪を出す（止まったのではなく、向かっている途中だとわかるように）
+  function drawMoveTarget(p) {
+    if (CONFIG.experiments.control.value === 'stick' || p.tx == null) return;
+    const d = Math.hypot(p.tx - p.x, p.ty - p.y), r = p.r;
+    if (d < r * 1.5) return;
+    const a = Math.min(1, (d - r * 1.5) / (r * 2)) * 0.45;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = THEME.player || '#7fe3ff';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.arc(p.tx, p.ty, r * 0.9, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = a * 0.5;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.tx, p.ty); ctx.stroke();
+    ctx.restore();
   }
 
   // 本体：極・進化を1つでも持てば、まんなかのコアが虹色になる

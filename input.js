@@ -31,6 +31,15 @@ export function createInput(target, extra = []) {
   // iPhone などが途中で指を横取りした（pointercancel）ときは、すぐ「離した」にせず少し待つ。
   //   その間にまた触れたら、同じ指の続きとして扱う（本体が止まらず、描いている線も切れない）
   const CANCEL_WAIT = 250;   // ミリ秒
+  // 画面の端：指が端からこの幅の中に入ると、その向きへ進み続ける（触れ始めた場所がもう端なら、その向きは使わない）
+  const EDGE = 40;   // 画面上のピクセル
+  let startX = 0, startY = 0;
+  const edgeOf = (v, size, start) => {
+    const lo = v < EDGE && start >= EDGE ? -(EDGE - v) / EDGE : 0;
+    const hi = v > size - EDGE && start <= size - EDGE ? (v - (size - EDGE)) / EDGE : 0;
+    const k = lo || hi;
+    return k ? Math.sign(k) * (0.5 + 0.5 * Math.min(1, Math.abs(k))) : 0;   // 入ったらすぐ半分の速さ、奥ほど速く
+  };
   let cancelAt = 0;
 
   const onDown = (e) => {
@@ -42,7 +51,7 @@ export function createInput(target, extra = []) {
     lastX = curX = e.clientX;
     lastY = curY = e.clientY;
     stickOX = curX; stickOY = curY;
-    if (!resumed) { downAt = performance.now(); moved = 0; } else moved = TAP_MOVE;   // 続きのときはタップにしない
+    if (!resumed) { downAt = performance.now(); moved = 0; startX = curX; startY = curY; } else moved = TAP_MOVE;   // 続きのときはタップにしない
     try { target.setPointerCapture(e.pointerId); } catch (_) { /* 何もしない */ }
     listeners.forEach((fn) => fn());
     e.preventDefault();
@@ -106,7 +115,15 @@ export function createInput(target, extra = []) {
         const R = stickTravel(), vx = (curX - stickOX) / R, vy = (curY - stickOY) / R, m = Math.hypot(vx, vy);
         if (m > DEAD) { const k = Math.min(1, (m - DEAD) / (1 - DEAD)) / m; sx = vx * k; sy = vy * k; }   // 輪の外は最高速度のまま
       }
+      // 画面の端（ドラッグのとき）：横・縦それぞれ -1〜1
+      let ex = 0, ey = 0;
+      if (touching && pointerType !== 'mouse') {
+        ex = edgeOf(curX, window.innerWidth, startX);
+        ey = edgeOf(curY, window.innerHeight, startY);
+      }
       const out = {
+        edgeX: ex,
+        edgeY: ey,
         stickX: sx,
         stickY: sy,
         dx: dragX * scale,
