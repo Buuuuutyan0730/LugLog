@@ -2,7 +2,7 @@
 //   どの曲も、目立たず、落ち着いていて、でも体が揺れる感じ。盛り上げない（フェーズが進んでも変えない）。
 //   4曲は、楽器・リズム・拍子・調をそれぞれ別に作る（同じ曲の手直しにしない）。
 //   曲を切りかえるときは、前の曲を少しずつ小さく、次の曲を少しずつ大きくする。
-import { audioParts, onAudioReset } from './audio.js?v=20261123192351';
+import { audioParts, onAudioReset } from './audio.js?v=20261123193302';
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const vary = (v) => v * (0.88 + Math.random() * 0.24);
@@ -483,16 +483,22 @@ export const SONGS = {
     chords: { E: [40, 52, 56, 59, 64], F: [41, 53, 57, 60, 65], G: [43, 55, 59, 62, 67], A: [45, 52, 57, 60, 64] },
     progB: ['F', 'G', 'A', 'E'], progC: ['A', 'F', 'G', 'E'],
     flute: [[0, 76, 6], [6, 77, 2], [8, 81, 8], [16, 83, 4], [20, 84, 4], [24, 83, 4], [28, 81, 4], [32, 77, 8], [40, 76, 4], [44, 77, 4], [48, 76, 16],
-      [64, 81, 6], [70, 83, 2], [72, 84, 8], [80, 88, 4], [84, 84, 4], [88, 83, 8], [96, 81, 4], [100, 77, 4], [104, 76, 4], [108, 72, 4], [112, 76, 16]],
+      [64, 81, 6], [70, 83, 2], [72, 84, 8], [80, 88, 4], [84, 84, 4], [88, 83, 8], [96, 81, 4], [100, 77, 4], [104, 76, 4], [108, 72, 4], [112, 76, 8], [120, 72, 4], [124, 71, 4]],
     // さびの金管の旋律（4小節で1回り）
-    hook: [[0, 69, 8], [8, 72, 4], [12, 71, 4], [16, 72, 6], [22, 74, 2], [24, 76, 8], [32, 77, 8], [40, 76, 4], [44, 74, 4], [48, 71, 8], [56, 68, 8]],
+    //   A のリフの「ミ…ド・シ・ラ…ファ」をのばした形。B の尺八の終わりでも先に少し聞かせておく
+    hook: [[0, 76, 8], [8, 72, 4], [12, 71, 4], [16, 72, 6], [22, 69, 2], [24, 65, 8], [32, 71, 4], [36, 72, 4], [40, 74, 8], [48, 76, 8], [56, 71, 4], [60, 68, 4]],
+    // ため（さびの前）：金管が半音ずつ近い音で上がっていき、ソ# からさびの頭のラへ解決する
+    rise: [57, 59, 60, 62, 64, 65, 68],
     answer: [[12, 84, 2], [14, 83, 2], [44, 81, 2], [46, 83, 2]],
     arrange(song, i, bar, t, sd) {
       const S = this, p = bar % 80, lv = finalLevel;
       const sec = p < 8 ? 'intro' : p < 16 ? 'A1' : p < 24 ? 'B1' : p < 28 ? 'build' : p < 36 ? 'C1' : p < 40 ? 'drop' : p < 48 ? 'A2' : p < 56 ? 'B2' : p < 60 ? 'build2' : p < 72 ? 'C2' : p < 76 ? 'end' : 'outro';
       const isA = sec === 'A1' || sec === 'A2', isB = sec === 'B1' || sec === 'B2', isC = sec === 'C1' || sec === 'C2';
-      const tr = sec === 'C2' ? 2 : 0;
-      const ch = isB ? S.progB[(p - (sec === 'B1' ? 16 : 48)) % 4] : isC ? S.progC[(p - (sec === 'C1' ? 28 : 60)) % 4] : sec === 'end' ? 'E' : null;
+      const bld = sec === 'build' || sec === 'build2', b4 = bld ? p - (sec === 'build' ? 24 : 56) : -1;
+      // さびの直前の1拍は、全部止めて息をのませる
+      if (b4 === 3 && i >= 12) return;
+      const tr = (sec === 'C2' || sec === 'build2') ? 2 : 0;
+      const ch = bld ? 'E' : isB ? S.progB[(p - (sec === 'B1' ? 16 : 48)) % 4] : isC ? S.progC[(p - (sec === 'C1' ? 28 : 60)) % 4] : sec === 'end' ? 'E' : null;
       const C = ch ? S.chords[ch].map((m) => m + tr) : null;
       const rk = sec === 'drop' ? (p === 39 ? 'solo2' : 'solo') : (isA || isC) ? S.order[p % 8] : null;
       const R = rk ? S.riffs[rk] : null, root = (C ? C[0] : rk ? S.roots[rk] : 40) + (C ? 0 : tr);
@@ -508,6 +514,7 @@ export const SONGS = {
       const hhOut = song.f('hh', 'highpass', 8000, 0.6, song.pan('hhR', 0.3, drums)), snOut = song.f('sn', 'bandpass', 1700, 0.8, drums), crOut = song.f('cr', 'highpass', 4500, 0.4, drums);
       const acc = i % 4 === 0;
       // ---- 三味線 ----
+      if (bld && i % (b4 < 2 ? 2 : 1) === 0) I.shami(song, 76 + tr + (b4 === 3 ? 12 : 0), t, vary(0.03 + (b4 * 16 + i) * 0.0006), shOut);
       if (R && R[i]) I.shami(song, R[i] + tr, t, vary(isC ? (acc ? 0.085 : 0.065) : (acc ? 0.075 : 0.055)), shOut);
       // B：三味線は和音をくずして、はね返るように（右側）
       if (isB && i % 2 === 0) { const a = S.riffs['arp' + ch][(i / 2) % 8]; if (a) I.shami(song, a, t, vary(0.045), arpOut); }
@@ -520,6 +527,8 @@ export const SONGS = {
         if (k >= 4 && i === 0 && k % 2 === 0) I.bell(song, 40, t, 0.11, bellOut);   // 寺の鐘
         if (k >= 4 && i === 0) I.sub(song, 28, t, 16 * sd, 0.22, subOut);           // 低いうなり
         if (sec === 'intro' && p === 7 && i === 0) riser(song, t, 16 * sd, song.out);
+      } else if (bld) {
+        // ためは下の別の場所で鳴らす
       } else if (sec === 'drop') {
         if (i === 0 || i === 10) I.taiko(song, t, 0.45, drums);
         if (i === 0 && p % 2 === 0) I.bell(song, 40, t, 0.1, bellOut);
@@ -530,6 +539,8 @@ export const SONGS = {
         if (i === 0 || i === 10 || (i === 6 && bar % 2)) I.taiko(song, t, isC ? 0.55 : 0.42, drums);
         if (isC && i >= 12) I.taiko(song, t, 0.16 + (i - 12) * 0.06, drums);
         if (sec === 'C2' && i % 2 === 1 && p % 2 === 1) I.taiko(song, t, 0.22, drums);
+        // 区切りの最後の小節：太鼓を連打して次へ渡す
+        if ((p === 15 || p === 47 || p === 35 || p === 71) && [8, 10, 12, 13, 14, 15].includes(i)) I.taiko(song, t, 0.3 + (i - 8) * 0.04, drums);
       }
       // ---- バスドラ・スネア・ハイハット ----
       if (isA || isC) {
@@ -541,16 +552,28 @@ export const SONGS = {
       if (isB) {
         if (i === 0) I.kick(song, t, 0.36, drums, 95, 40);
         if (i === 8) I.noise(song, t, vary(0.11), 0.24, snOut);
-        if (lv >= 3 ? i % 2 === 0 : i % 4 === 2) I.noise(song, t, vary(0.012), 0.03, hhOut);
+        const late = (p - (sec === 'B1' ? 16 : 48)) >= 4;
+        if (lv >= 3 || late ? i % 2 === 0 : i % 4 === 2) I.noise(song, t, vary(late ? 0.016 : 0.012), 0.03, hhOut);
+        if (late && i === 10) I.kick(song, t, 0.3, drums, 95, 40);
       }
-      if (sec === 'build' || sec === 'build2') {
-        const b4 = p - (sec === 'build' ? 24 : 56);
-        if (i % [4, 2, 2, 1][b4] === 0) I.noise(song, t, 0.02 + (b4 * 16 + i) * 0.0018, 0.08, snOut);
-        if (i % [4, 4, 2, 1][b4] === 0) I.taiko(song, t, 0.2 + b4 * 0.08, drums);
-        if (sec === 'build2' && i % [4, 2, 2, 1][b4] === 0) I.kick(song, t, 0.3 + b4 * 0.06, drums, 140, 60);
-        if (b4 === 0 && i === 0) { riser(song, t, 64 * sd, song.out); I.sub(song, 28, t, 64 * sd, 0.2, subOut); }
+      if (bld) {
+        // スネアと太鼓がだんだん細かく・強く。バスドラも後半から刻む
+        if (i % [4, 2, 2, 1][b4] === 0) I.noise(song, t, 0.03 + (b4 * 16 + i) * 0.0018, 0.08, snOut);
+        if (i % [8, 4, 2, 1][b4] === 0) I.taiko(song, t, 0.22 + b4 * 0.08, drums);
+        if (b4 >= 1 && i % [4, 4, 2, 1][b4] === 0) I.kick(song, t, 0.28 + b4 * 0.07, drums, 120, 50);
+        // ベースは ミ（さびのラへ引っぱる音）を8分で刻み、最後は16分
+        if (i % (b4 < 2 ? 2 : 1) === 0) I.fingerBass(song, root - 12 + (i % 4 === 2 ? 12 : 0), t, sd * 1.4, vary(0.26 + b4 * 0.03), bassOut);
+        // 金管が1小節に2音ずつ上がっていく
+        if (i === 0 || i === 8) { const m = S.rise[b4 * 2 + i / 8]; if (m) { const len = (b4 === 3 && i === 8 ? 4 : 8) * sd * 0.95; I.brass(song, m + tr + 12, t, len, 0.026 + b4 * 0.004, brOut); I.brass(song, m + tr, t, len, 0.02 + b4 * 0.004, brOut); } }
+        if (b4 === 0 && i === 0) {
+          riser(song, t, 60 * sd, song.out); I.sub(song, 28 + tr, t, 60 * sd, 0.2, subOut);
+          // 曲全体の明るさをいったん落とし、さびに向けて開いていく
+          const f = song.lp.frequency; f.cancelScheduledValues(t); f.setValueAtTime(1400, t); f.exponentialRampToValueAtTime(S.lp, t + 60 * sd);
+        }
       }
-      if ((p === 8 || p === 28 || p === 40 || p === 60 || p === 66) && i === 0) { I.noise(song, t, 0.1, 1.8, crOut, 0.005); I.kick(song, t, 0.55, drums, 80, 30); }
+      // さびの頭：明るさを元に戻す
+      if ((p === 28 || p === 60) && i === 0) { const f = song.lp.frequency; f.cancelScheduledValues(t); f.setValueAtTime(S.lp, t); }
+      if ((p === 8 || p === 28 || p === 36 || p === 40 || p === 60 || p === 66) && i === 0) { I.noise(song, t, 0.1, 1.8, crOut, 0.005); I.kick(song, t, 0.55, drums, 80, 30); }
       if (isC && p % 2 === 0 && i === 0) I.noise(song, t, 0.05, 1.0, crOut, 0.005);
       // ---- ベース・低いうなり ----
       if ((isA || isB || isC) && i % 2 === 0) {
@@ -560,8 +583,8 @@ export const SONGS = {
       if ((isA || isB || isC || sec === 'end') && i === 0) I.sub(song, root - 12, t, 16 * sd, isC || sec === 'end' ? 0.26 : 0.17, subOut);
       // ---- 合唱：低く広い和音（A は低く静かに、B は中くらい、C と締めは厚く高く） ----
       if (i === 0) {
-        const vox = isA ? [root, root + 7, root + 12] : C ? C.slice(1).concat(isC || sec === 'end' ? C.slice(1).map((m) => m + 12) : []) : null;
-        if (vox) { const v = isA ? 0.008 : isB ? 0.011 : 0.013, len = (sec === 'end' ? 64 : 16) * sd; vox.forEach((m, n) => I.choir(song, m, t, len, v, n % 2 ? chR : chL)); }
+        const vox = isA ? [root, root + 7, root + 12] : C ? C.slice(1).concat(isC || sec === 'end' || b4 >= 2 ? C.slice(1).map((m) => m + 12) : []) : null;
+        if (vox) { const v = isA ? 0.008 : isB ? 0.011 : bld ? 0.006 + b4 * 0.0025 : 0.013, len = (sec === 'end' ? 64 : b4 === 3 ? 12 : 16) * sd; vox.forEach((m, n) => I.choir(song, m, t, len, v, n % 2 ? chR : chL)); }
       }
       // ---- 金管：さびの旋律（C）と、和音の一撃（A2・段階3・締め） ----
       if (isC) {
