@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261123183620';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123183620';
-import { CONFIG } from './config.js?v=20261123183620';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123183620';
-import { POP_STYLES } from './pops.js?v=20261123183620';
-import { TITLES, titleChip } from './titles.js?v=20261123183620';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123183620';
-import { titleOf } from './titles.js?v=20261123183620';
+import { iconSvg, snapIcons } from './icons.js?v=20261123184704';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123184704';
+import { CONFIG } from './config.js?v=20261123184704';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123184704';
+import { POP_STYLES } from './pops.js?v=20261123184704';
+import { TITLES, titleChip } from './titles.js?v=20261123184704';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123184704';
+import { titleOf } from './titles.js?v=20261123184704';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123183620';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123184704';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123183620';
-import { iconArtSvg } from './iconart.js?v=20261123183620';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123183620';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123183620';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123184704';
+import { iconArtSvg } from './iconart.js?v=20261123184704';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123184704';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123184704';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -44,14 +44,19 @@ export const FULL = new Set([...SOUND_TABS.map(([id]) => id), 's_load', 's_home'
 export const LIVE_BG = new Set(['s_load', 's_home', 's_howto']);
 
 export const AVATARS = '★◆●▲♥☾'.split('');
-export const BOSS_KINDS = ['core', 'hunter', 'twin', 'clock', 'shade'];
-export const BOSS_NAMES = { core: 'コア', hunter: 'ハンター', twin: '双子', clock: '時計', shade: '影' };
+export const BOSS_KINDS = ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'];
+export const BOSS_NAMES = { core: 'コア', hunter: 'ハンター', twin: '双子', clock: '時計', shade: '影', comet: '彗星', mirage: '蜃気楼', eclipse: '日蝕', abyss: '深淵', shuhitsu: '終筆' };
 const BOSS_DESC = {
   core: '真ん中で回りながら、渦の形に弾をまく。ときどき追跡を呼ぶ。',
   hunter: '距離を保って動き回り、赤い帯で予告してから突っ込んでくる。',
   twin: '2体で本体をはさんで回る。間の光の線に触れるとダメージ。片方だけ倒すと、もう片方が怒る。',
   clock: '長い針を1周させる。ときどき時間を止め、止まっている間に弾を空中に並べる。',
   shade: '本体の通った道を追う。本体の動きをそのままなぞる影の分身を出す。',
+  comet: '画面を大きく回り、燃える尾を残す。星を降らせ、真ん中に飛びこんで全方向へはじける。',
+  mirage: '本物と偽物に分かれる。偽物には弾がすり抜ける。近づくと遠ざかり、熱の帯で横に切りつける。',
+  eclipse: '画面を暗くして、自分とボスのまわりしか見えなくする。回る光線と、横切る月の影で攻める。',
+  abyss: '弾もかけらも自分も吸い込む。近づきすぎると危ない輪を張り、吸い込んだ弾を吐き出す。',
+  shuhitsu: '最後のボス。墨の線を描いて黒い分身にし、こちらの分身を塗りつぶす。最後は大きな円を書き上げようとする。',
 };
 export const ENEMY_KINDS = ['drift', 'chaser', 'shooter', 'swarm', 'tank', 'dasher', 'shield', 'thief', 'bomber'];
 const ENEMY_DESC = {
@@ -97,6 +102,11 @@ export const BOSS_ICONS = {
   twin: '<svg viewBox="-10 -10 20 20"><path d="M-1-8A8 8 0 1 0-1 8 5 9 0 0 1-1-8z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="0.8" transform="translate(-1.5 0) scale(0.95)"/><path d="M1-8A8 8 0 1 1 1 8 5 9 0 0 0 1-8z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="0.8" transform="translate(1.5 0) scale(0.95)"/></svg>',
   clock: '<svg viewBox="-10 -10 20 20"><circle r="8" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1"/><circle r="5.6" fill="none" stroke="#fff" stroke-width="0.8"/><path d="M0 0V-4.5M0 0 3 1.5" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>',
   shade: '<svg viewBox="-10 -10 20 20"><path d="M0-9C6-9 8-3 8 3L8 8 5 6 2 8 0 6-2 8-5 6-8 8-8 3C-8-3-6-9 0-9z" fill="#2a0a16" stroke="#ff3b5c" stroke-width="1.2"/><path d="M0 0a3 3 0 1 1 3-3" fill="none" stroke="#ff3b5c" stroke-width="1"/></svg>',
+  comet: '<svg viewBox="-10 -10 20 20"><path d="M-9 0Q-3-5 3-5A5 5 0 0 1 3 5Q-3 5-9 0z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1"/><circle cx="3" cy="0" r="2.4" fill="#fff6e0"/></svg>',
+  mirage: '<svg viewBox="-10 -10 20 20"><path d="M-8-6 8-6 0 9z" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1"/><path d="M0-3 1.5-1 0 1-1.5-1z" fill="#fff"/></svg>',
+  eclipse: '<svg viewBox="-10 -10 20 20"><circle r="9" fill="none" stroke="#ff7a5c" stroke-width="1.4" stroke-dasharray="1.5 1.2"/><circle r="6.5" fill="#1a0a14" stroke="#ff3b5c" stroke-width="1.4"/><circle cx="5.2" cy="-3.8" r="1.2" fill="#fff"/></svg>',
+  abyss: '<svg viewBox="-10 -10 20 20"><ellipse rx="9.5" ry="2.6" transform="rotate(-20)" fill="none" stroke="#ff3b5c" stroke-width="1.4"/><circle r="5.5" fill="#1a0a14" stroke="#ff3b5c" stroke-width="1.2"/><circle r="2" fill="#000"/></svg>',
+  shuhitsu: '<svg viewBox="-10 -10 20 20"><rect x="-1.2" y="-10" width="2.4" height="6" fill="#5a0f14" stroke="#ffd84a" stroke-width=".6"/><rect x="-3.6" y="-4.4" width="7.2" height="1.8" fill="#c9a227"/><path d="M0 9C1 5 4 2 3.6-1.2L3.4-2.6-3.4-2.6-3.6-1.2C-4 2-1 5 0 9z" fill="#0d0a0c" stroke="#ffd84a" stroke-width=".8"/></svg>',
 };
 // 敵の小さな絵（ゲームの形に合わせた簡単な形）
 const EN = (path) => `<svg viewBox="-10 -10 20 20"><path d="${path}" fill="#ff3b5c" stroke="#0a0a14" stroke-width="1.2"/><circle r="1.6" fill="#fff"/></svg>`;

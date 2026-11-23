@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123183620';
-import { makeForms } from './forms.js?v=20261123183620';
-import { CONFIG } from './config.js?v=20261123183620';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123184704';
+import { makeForms } from './forms.js?v=20261123184704';
+import { CONFIG } from './config.js?v=20261123184704';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -955,7 +955,7 @@ export function createRenderer(canvas, view) {
 
   function drawEnemies(state, t) {
     const VW = state.world.w, VH = state.world.h;
-    state.enemies.forEach((e, i) => {
+    (state.fakes && state.fakes.length ? state.enemies.concat(state.fakes) : state.enemies).forEach((e, i) => {   // 蜃気楼の偽物もいっしょに描く
       // 画面の外の敵は描かない（ボスの予告などは画面の外にも届くので、ボスは描く）
       const pad = e.r * 2 + 8;
       if (!e.boss && (e.x < -pad || e.x > VW + pad || e.y < -pad || e.y > VH + pad)) return;

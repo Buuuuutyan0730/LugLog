@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123183620';
-import { spawnPop, stepParticle } from './pops.js?v=20261123183620';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123183620';
+import { CONFIG } from './config.js?v=20261123184704';
+import { spawnPop, stepParticle } from './pops.js?v=20261123184704';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123184704';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -143,6 +143,8 @@ export function createGame() {
       enemyShots: [],
       warns: [],             // ボスの技の予告（赤く光る形）
       bossTrails: [],        // ボスが画面に残す線（彗星の燃える尾など）。{ kind, w, pts, life, max, damage }
+      fakes: [],             // 蜃気楼の偽物（敵の一覧には入れない：弾がすり抜ける）
+      darkness: null, darkT: 0,   // 日蝕の暗転（描画用）と、残りの秒数
       shots: [],
       pickups: [],           // かけら
       particles: [],
@@ -403,6 +405,7 @@ export function createGame() {
   // kind：ダメージの数字の色分け（hit ふつう／crit 会心／poison 毒／burn 炎／shock 雷／ice 氷／none 出さない）
   function damageEnemy(e, amount, raw = false, dot = false, kind = 'hit') {
     if (e.vanish) return;   // 影が消えている間は当たらない
+    if (e.shiftT > 0) return;   // 終筆：段階が変わる間は当たらない
     const hp0 = e.hp;
     e.lastSrc = s.dmgSrc || 'ghost';
     if (!raw) amount *= markMul(e) * lureMul(e);
@@ -2664,6 +2667,11 @@ export function createGame() {
     if (e.kind === 'clock') { thinkClock(e); return; }
     if (e.kind === 'shade') { thinkShade(e); return; }
     if (e.kind === 'comet') { thinkComet(e); return; }
+    if (e.kind === 'mirage') { thinkMirage(e); return; }
+    if (e.kind === 'eclipse') { thinkEclipse(e); return; }
+    if (e.kind === 'abyss') { thinkAbyss(e); return; }
+    if (e.kind === 'shuhitsu') { thinkShuhitsu(e); return; }
+    if (e.kind === 'inkghost') { thinkInk(e); return; }
     if (e.kind === 'echo') { thinkEcho(e); return; }
     const t = ET[e.kind];
     const p = targetOf(e);   // ふだんは本体。おとりに引きつけられていれば分身
@@ -3188,7 +3196,7 @@ export function createGame() {
     s.enemyShots = [];
     s.shots = [];
     // 地面に残るもの（マキビシ・地雷・光の罠・炎・火の粉・毒霧・引力・疾走の跡など）も、フェーズごとに消す
-    s.traps = []; s.fires = []; s.embers = []; s.firePillars = []; s.fogs = []; s.wells = []; s.bossTrails = [];
+    s.traps = []; s.fires = []; s.embers = []; s.firePillars = []; s.fogs = []; s.wells = []; s.bossTrails = []; s.fakes = []; s.darkness = null; s.darkT = 0;
     s.cuts = []; s.slashes = []; s.blinks = []; s.stars = []; s.goldDrops = [];
     // 残っていたかけら：全部が本体に吸い寄せられて消える（数には入らない。見た目だけ）
     s.pickups = s.pickups.map((k, i) => ({ ...k, gather: true, gt: 0, gd: Math.min(0.15, i * 0.006), sx: k.x, sy: k.y }));
@@ -3686,6 +3694,16 @@ export function createGame() {
   // ---------- 彗星 ----------
   // ボスが残す線：時間で消える。燃える線に触れるとダメージ
   function updateBossTrails() {
+    // 蜃気楼が倒れたら、偽物も消える
+    if (s.fakes.length && !s.enemies.some((e) => e.kind === 'mirage' && e.hp > 0)) { for (const f of s.fakes) burst(f.x, f.y, 'enemy', 8, 140); s.fakes = []; }
+    // 日蝕の暗転：残りの秒数があるあいだ濃くなり、なくなるとうすれる。穴は本体とボスのまわり
+    const ecl = s.enemies.find((e) => e.kind === 'eclipse' && e.hp > 0);
+    if (s.darkT > 0 && ecl) s.darkT -= DT; else s.darkT = 0;
+    const dk = clamp(((s.darkness && s.darkness.k) || 0) + (s.darkT > 0 ? DT / 0.6 : -DT / 0.6), 0, 1);
+    if (dk > 0 && ecl) { const E2 = BOSS.eclipse, z = s.zoom; s.darkness = { k: dk, holes: [{ x: s.player.x, y: s.player.y, r: E2.seePlayer * z }, { x: ecl.x, y: ecl.y, r: E2.seeBoss * z }] }; }
+    else s.darkness = null;
+    // 終筆の墨の線：その線の分身が倒れたら、線も消えていく
+    for (const tr of s.bossTrails) if (tr.owner && tr.owner.hp <= 0 && tr.life > 0.6) tr.life = 0.6;
     if (!s.bossTrails.length) return;
     const p = s.player;
     for (const tr of s.bossTrails) tr.life -= DT;
@@ -3773,6 +3791,270 @@ export function createGame() {
     const C = BOSS.comet;
     e.rage = e.hp / e.maxHp < C.rageAt;
     bossFlow(e, COMET_TECH, e.rage ? ['orbit', 'rain', 'peri', 'orbit'] : ['orbit', 'rain', 'peri'], (b) => { bossWander(b, C.moveSpeed); if (b.vx || b.vy) b.ang = Math.atan2(b.vy, b.vx); }, C.moveTime);
+  }
+
+  // ---------- 蜃気楼 ----------
+  function mirageAll(e) { return [e, ...s.fakes]; }
+  const MIRAGE_TECH = {
+    // 分かれる：本物と偽物が、上のほうの別々の場所へ散る（どれが本物かは入れかわる）
+    split: { warn: 0.8, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 2, follow: e }, e.ft),
+      start: (e) => {
+        const M = BOSS.mirage, n = e.rage ? M.rageCopies : M.copies, W = s.world.w, H = s.world.h, z = s.zoom;
+        const slots = []; for (let k = 0; k < n; k++) slots.push({ x: W * (k + 1) / (n + 1), y: H * rand(0.16, 0.42) });
+        const real = Math.floor(rand(0, n));
+        e.slot = slots[real];
+        s.fakes = slots.filter((_, k) => k !== real).map((q) => ({ kind: 'mirage', boss: true, fake: true, x: e.x, y: e.y, r: M.radius * z, hp: 1, maxHp: 1, ang: 0, flash: 0, phase: 'move', status: {}, slot: q }));
+        flash(e.x, e.y, e.r * 3, 0.2, 'white'); ring(e.x, e.y, e.r, e.r * 4, 0.4, 'enemy', 0, 4); sfx('sk_blink');
+      },
+      tick: (e) => {
+        for (const b of mirageAll(e)) if (b.slot) { b.x += (b.slot.x - b.x) * 0.12; b.y += (b.slot.y - b.y) * 0.12; }
+        e.vx = 0; e.vy = 0;
+        if (e.tt >= 0.8) { for (const b of mirageAll(e)) b.slot = null; return true; }
+        return false;
+      } },
+    // 熱波：本体の高さに横の帯。怒るともう1本
+    heat: { warn: 0.8,
+      aim: (e) => {
+        const M = BOSS.mirage, p = s.player, w = M.heatW * s.zoom;
+        e.heat = [p.y]; if (e.rage) e.heat.push(clamp(p.y + (Math.random() < 0.5 ? -1 : 1) * rand(70, 130) * s.zoom, w, s.world.h - w));
+        for (const y of e.heat) warnShape({ k: 'line', x1: 0, y1: y, x2: s.world.w, y2: y, w }, e.ft);
+      },
+      start: (e) => { const M = BOSS.mirage, w = M.heatW * s.zoom; for (const y of e.heat) warnShape({ k: 'line', x1: 0, y1: y, x2: s.world.w, y2: y, w, hot: true }, M.heatOn); },
+      tick: (e) => {
+        const M = BOSS.mirage, p = s.player, w = M.heatW * s.zoom;
+        if (!s.over && !(p.inv > 0) && e.heat.some((y) => Math.abs(p.y - y) < w + playerHitR())) hurtPlayer(T.contactDamage.value * M.heatDamage, null);
+        return e.tt >= M.heatOn;
+      } },
+    // みんなで撃つ：本物も偽物も、本体へ3方向に撃つ
+    volley: { warn: 0.6, aim: (e) => { for (const b of mirageAll(e)) warnShape({ k: 'circle', x: b.x, y: b.y, r: b.r * 1.5, follow: b }, e.ft); },
+      start: (e) => { const M = BOSS.mirage; for (const b of mirageAll(e)) { const a0 = angTo(b, s.player); for (let k = -1; k <= 1; k++) bossShot(b, a0 + k * M.volleySpread, M.volleySpeed); } },
+      tick: (e) => e.tt >= 0.3 },
+  };
+  function thinkMirage(e) {
+    const M = BOSS.mirage, p = s.player, z = s.zoom;
+    e.rage = e.hp / e.maxHp < M.rageAt;
+    // 逃げ水：本体が近づくと、すっと遠ざかる。偽物も同じように動く
+    const move = (b) => {
+      const d = Math.hypot(p.x - b.x, p.y - b.y);
+      if (d < M.fleeDist * z) setVel(b, b.x - p.x, b.y - p.y, M.fleeSpeed * z); else bossWander(b, M.moveSpeed);
+      const m = b.r; b.x = clamp(b.x, m, s.world.w - m); b.y = clamp(b.y, m, s.world.h * 0.7);
+    };
+    bossFlow(e, MIRAGE_TECH, e.rage ? ['split', 'heat', 'volley', 'split'] : ['split', 'heat', 'volley'], move, M.moveTime, mirageAll(e));
+    // 偽物：本物と同じ向きに動く（技の間は、それぞれの場所へ）
+    for (const f of s.fakes) if (!f.slot) { f.x = clamp(f.x + (e.vx || 0) * DT, f.r, s.world.w - f.r); f.y = clamp(f.y + (e.vy || 0) * DT, f.r, s.world.h * 0.7); f.flow = e.flow; }
+  }
+
+  // ---------- 日蝕 ----------
+  const ECLIPSE_TECH = {
+    // 暗転：しばらく、本体とボスのまわりしか見えなくなる（ほかの技と重なる）
+    dark: { warn: 0.6, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 2.2, follow: e }, e.ft),
+      start: (e) => { const E2 = BOSS.eclipse; s.darkT = e.rage ? E2.rageDarkTime : E2.darkTime; sfx('sk_collapse'); },
+      tick: (e) => e.tt >= 0.4 },
+    // コロナ：光線が回る
+    corona: { warn: 0.9,
+      aim: (e) => {
+        const E2 = BOSS.eclipse, n = e.rage ? E2.rageBeams : E2.beams, L = E2.beamLen * s.zoom;
+        e.ba0 = rand(0, Math.PI * 2); e.bdir = Math.random() < 0.5 ? 1 : -1;
+        for (let k = 0; k < n; k++) { const a = e.ba0 + (k * Math.PI * 2) / n; warnShape({ k: 'line', x1: e.x, y1: e.y, x2: e.x + Math.cos(a) * L, y2: e.y + Math.sin(a) * L, w: E2.beamW * s.zoom }, e.ft); }
+      },
+      tick: (e) => {
+        const E2 = BOSS.eclipse, n = e.rage ? E2.rageBeams : E2.beams, L = E2.beamLen * s.zoom, w = E2.beamW * s.zoom, p = s.player;
+        const a0 = e.ba0 + e.bdir * (e.tt / E2.beamTime) * Math.PI * E2.beamTurn;
+        e.vx = 0; e.vy = 0;
+        let hit = false;
+        for (let k = 0; k < n; k++) {
+          const a = a0 + (k * Math.PI * 2) / n, x2 = e.x + Math.cos(a) * L, y2 = e.y + Math.sin(a) * L;
+          warnShape({ k: 'line', x1: e.x, y1: e.y, x2, y2, w, hot: true }, DT * 1.5);
+          if (!hit && segDist(e.x, e.y, x2, y2, p.x, p.y) < w + playerHitR()) hit = true;
+        }
+        if (hit && !s.over && !(p.inv > 0)) hurtPlayer(T.contactDamage.value * E2.beamDamage, null);
+        return e.tt >= E2.beamTime;
+      } },
+    // 月の影：大きな影の円が、本体の高さを横切る
+    moon: { warn: 0.9,
+      aim: (e) => {
+        const E2 = BOSS.eclipse, R = E2.moonR * s.zoom, p = s.player, left = Math.random() < 0.5;
+        e.moon = { x0: left ? -R : s.world.w + R, x1: left ? s.world.w + R : -R, y: p.y };
+        warnShape({ k: 'line', x1: 0, y1: p.y, x2: s.world.w, y2: p.y, w: R }, e.ft);
+      },
+      tick: (e) => {
+        const E2 = BOSS.eclipse, R = E2.moonR * s.zoom, p = s.player, k = Math.min(1, e.tt / E2.moonTime), m = e.moon;
+        const x = m.x0 + (m.x1 - m.x0) * k;
+        warnShape({ k: 'circle', x, y: m.y, r: R, fill: true, hot: true }, DT * 1.5);
+        if (!s.over && !(p.inv > 0) && Math.hypot(p.x - x, p.y - m.y) < R + playerHitR()) hurtPlayer(T.contactDamage.value * E2.moonDamage, null);
+        return k >= 1;
+      } },
+  };
+  function thinkEclipse(e) {
+    const E2 = BOSS.eclipse;
+    e.rage = e.hp / e.maxHp < E2.rageAt;
+    bossFlow(e, ECLIPSE_TECH, e.rage ? ['dark', 'corona', 'moon', 'corona'] : ['dark', 'corona', 'moon'], (b) => bossWander(b, E2.moveSpeed, [0.2, 0.8, 0.15, 0.45]), E2.moveTime);
+  }
+
+  // ---------- 深淵 ----------
+  // 点（x, y）を深淵へ寄せる（速さ sp。1秒あたり）
+  function towardAbyss(o, e, sp) { const dx = e.x - o.x, dy = e.y - o.y, d = Math.hypot(dx, dy) || 1, m = Math.min(d, sp * DT); return [dx / d * m, dy / d * m]; }
+  function abyssPull(e, k) {
+    const A = BOSS.abyss, z = s.zoom, p = s.player, sp = (e.rage ? A.ragePullSpeed : A.pullSpeed) * z * k;
+    const [mx, my] = towardAbyss(p, e, sp);
+    p.x += mx; p.y += my; p.tx += mx; p.ty += my;   // ドラッグの行き先もいっしょに寄せる（もとの場所へ戻らない）
+    for (const c of s.pickups) { const [ax, ay] = towardAbyss(c, e, sp * 1.5); c.x += ax; c.y += ay; }
+    for (const b of s.enemyShots) {
+      if (b.life <= 0 || b.from === e) continue;
+      const dx = e.x - b.x, dy = e.y - b.y, d = Math.hypot(dx, dy) || 1;
+      b.vx += dx / d * A.shotPull * z * DT * k; b.vy += dy / d * A.shotPull * z * DT * k;
+      if (d < e.r) { b.life = 0; e.eaten = (e.eaten || 0) + 1; }   // 吸い込んだ弾は、あとで吐き出す
+    }
+    if (Math.random() < 0.3) { const a = rand(0, Math.PI * 2), r = rand(120, 220) * z; sparks(e.x + Math.cos(a) * r, e.y + Math.sin(a) * r, 'enemy', 1, 30); }
+  }
+  const ABYSS_TECH = {
+    pull: { warn: 0.7, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 3, follow: e }, e.ft),
+      start: (e) => { sfx('sk_collapse'); },
+      tick: (e) => { e.vx = 0; e.vy = 0; abyssPull(e, 1); if (Math.floor(e.tt * 4) !== Math.floor((e.tt - DT) * 4)) ring(e.x, e.y, e.r * 5, e.r, 0.5, 'enemy', 0, 3); return e.tt >= (e.rage ? BOSS.abyss.ragePullTime : BOSS.abyss.pullTime); } },
+    horizon: { warn: 0.9, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: BOSS.abyss.horizonR * s.zoom, follow: e, fill: true }, e.ft),
+      tick: (e) => {
+        const A = BOSS.abyss, R = A.horizonR * s.zoom, p = s.player;
+        e.vx = 0; e.vy = 0;
+        warnShape({ k: 'circle', x: e.x, y: e.y, r: R, fill: true, hot: true }, DT * 1.5);
+        if (e.rage) abyssPull(e, 0.5);   // 怒ると、境界の間も少し吸い込む
+        if (!s.over && !(p.inv > 0) && Math.hypot(p.x - e.x, p.y - e.y) < R + playerHitR()) hurtPlayer(T.contactDamage.value * A.horizonDamage, e);
+        return e.tt >= A.horizonTime;
+      } },
+    spit: { warn: 0.7, aim: (e) => warnShape({ k: 'circle', x: e.x, y: e.y, r: e.r * 2.2, follow: e }, e.ft),
+      start: (e) => {
+        const A = BOSS.abyss, n = clamp(A.spitMin + (e.eaten || 0), A.spitMin, A.spitMax);
+        e.eaten = 0; e.spitN = n; e.shotN = 0;
+        flash(e.x, e.y, e.r * 3, 0.2, 'white'); s.shake = Math.max(s.shake, 6); sfx('sk_misfire');
+      },
+      tick: (e) => {
+        const A = BOSS.abyss, half = Math.ceil(e.spitN / 2);
+        while (e.shotN < 2 && e.tt >= e.shotN * 0.3) { bossRing(e, half, A.spitSpeed * (e.shotN ? 0.8 : 1), e.shotN * Math.PI / half); e.shotN++; }
+        return e.tt >= 0.5;
+      } },
+  };
+  function thinkAbyss(e) {
+    const A = BOSS.abyss;
+    e.rage = e.hp / e.maxHp < A.rageAt;
+    bossFlow(e, ABYSS_TECH, e.rage ? ['pull', 'horizon', 'spit', 'pull'] : ['pull', 'horizon', 'spit'], (b) => bossWander(b, A.moveSpeed, [0.3, 0.7, 0.25, 0.55]), A.moveTime);
+  }
+
+  // ---------- 終筆（ラスボス） ----------
+  function shuStage(e) { const U = BOSS.shuhitsu, k = e.hp / e.maxHp; return k > U.stage2 ? 1 : k > U.stage3 ? 2 : 3; }
+  // 墨の分身：描いた線の上を行ったり来たりしながら、ときどき本体をねらって撃つ
+  function spawnInk(e, pts, tr) {
+    const U = BOSS.shuhitsu, z = s.zoom, hp = PH.hpRateBase * growthOf(s.phase) * U.inkHp;
+    const g = { kind: 'inkghost', tier: 1, x: pts[0].x, y: pts[0].y, r: U.inkR * z, hp, maxHp: hp, vx: 0, vy: 0, ang: 0, flash: 0, speedMul: 1, shield: 0, shieldMax: 0,
+      steps: pts, d: 0, dir: 1, fireCd: rand(0.5, U.inkFireEvery), status: {} };
+    s.enemies.push(g); tr.owner = g;
+    ring(g.x, g.y, 2, g.r * 3, 0.4, 'enemy', 0, 3);
+  }
+  function thinkInk(g) {
+    const U = BOSS.shuhitsu, P2 = g.steps;
+    // 線の上を、決まった速さで往復する
+    let left = U.inkSpeed * s.zoom * DT, nx = g.x, ny = g.y;
+    while (left > 0 && P2.length > 1) {
+      const i = Math.max(0, Math.min(P2.length - 1, Math.round(g.d) + g.dir));
+      const q = P2[i], dd = Math.hypot(q.x - nx, q.y - ny);
+      if (dd > left) { nx += (q.x - nx) / dd * left; ny += (q.y - ny) / dd * left; left = 0; }
+      else { nx = q.x; ny = q.y; left -= dd; g.d = i; if (i === 0 || i === P2.length - 1) g.dir = -g.dir; if (dd < 1e-6 && left > 0 && (i === 0 || i === P2.length - 1)) break; }
+    }
+    g.vx = (nx - g.x) / DT; g.vy = (ny - g.y) / DT;
+    g.fireCd -= DT;
+    if (g.fireCd <= 0) { g.fireCd = U.inkFireEvery; bossShot(g, angTo(g, s.player), U.inkShotSpeed); }
+  }
+  // 筆が動ける、ゆらぐ道を作る（画面の中におさまる）
+  function shuStroke(e) {
+    const U = BOSS.shuhitsu, z = s.zoom, W = s.world.w, H = s.world.h, m = 30 * z;
+    const pts = [{ x: e.x, y: e.y + e.r * 1.6 }];
+    let a = rand(0, Math.PI * 2), x = pts[0].x, y = pts[0].y;
+    const n = 40, step = (U.strokeLen * z) / n, wob = rand(0.06, 0.16) * (Math.random() < 0.5 ? 1 : -1);
+    for (let k = 0; k < n; k++) {
+      a += wob + Math.sin(k * 0.5) * 0.05;
+      let nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
+      if (nx < m || nx > W - m) { a = Math.PI - a; nx = clamp(nx, m, W - m); }
+      if (ny < m || ny > H - m) { a = -a; ny = clamp(ny, m, H - m); }
+      x = nx; y = ny; pts.push({ x, y });
+    }
+    return pts;
+  }
+  const SHU_TECH = {
+    // 書く：筆が線を描き、その線が黒い分身になる
+    write: { warn: 0.6,
+      aim: (e) => { e.wpts = shuStroke(e); warnShape({ k: 'path', pts: e.wpts, w: 6 * s.zoom }, e.ft); },
+      start: (e) => { e.wtr = { kind: 'ink', w: 7 * s.zoom, pts: [], life: 600, max: 600, damage: 0 }; s.bossTrails.push(e.wtr); sfx('draw'); },
+      tick: (e) => {
+        const U = BOSS.shuhitsu, P2 = e.wpts, k = Math.min(1, e.tt / U.strokeTime), i = Math.floor(k * (P2.length - 1));
+        while (e.wtr.pts.length <= i) e.wtr.pts.push({ ...P2[e.wtr.pts.length] });
+        const q = P2[i]; e.x += (q.x - e.x) * 0.35; e.y += (q.y - e.r * 1.6 - e.y) * 0.35; e.vx = 0; e.vy = 0;
+        return k >= 1;
+      },
+      end: (e) => {
+        const U = BOSS.shuhitsu, max = U.inkMax[shuStage(e) - 1];
+        if (s.enemies.filter((g) => g.kind === 'inkghost' && g.hp > 0).length < max) spawnInk(e, e.wpts, e.wtr); else e.wtr.life = 1.2;
+        e.wtr = null;
+      } },
+    // 墨しぶき：扇の形に2回
+    splash: { warn: 0.6, aim: (e) => warnShape({ k: 'fan', x: e.x, y: e.y, a: angTo(e, s.player), spread: BOSS.shuhitsu.splashSpread, len: 240 * s.zoom, follow: e }, e.ft),
+      start: (e) => { e.shotN = 0; e.fanA = angTo(e, s.player); },
+      tick: (e) => {
+        const U = BOSS.shuhitsu, n = U.splashWays;
+        while (e.shotN < 2 && e.tt >= e.shotN * 0.3) { for (let k = 0; k < n; k++) bossShot(e, e.fanA + (k / (n - 1) - 0.5) * U.splashSpread + (e.shotN ? 0.07 : 0), U.splashSpeed); e.shotN++; }
+        return e.tt >= 0.6;
+      } },
+    // 塗りつぶす：いちばん大きい分身（いなければ本体）のところを墨で塗り、まわりの分身を消す
+    blot: { warn: 1.0,
+      aim: (e) => {
+        const U = BOSS.shuhitsu, g = s.big && s.ghosts.includes(s.big) ? s.big : s.ghosts[s.ghosts.length - 1];
+        const q = g || s.player; e.blot = { x: q.x, y: q.y };
+        warnShape({ k: 'circle', x: q.x, y: q.y, r: U.blotR * s.zoom, fill: true }, e.ft);
+      },
+      start: (e) => {
+        const U = BOSS.shuhitsu, R = U.blotR * s.zoom, b = e.blot, p = s.player;
+        for (const g of s.ghosts.slice()) if (Math.hypot(g.x - b.x, g.y - b.y) < R + g.r) breakGhost(g);
+        if (!s.over && !(p.inv > 0) && Math.hypot(p.x - b.x, p.y - b.y) < R + playerHitR()) hurtPlayer(T.contactDamage.value * U.blotDamage, null);
+        // 墨のしみ（少しの間だけ残る）
+        const pts = []; for (let k = 0; k <= 24; k++) { const a = (k / 24) * Math.PI * 2, rr = R * (0.55 + 0.15 * Math.sin(k * 2.7)); pts.push({ x: b.x + Math.cos(a) * rr, y: b.y + Math.sin(a) * rr }); }
+        s.bossTrails.push({ kind: 'ink', w: R * 0.5, pts, life: 1.5, max: 1.5, damage: 0 });
+        ring(b.x, b.y, 4, R, 0.35, 'enemy', 0, 5); s.shake = Math.max(s.shake, 5); sfx('sk_misfire');
+      },
+      tick: (e) => e.tt >= 0.3 },
+    // 結び：画面いっぱいに大きな円を書く。書き終わる前に倒せないと、画面全体に攻撃
+    enso: { warn: 1.0,
+      aim: (e) => {
+        const U = BOSS.shuhitsu, c = { x: s.world.w / 2, y: s.world.h / 2 }, R = s.world.w * U.ensoR;
+        e.enso = { c, R, a0: -Math.PI / 2 };
+        const pts = []; for (let k = 0; k <= 48; k++) { const a = e.enso.a0 + (k / 48) * Math.PI * 2; pts.push({ x: c.x + Math.cos(a) * R, y: c.y + Math.sin(a) * R }); }
+        warnShape({ k: 'path', pts, w: 6 * s.zoom }, e.ft);
+      },
+      start: (e) => { e.wtr = { kind: 'ink', w: 9 * s.zoom, pts: [], life: 600, max: 600, damage: 0 }; s.bossTrails.push(e.wtr); },
+      tick: (e) => {
+        const U = BOSS.shuhitsu, { c, R, a0 } = e.enso, k = Math.min(1, e.tt / U.ensoTime), a = a0 + k * Math.PI * 2;
+        const x = c.x + Math.cos(a) * R, y = c.y + Math.sin(a) * R;
+        cometTailPush(e.wtr, x, y);
+        e.x += (x - e.x) * 0.3; e.y += (y - e.r * 1.6 - e.y) * 0.3; e.vx = 0; e.vy = 0;
+        if (k >= 1) {
+          const p = s.player;
+          if (!s.over && !(p.inv > 0)) hurtPlayer(T.contactDamage.value * U.ensoDamage, null);
+          flash(c.x, c.y, Math.max(s.world.w, s.world.h) * 1.3, 0.5, 'white'); s.shake = Math.max(s.shake, 14); sfx('sk_misfire');
+        }
+        return k >= 1;
+      },
+      end: (e) => { if (e.wtr) e.wtr.life = 1.0; e.wtr = null; } },
+  };
+  function thinkShuhitsu(e) {
+    const U = BOSS.shuhitsu, st = shuStage(e);
+    // 段階が変わる：画面が白い紙のように光り、少しの間は攻撃が当たらない
+    if (e.stage && st !== e.stage) {
+      e.shiftT = U.shiftTime; e.flow = 'rest'; e.ft = U.shiftTime; e.vx = 0; e.vy = 0; s.warns = [];
+      if (e.wtr) { e.wtr.life = 0.6; e.wtr = null; }
+      flash(s.world.w / 2, s.world.h / 2, Math.max(s.world.w, s.world.h) * 1.4, 0.7, 'white'); s.shake = Math.max(s.shake, 10); sfx('rage');
+      ring(e.x, e.y, e.r, e.r * 8, 0.8, 'white', 0, 6);
+    }
+    e.stage = st;
+    if (e.shiftT > 0) { e.shiftT -= DT; e.vx = 0; e.vy = 0; return; }
+    e.rage = st >= 2;
+    const list = st === 1 ? ['write', 'splash', 'write'] : st === 2 ? ['write', 'blot', 'splash', 'blot'] : ['enso', 'blot', 'splash'];
+    bossFlow(e, SHU_TECH, list, (b) => bossWander(b, U.moveSpeed, [0.2, 0.8, 0.15, 0.4]), U.moveTime);
   }
 
   function thinkShade(e) {

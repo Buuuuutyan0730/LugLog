@@ -171,7 +171,7 @@ export const CONFIG = {
   boss: {
     every: 10,
     order: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'],   // 6〜10体目は見た目だけ（ready に入るまで、ふつうのフェーズのまま）
-    ready: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
+    ready: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
     hpList: [4300, 5600, 7200],   // 1〜3体目のボスの体力
     hpPow: 1.8,               // 4体目からは 3体目の体力 ×（何体目 − 2）のこの乗。前のボスとの伸びが 3.5倍→2.1倍→1.7倍… と、だんだん小さくなる
     eliteCap: 0.3,            // 中ボスの体力の上限＝次に出てくるボスの体力のこの割合
@@ -200,10 +200,19 @@ export const CONFIG = {
              orbitTime: 2.4, orbitRx: 0.4, orbitRy: 0.4, tailLife: 5, rageTailLife: 7, tailWidth: 6, tailDamage: 1.0, innerScale: 0.55,
              rainCount: 5, rageRainCount: 8, rainR: 34, rainSpread: 140, rainDamage: 1.2,
              periWays: 20, ragePeriWays: 28, periSpeed: 150 },
-    mirage: { name: '蜃気楼', radius: 32, y: 0.3 },
-    eclipse: { name: '日蝕', radius: 40, y: 0.32 },
-    abyss: { name: '深淵', radius: 38, y: 0.35 },
-    shuhitsu: { name: '終筆', radius: 44, y: 0.3 },
+    // 蜃気楼：本物1体と偽物に分かれる（偽物には弾がすり抜ける・偽物も撃つ）／熱波（横の帯）／みんなで撃つ。近づくと逃げる
+    mirage: { name: '蜃気楼', radius: 32, y: 0.3, moveSpeed: 80, moveTime: 1.6, rageAt: 0.5, copies: 3, rageCopies: 5,
+              fleeDist: 150, fleeSpeed: 170, heatW: 22, heatOn: 0.6, heatDamage: 1.2, volleySpeed: 150, volleySpread: 0.3 },
+    // 日蝕：暗転（自分とボスのまわりしか見えない）／コロナ（回る光線）／月の影（大きな円が横切る）
+    eclipse: { name: '日蝕', radius: 40, y: 0.32, moveSpeed: 50, moveTime: 1.8, rageAt: 0.5, darkTime: 4.5, rageDarkTime: 6.5, seePlayer: 90, seeBoss: 120,
+               beams: 4, rageBeams: 6, beamLen: 440, beamW: 7, beamTime: 2.6, beamTurn: 1.2, beamDamage: 1.2, moonR: 80, moonTime: 3.0, moonDamage: 1.5 },
+    // 深淵：吸い込み（自分・弾・かけらを引き寄せる）／境界（近づきすぎると大ダメージの輪）／吐き出し（吸い込んだ弾の数だけ吐く）
+    abyss: { name: '深淵', radius: 38, y: 0.35, moveSpeed: 40, moveTime: 1.8, rageAt: 0.5, pullTime: 3, ragePullTime: 4, pullSpeed: 70, ragePullSpeed: 100, shotPull: 160,
+             horizonR: 95, horizonTime: 2.5, horizonDamage: 1.5, spitMin: 16, spitMax: 48, spitSpeed: 140 },
+    // 終筆（ラスボス）：体力で3段階。1 書く（墨の線が黒い分身になる）→ 2 塗りつぶす（分身を消す）→ 3 結び（大きな円を書き終えると画面全体に攻撃）
+    shuhitsu: { name: '終筆', radius: 44, y: 0.28, moveSpeed: 70, moveTime: 1.5, stage2: 0.66, stage3: 0.33, shiftTime: 1.6,
+                strokeLen: 260, strokeTime: 1.2, inkMax: [3, 4, 4], inkHp: 0.6, inkR: 12, inkSpeed: 90, inkFireEvery: 2.2, inkShotSpeed: 130,
+                blotR: 70, blotDamage: 1.0, splashWays: 7, splashSpread: 1.0, splashSpeed: 160, ensoTime: 7, ensoR: 0.36, ensoDamage: 3 },
     shade: { name: '影', radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
              moveTime: 1.8, traceTime: 1.6, traceWidth: 7, traceOn: 0.5, traceDamage: 1.0, blinkDist: 110, blinkWays: 10, blinkSpeed: 120 },
     // 影：本体の何秒前の場所を追うか・追う速さの上限／影の分身：間隔・なぞる秒数・動き出すまでの秒数・大きさ・体力（1秒に出る敵の体力の何倍）

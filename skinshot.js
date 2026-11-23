@@ -1,11 +1,11 @@
 // 着せ替えの絵：本物のゲームの描き方で、小さな場面を描いて画像にする（着せ替え・ガチャの画面で使う）
 //   色のセットと背景を一時的に入れて描き、描き終えたら身に着けているものに戻す
-import { createRenderer } from './render.js?v=20261123183620';
-import { createGame } from './game.js?v=20261123183620';
-import { applyForms } from './talents.js?v=20261123183620';
-import { THEME, applyColorSet, applyBackground } from './theme.js?v=20261123183620';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123183620';
-import { spawnPop, stepParticle } from './pops.js?v=20261123183620';
+import { createRenderer } from './render.js?v=20261123184704';
+import { createGame } from './game.js?v=20261123184704';
+import { applyForms } from './talents.js?v=20261123184704';
+import { THEME, applyColorSet, applyBackground } from './theme.js?v=20261123184704';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123184704';
+import { spawnPop, stepParticle } from './pops.js?v=20261123184704';
 
 const VW = 150, VH = 100;   // 場面の広さ（ゲームの中の長さ）
 const cache = new Map();
@@ -68,6 +68,7 @@ const unitCache = new Map();
 let ur = null, ucanvas = null;
 const UNIT = {
   core: { r: 15 }, hunter: { r: 12, ang: -Math.PI / 4 }, twin: { r: 12, side: 1 }, clock: { r: 14, handA: -Math.PI / 3 }, shade: { r: 13 },
+  comet: { r: 8, ang: -Math.PI * 0.8, x: 24, y: 17 }, mirage: { r: 12 }, eclipse: { r: 11 }, abyss: { r: 10 }, shuhitsu: { r: 8, y: 23 },
   drift: { r: 12 }, shooter: { r: 12, ang: -Math.PI / 2 }, swarm: { r: 8, ang: -Math.PI / 4 }, tank: { r: 14 },
   chaser: { r: 11, ang: -Math.PI / 4 }, dasher: { r: 11, ang: -Math.PI / 4 }, bomber: { r: 11 }, thief: { r: 11, ang: -Math.PI / 4 }, shield: { r: 11, ang: -Math.PI / 2 },
 };
@@ -86,7 +87,7 @@ export function unitImage(kind) {
     const s = base;
     const one = kind === 'ghost'
       ? { ghosts: [{ x: 20, y: 20, r: 11, idx: 0, len: 300, life: 99, spawnGlow: 0, trail: [], clip: null }], enemies: [] }
-      : { ghosts: [], enemies: [{ kind, x: 20, y: 20, hp: 10, maxHp: 10, ang: 0, flash: 0, phase: 'move', status: {}, boss: ['core', 'hunter', 'twin', 'clock', 'shade'].includes(kind), ...UNIT[kind] }] };
+      : { ghosts: [], enemies: [{ kind, x: 20, y: 20, hp: 10, maxHp: 10, ang: 0, flash: 0, phase: 'move', status: {}, boss: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'].includes(kind), ...UNIT[kind] }] };
     const st = {
       ...s, ...one,
       world: { w: UW, h: UH }, mode: 'play', over: true, time: 3, shake: 0, hurtFlash: 0,
