@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261124041400';
-import { makeForms } from './forms.js?v=20261124041400';
-import { CONFIG } from './config.js?v=20261124041400';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261124041603';
+import { makeForms } from './forms.js?v=20261124041603';
+import { CONFIG } from './config.js?v=20261124041603';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -2768,18 +2768,19 @@ export function createRenderer(canvas, view) {
     drawFires(state, t);
     drawPickups(state, t);
     drawShots(state);
-    drawBossLinks(state, t);
-    drawBossTrails(state, t);
-    drawWarns(state, t);
     drawEnemies(state, t, 'rest');
     drawGhosts(state, t);
     drawLasers(state);
-    drawEnemyShots(state, t);
     drawPillars(state, t);
     drawThunder(state, t);
     drawDashCuts(state, t);
     drawRings(state);
     drawParticles(state);
+    // 前から順に：本体 → ボス → 敵の弾・攻撃（予告・炎や墨の跡・双子のつなぎ）→ そのほか。避けるものを見失わないように
+    drawBossLinks(state, t);
+    drawBossTrails(state, t);
+    drawWarns(state, t);
+    drawEnemyShots(state, t);
     drawEnemies(state, t, 'boss');   // ボスは、本体の次に前に描く（ダメージの数字だけは上に出す）
     drawDamageNums(state);
     drawFloats(state);
