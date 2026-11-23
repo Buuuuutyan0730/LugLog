@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124043247';
-import { spawnPop, stepParticle } from './pops.js?v=20261124043247';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124043247';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124043247';
+import { CONFIG } from './config.js?v=20261124043525';
+import { spawnPop, stepParticle } from './pops.js?v=20261124043525';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124043525';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124043525';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -4108,6 +4108,7 @@ export function createGame() {
       ring(e.x, e.y, e.r, e.r * 8, 0.8, 'white', 0, 6);
     }
     e.stage = st;
+    e.look = Math.atan2(s.player.y - e.y, s.player.x - e.x);   // 描画用：目が本体のほうを見る
     if (e.shiftT > 0) { e.shiftT -= DT; e.vx = 0; e.vy = 0; return; }
     e.rage = st >= 2;
     const list = st === 1 ? ['write', 'splash', 'write'] : st === 2 ? ['write', 'blot', 'splash', 'blot'] : ['enso', 'blot', 'splash'];

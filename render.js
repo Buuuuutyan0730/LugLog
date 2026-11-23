@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261124043247';
-import { makeForms } from './forms.js?v=20261124043247';
-import { CONFIG } from './config.js?v=20261124043247';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261124043525';
+import { makeForms } from './forms.js?v=20261124043525';
+import { CONFIG } from './config.js?v=20261124043525';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -938,11 +938,8 @@ export function createRenderer(canvas, view) {
       // ボス「日蝕」「深淵」：まるい黒い体（まわりの光や渦は drawBossDetail）
       ctx.arc(0, 0, r, 0, Math.PI * 2);
     } else if (e.kind === 'shuhitsu') {
-      // ラスボス「終筆」：筆の穂先（下がとがる）。軸と金具は drawBossDetail
-      ctx.moveTo(0, r * 1.6);
-      ctx.bezierCurveTo(r * 0.25, r * 0.9, r * 0.85, r * 0.3, r * 0.72, -r * 0.3);
-      ctx.lineTo(r * 0.62, -r * 0.6); ctx.lineTo(-r * 0.62, -r * 0.6); ctx.lineTo(-r * 0.72, -r * 0.3);
-      ctx.bezierCurveTo(-r * 0.85, r * 0.3, -r * 0.25, r * 0.9, 0, r * 1.6);
+      // ラスボス「終筆」：円相（墨のひと筆の輪）。当たりと光る縁は丸。輪・目・筆は drawBossDetail
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
     } else if (e.kind === 'echo' || e.kind === 'inkghost') {
       // 影が作る「敵の分身」・終筆の「墨の分身」：小さな丸
       ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -1057,8 +1054,8 @@ export function createRenderer(canvas, view) {
       ctx.rotate(e.kind === 'tank' || (e.boss && e.kind !== 'hunter' && e.kind !== 'twin' && e.kind !== 'comet') ? 0 : e.ang || 0);
       // 体の色：凍結＝水色、毒＝紫（両方なら凍結を優先）。影と敵の分身は黒い体
       const dark = e.kind === 'shade' || e.kind === 'echo' || e.kind === 'eclipse' || e.kind === 'abyss' || e.kind === 'shuhitsu' || e.kind === 'inkghost';
-      const body = st.freeze ? STATUS.iceBody : st.chill ? STATUS.chillBody : st.poison ? STATUS.poisonBody : e.kind === 'shuhitsu' || e.kind === 'inkghost' ? '#0d0a0c' : dark ? '#1a0a14' : THEME.enemy;
-      const edge = st.freeze ? STATUS.iceEdge : st.chill ? STATUS.chillEdge : st.poison ? STATUS.poisonEdge : e.kind === 'shuhitsu' || e.kind === 'inkghost' ? '#ffd84a' : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
+      const body = st.freeze ? STATUS.iceBody : st.chill ? STATUS.chillBody : st.poison ? STATUS.poisonBody : e.kind === 'shuhitsu' ? 'rgba(255,216,74,0.07)' : e.kind === 'inkghost' ? '#0d0a0c' : dark ? '#1a0a14' : THEME.enemy;   // 終筆は輪の内がわを透かして、墨の輪を目立たせる
+      const edge = st.freeze ? STATUS.iceEdge : st.chill ? STATUS.chillEdge : st.poison ? STATUS.poisonEdge : e.kind === 'shuhitsu' ? 'rgba(0,0,0,0)' : e.kind === 'inkghost' ? '#ffd84a' : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
       // 中ボス：体の外に、もう1本の太い縁取り
       if (e.elite) { ctx.save(); ctx.scale(1.22, 1.22); enemyShape(e); ctx.strokeStyle = THEME.enemy; ctx.globalAlpha = 0.55; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
       // ふつうの敵：体（光・塗り・縁・まんなかの点）は、前に描いた絵を使い回して貼るだけにする（見た目は同じで、ずっと軽い）
@@ -1472,6 +1469,75 @@ export function createRenderer(canvas, view) {
   const hash = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
   // ボスの体の中の細かい形（体の向きの中で描く）
+  // ラスボス「終筆」：円相
+  //   ・体：筆で一息に描いた墨の輪（書き始めが太く、書き終わりがかすれて少し欠ける）。縁を金の光が走る
+  //   ・中心：金の目が1つ（本体のほうを見る。ときどきまばたき）
+  //   ・まわり：4本の筆がゆっくり回る
+  //   ・段階が進むと、輪にひびが入り、金の光がもれる（2段目で2本、3段目で5本）。3段目は目が赤く燃える
+  function drawEnso(e, t, r) {
+    const st = e.stage || 1, hot = st >= 3;
+    // まわりを回る筆（輪の後ろ）
+    const nb = 4, spin = t * 0.45;
+    for (let k = 0; k < nb; k++) {
+      const a = spin + (k / nb) * Math.PI * 2, R = r * 1.62;
+      ctx.save(); ctx.translate(Math.cos(a) * R, Math.sin(a) * R); ctx.rotate(a + Math.PI / 2 + Math.sin(t * 2 + k) * 0.15);
+      const L = r * 0.62, hw = r * 0.075;
+      ctx.fillStyle = '#5a0f14'; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.rect(-hw, -L, hw * 2, L * 0.9); ctx.fill(); ctx.stroke();   // 朱の軸
+      ctx.fillStyle = '#ffd84a'; ctx.fillRect(-hw * 1.25, -L * 0.14, hw * 2.5, L * 0.12);   // 金の金具
+      ctx.fillStyle = '#060506'; ctx.strokeStyle = 'rgba(255,216,74,0.8)';                   // 墨の穂先
+      ctx.beginPath(); ctx.moveTo(-hw * 1.3, -L * 0.02); ctx.quadraticCurveTo(-hw * 1.6, L * 0.28, 0, L * 0.5); ctx.quadraticCurveTo(hw * 1.6, L * 0.28, hw * 1.3, -L * 0.02); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    // 墨の輪：書き始め（太い）から、時計回りに約330°。書き終わりは細くかすれる
+    const R0 = r * 0.78, a0 = -Math.PI * 0.62 + t * 0.12, sweep = Math.PI * 1.84, N = 56;
+    const wOf = (u) => r * (0.26 + 0.2 * Math.sin(Math.PI * Math.min(1, u * 1.25)) - 0.2 * Math.max(0, u - 0.8) / 0.2);
+    const outer = [], inner = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N, a = a0 + sweep * u, w = Math.max(r * 0.03, wOf(u)), wob = Math.sin(u * 23 + 1.3) * r * 0.015;
+      outer.push([Math.cos(a) * (R0 + w / 2 + wob), Math.sin(a) * (R0 + w / 2 + wob)]);
+      inner.push([Math.cos(a) * (R0 - w / 2 + wob), Math.sin(a) * (R0 - w / 2 + wob)]);
+    }
+    ctx.beginPath(); outer.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); for (let i = inner.length - 1; i >= 0; i--) ctx.lineTo(inner[i][0], inner[i][1]); ctx.closePath();
+    ctx.fillStyle = '#050405'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,216,74,0.85)'; ctx.lineWidth = 1.4; ctx.stroke();
+    // 外がわのふちだけ光らせる（内がわに光がにじむと、輪が見えにくくなる）
+    glow(hot ? '#ff6a3a' : '#ffd84a', hot ? 18 : 12);
+    ctx.strokeStyle = hot ? 'rgba(255,140,80,0.9)' : 'rgba(255,216,74,0.9)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); outer.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+    noGlow();
+    // かすれ：書き終わりのあたりに、細い筋
+    ctx.strokeStyle = 'rgba(5,4,5,0.9)'; ctx.lineWidth = 1;
+    for (let k = 0; k < 4; k++) { ctx.beginPath(); for (let i = 0; i <= 10; i++) { const u = 0.84 + i * 0.018, a = a0 + sweep * u, rr = R0 + (k - 1.5) * r * 0.06; i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.stroke(); }
+    // 金の光が、輪の上を書き順どおりに走る
+    const g = (t * 0.35) % 1, ga = a0 + sweep * g;
+    glow('#ffd84a', 12); ctx.strokeStyle = 'rgba(255,233,140,0.95)'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(0, 0, R0, ga - 0.25, ga); ctx.stroke(); noGlow();
+    // ひび（金継ぎのように光がもれる）
+    const cracks = st >= 3 ? 5 : st >= 2 ? 2 : 0;
+    for (let c = 0; c < cracks; c++) {
+      const u = [0.18, 0.58, 0.36, 0.78, 0.05][c], a = a0 + sweep * u, w = wOf(u);
+      ctx.save(); ctx.rotate(a);
+      glow('#ffb03a', 14); ctx.strokeStyle = `rgba(255,${hot ? 170 : 216},${hot ? 60 : 74},${0.75 + 0.25 * Math.sin(t * 6 + c)})`; ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(R0 - w * 0.55, 0); ctx.lineTo(R0 - w * 0.15, r * 0.05); ctx.lineTo(R0 + w * 0.1, -r * 0.04); ctx.lineTo(R0 + w * 0.55, r * 0.03); ctx.stroke();
+      noGlow(); ctx.restore();
+    }
+    // まんなかの目：金のアーモンド形に、黒い縦長のひとみ。本体のほうを見る。ときどきまばたき
+    const blink = (t % 4.3) < 0.14 ? 0.15 : 1;
+    const ew = r * 0.42, eh = r * 0.2 * blink;
+    ctx.save();
+    glow(hot ? '#ff4a2a' : '#ffd84a', 18);
+    const eg = ctx.createRadialGradient(0, 0, 0, 0, 0, ew); eg.addColorStop(0, hot ? '#fff0c0' : '#fff6d0'); eg.addColorStop(1, hot ? '#ff5a2a' : '#ffc23a');
+    ctx.fillStyle = eg;
+    ctx.beginPath(); ctx.moveTo(-ew, 0); ctx.quadraticCurveTo(0, -eh * 2, ew, 0); ctx.quadraticCurveTo(0, eh * 2, -ew, 0); ctx.closePath(); ctx.fill();
+    noGlow();
+    ctx.clip();
+    const la = e.look != null ? e.look : Math.sin(t * 0.7) * 2;
+    const px = Math.cos(la) * ew * 0.28, py = Math.sin(la) * eh * 0.5;
+    ctx.fillStyle = '#050405';
+    ctx.beginPath(); ctx.ellipse(px, py, r * 0.06, r * 0.17, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
   function drawBossDetail(e, t) {
     const r = e.r;
     ctx.save();
@@ -1549,26 +1615,7 @@ export function createRenderer(canvas, view) {
       ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.fill();
       for (let k = 0; k < 10; k++) { const u = ((t * 0.7 + k / 10) % 1), a = k * 2.4 + u * 4, rr = r * 1.9 * (1 - u); ctx.fillStyle = `rgba(255,170,190,${0.8 * u})`; ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 1.6, 0, Math.PI * 2); ctx.fill(); }
     } else if (e.kind === 'shuhitsu') {
-      // 終筆：朱塗りの軸と金の輪、金の金具。穂先は墨で、金の光がふちを走り、先から墨がしたたる
-      const hw = r * 0.2;
-      ctx.fillStyle = '#5a0f14'; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.rect(-hw, -r * 2.5, hw * 2, r * 1.65); ctx.fill(); ctx.stroke();
-      for (const y of [-2.2, -1.2]) { ctx.fillStyle = '#ffd84a'; ctx.fillRect(-hw, r * y, hw * 2, r * 0.08); }
-      ctx.fillStyle = '#c9a227'; ctx.strokeStyle = '#ffe98a';
-      ctx.beginPath(); ctx.rect(-r * 0.62, -r * 0.88, r * 1.24, r * 0.3); ctx.fill(); ctx.stroke();
-      ctx.save(); enemyShape(e); ctx.clip();
-      const g = ((t * 0.6) % 1);
-      const grd = ctx.createLinearGradient(0, -r * 0.6, 0, r * 1.6); grd.addColorStop(0, 'rgba(60,50,60,0.6)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grd; ctx.fillRect(-r, -r * 0.6, r * 2, r * 2.2);
-      // 毛の筋：穂先へ向かって細くまとまる
-      ctx.strokeStyle = 'rgba(150,130,150,0.35)'; ctx.lineWidth = 1;
-      for (let k = -4; k <= 4; k++) { ctx.beginPath(); ctx.moveTo(k * r * 0.14, -r * 0.55); ctx.quadraticCurveTo(k * r * 0.16, r * 0.4, k * r * 0.02, r * 1.45); ctx.stroke(); }
-      ctx.strokeStyle = `rgba(255,216,74,${0.8 * (1 - g)})`; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(-r * 0.7, -r * 0.3 + g * r * 1.8); ctx.lineTo(r * 0.7, -r * 0.3 + g * r * 1.8); ctx.stroke();
-      ctx.restore();
-      glow('#ffd84a', 16); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; enemyShape(e); ctx.stroke(); noGlow();
-      const d = (t * 0.9) % 1; ctx.fillStyle = `rgba(10,8,10,${1 - d * 0.6})`; ctx.strokeStyle = `rgba(255,216,74,${0.6 * (1 - d)})`; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(0, r * 1.6 + d * r * 1.4, r * 0.12 * (1 - d * 0.4), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      drawEnso(e, t, r);
     } else if (e.kind === 'inkghost') {
       // 終筆が描いた「墨の分身」：金のふちの黒い丸に、金の芯
       ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.fill();
