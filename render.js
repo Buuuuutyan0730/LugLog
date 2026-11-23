@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123133407';
-import { makeForms } from './forms.js?v=20261123133407';
-import { CONFIG } from './config.js?v=20261123133407';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123133618';
+import { makeForms } from './forms.js?v=20261123133618';
+import { CONFIG } from './config.js?v=20261123133618';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1937,9 +1937,14 @@ export function createRenderer(canvas, view) {
     ctx.fill();
   }
 
-  // 描くモードの本体：ペン。向きは動きに関係なくいつも同じ（ペン先＝銀色が左下、持ち手＝本体の色が右上）
+  // 描くモードの本体：ペン。傾きはいつも同じで、左右の向きだけ動いている向きに合わせる
+  //   左へ動く：ペン先が左下・持ち手が右上／右へ動く：左右反対。ペン先の先端は本体の位置（軌跡の点）にぴったり合わせる
+  const penFace = new WeakMap();
   function drawPenTip(p, t) {
     const r = p.r * 1.25, a = Math.PI * 0.75;
+    let face = penFace.get(p) || -1;
+    if (p.moving && p.dir != null && Math.abs(Math.cos(p.dir)) > 0.25) face = Math.cos(p.dir) > 0 ? 1 : -1;
+    penFace.set(p, face);
     const tipX = r * 1.5;              // ペン先のいちばん前（本体の中心より少し前で、線を描く）
     const nibBack = -r * 0.2;          // ペン先と軸のつなぎ目
     const gripBack = -r * 0.75;        // にぎりの終わり
@@ -1947,7 +1952,9 @@ export function createRenderer(canvas, view) {
     const w = r * 0.5;                 // 軸の太さ（半分）
     ctx.save();
     ctx.translate(p.x, p.y);
+    if (face > 0) ctx.scale(-1, 1);   // 右へ動いているときは左右反対
     ctx.rotate(a);
+    ctx.translate(-tipX, 0);          // ペン先の先端を、本体の位置に合わせる
     // うしろの光
     const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 2.2);
     halo.addColorStop(0, `rgba(${THEME.playerRgb}, 0.35)`);
