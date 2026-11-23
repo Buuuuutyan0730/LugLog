@@ -3,7 +3,8 @@
 //   何度も鳴る音は、同じ音が短い間に重なりすぎないようにする
 
 let ctx = null, master = null, seBus = null, bgmBus = null, noiseBuf = null;
-const prefs = { se: true, seVol: 0.85, bgm: true, bgmVol: 0.7 };
+const prefs = { se: true, seVol: 1, bgm: true, bgmVol: 1 };
+const BGM_BOOST = 1.2;   // BGM は効果音より少し大きめに鳴らす（設定の音量に掛ける）
 const lastAt = new Map();   // 音ごとの、最後に鳴らした時刻
 let live = 0;               // 今鳴っている声の数
 const MAX_LIVE = 40;
@@ -26,13 +27,13 @@ function ensure() {
 function applyVol() {
   if (!ctx) return;
   seBus.gain.value = prefs.se ? prefs.seVol : 0;
-  bgmBus.gain.value = prefs.bgm ? prefs.bgmVol : 0;
+  bgmBus.gain.value = prefs.bgm ? prefs.bgmVol * BGM_BOOST : 0;
 }
 
 // 設定（BGM・効果音のオン・オフと音量 0〜100）
 export function setAudioPrefs(S) {
-  prefs.se = !!S.se; prefs.seVol = (S.seVol ?? 85) / 100;
-  prefs.bgm = !!S.bgm; prefs.bgmVol = (S.bgmVol ?? 70) / 100;
+  prefs.se = !!S.se; prefs.seVol = (S.seVol ?? 100) / 100;
+  prefs.bgm = !!S.bgm; prefs.bgmVol = (S.bgmVol ?? 100) / 100;
   applyVol();
 }
 // BGM（bgm.js）が使う部品。force：設定で切っていても鳴らす（音の見本）

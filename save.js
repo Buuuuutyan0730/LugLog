@@ -9,7 +9,7 @@ function defaults() {
     id: `${1000 + Math.floor(Math.random() * 9000)}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
     howtoDone: false,         // 遊び方を一度見たか
     tutoDone: false,          // チュートリアルを一度終えたか（とばしても終えたことにする）
-    settings: { bgm: true, bgmVol: 70, se: true, seVol: 85, control: 'drag', shake: true, glow: 1, v: 3 },
+    settings: { bgm: true, bgmVol: 100, se: true, seVol: 100, control: 'drag', shake: true, glow: 1, v: 4 },
     best: { score: 0, phase: 0 },
     stats: { plays: 0, time: 0, kills: 0, bosses: 0 },
     // 図鑑：スキルは取った回数・極めた回数・持っていた時の最高フェーズ、敵とボスは見た・倒した回数
@@ -34,6 +34,8 @@ export function loadSave() {
       // スティックができる前の記録：操作方法をスティックにする
       // v3：ドラッグが指にそのままついていくようになったので、みんなドラッグに切りかえる
       if (!(raw.settings && raw.settings.v >= 3)) { d.settings.control = 'drag'; d.settings.v = 3; }
+      // v4：音量のはじめの値を 100・100 にした。前のはじめの値（BGM 70・効果音 85）のままの人は、新しい値にそろえる
+      if (!(raw.settings && raw.settings.v >= 4)) { if (d.settings.bgmVol === 70) d.settings.bgmVol = 100; if (d.settings.seVol === 85) d.settings.seVol = 100; d.settings.v = 4; }
       if (d.settings.control !== 'stick' && d.settings.control !== 'drag') d.settings.control = 'drag';   // タップはなくした
       d.best = { ...defaults().best, ...(raw.best || {}) };
       d.stats = { ...defaults().stats, ...(raw.stats || {}) };
