@@ -8,6 +8,7 @@ function defaults() {
     icon: 0,                  // プロフィールのアイコン（ICONS の番号）
     id: `${1000 + Math.floor(Math.random() * 9000)}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
     howtoDone: false,         // 遊び方を一度見たか
+    tutoDone: false,          // チュートリアルを一度終えたか（とばしても終えたことにする）
     settings: { bgm: true, bgmVol: 70, se: true, seVol: 85, control: 'drag', shake: true, glow: 1, v: 3 },
     best: { score: 0, phase: 0 },
     stats: { plays: 0, time: 0, kills: 0, bosses: 0 },
@@ -27,6 +28,8 @@ export function loadSave() {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (raw) {
       Object.assign(d, raw);
+      // チュートリアルができる前から遊んでいる人（遊び方を見た人）には、はじめてのチュートリアルを出さない
+      if (raw.tutoDone === undefined) d.tutoDone = !!raw.howtoDone;
       d.settings = { ...defaults().settings, ...(raw.settings || {}) };
       // スティックができる前の記録：操作方法をスティックにする
       // v3：ドラッグが指にそのままついていくようになったので、みんなドラッグに切りかえる

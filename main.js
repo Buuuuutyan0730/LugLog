@@ -1,26 +1,27 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261123144814';
-import { createGame, DT } from './game.js?v=20261123144814';
-import { applyForms } from './talents.js?v=20261123144814';
-import { createRenderer } from './render.js?v=20261123144814';
-import { createHud } from './ui.js?v=20261123144814';
-import { createInput } from './input.js?v=20261123144814';
-import { setupDebugPanel } from './debug.js?v=20261123144814';
-import { createPreview } from './preview.js?v=20261123144814';
-import { createMenus } from './menus.js?v=20261123144814';
-import { createDemo } from './demo.js?v=20261123144814';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261123144814';
-import { ensureDaily, addRun } from './missions.js?v=20261123144814';
-import { submitScore, checkDev } from './online.js?v=20261123144814';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123144814';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261123144814';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123144814';
-import { setEquipped } from './skinshot.js?v=20261123144814';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261123144814';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261123144814';
-import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123144814';
+import { CONFIG } from './config.js?v=20261123145320';
+import { createGame, DT } from './game.js?v=20261123145320';
+import { applyForms } from './talents.js?v=20261123145320';
+import { createRenderer } from './render.js?v=20261123145320';
+import { createHud } from './ui.js?v=20261123145320';
+import { createInput } from './input.js?v=20261123145320';
+import { setupDebugPanel } from './debug.js?v=20261123145320';
+import { createPreview } from './preview.js?v=20261123145320';
+import { createMenus } from './menus.js?v=20261123145320';
+import { createDemo } from './demo.js?v=20261123145320';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261123145320';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261123145320';
+import { ensureDaily, addRun } from './missions.js?v=20261123145320';
+import { submitScore, checkDev } from './online.js?v=20261123145320';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123145320';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261123145320';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261123145320';
+import { setEquipped } from './skinshot.js?v=20261123145320';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261123145320';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261123145320';
+import { playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123145320';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -91,7 +92,7 @@ const roadOf = (id) => SKILL_ROADS.find((r) => r.skills.some((k) => k.id === id)
 function restart() {
   // 途中でやめたプレイも、図鑑と合計の成績には入れる（最高記録には入れない）
   const s0 = game.state;
-  if (s0.mode !== 'ready' && !s0.over && s0.time > 0) { recordRun(save, s0, roadOf, { score: false }); ensureDaily(save, SKILL_ROADS); addRun(save, s0, roadOf); writeSave(save); }
+  if (s0.mode !== 'ready' && !s0.over && s0.time > 0 && !s0.tuto) { recordRun(save, s0, roadOf, { score: false }); ensureDaily(save, SKILL_ROADS); addRun(save, s0, roadOf); writeSave(save); }
   game.reset();
   hud.hideResult();
   hud.hideSkills();
@@ -102,6 +103,7 @@ function restart() {
 
 const menus = createMenus(save, {
   start() { restart(); game.firstPick(); menus.close(); },
+  tutorial() { restart(); game.startTutorial(); menus.close(); },
   resume() {},
   restart() { restart(); game.firstPick(); },   // もう一回・やり直す：最初のスキル選びから
   toTitle() { restart(); },
@@ -164,6 +166,31 @@ document.getElementById('reroll-btn').addEventListener('click', () => {
   game.reroll();
   showCards(s);
 });
+
+// チュートリアル：終わった（またはとばした）ら、そのまま本番を始める
+function finishTutorial() {
+  save.tutoDone = true; save.howtoDone = true; writeSave(save);
+  restart(); game.firstPick();
+}
+document.getElementById('tuto-skip').addEventListener('click', () => {
+  if (!game.state.tuto || preview.active || menus.id) return;
+  playSound('tap'); finishTutorial();
+});
+// 案内の箱：今の手順を出す（変わったときだけ書きかえる）
+let tutoKey = '';
+function syncTutorial(s) {
+  if (preview.active) { tutoKey = ''; return; }   // 見本を開いている間は、見本にまかせる
+  const T = s.tuto;
+  if (T && T.done) { finishTutorial(); return; }
+  const show = T && !menus.id;
+  const ok = !!(T && T.okT > 0), last = T && T.step === TUTO_STEPS.length;
+  const key = show ? `${T.step}:${ok}` : '';
+  if (key === tutoKey) return;
+  tutoKey = key;
+  if (!show) { hud.hideTutorial(); return; }
+  if (T.step === 0) hud.showTutorial({ intro: true, ...TUTO_INTRO });
+  else hud.showTutorial({ step: T.step, total: TUTO_STEPS.length, ...(ok ? (last ? TUTO_END : { text: 'できた！', sub: TUTO_STEPS[T.step - 1].done }) : TUTO_STEPS[T.step - 1]), ok });
+}
 
 // 一時停止：右上のボタン、または別のアプリ・タブへ切りかえたとき
 function pause() {
@@ -285,6 +312,8 @@ function tick(now) {
     const roads = SKILL_ROADS.map((r) => r.skills.filter((k) => s.skills && s.skills[k.id]).map((k) => k.id)).filter((a) => a.length);
     setTimeout(() => menus.showResult(s, isNew, roads, coins), 700);
   }
+
+  syncTutorial(s);
 
   const view0 = live && demo ? demo.state : s;
   applyForms(view0);   // 取ったスキルから、本体と分身の形を決める

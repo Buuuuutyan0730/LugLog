@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261123144814';
-import { snapIcons } from './icons.js?v=20261123144814';
-import { writeSave } from './save.js?v=20261123144814';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261123144814';
-import { playSound } from './audio.js?v=20261123144814';
-import { createGachaFx } from './gachafx.js?v=20261123144814';
-import { titleOf } from './titles.js?v=20261123144814';
-import { frameOf } from './frames.js?v=20261123144814';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261123144814';
-import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote } from './online.js?v=20261123144814';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123144814';
-import { GACHA_POOL } from './skins.js?v=20261123144814';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261123145320';
+import { snapIcons } from './icons.js?v=20261123145320';
+import { writeSave } from './save.js?v=20261123145320';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261123145320';
+import { playSound } from './audio.js?v=20261123145320';
+import { createGachaFx } from './gachafx.js?v=20261123145320';
+import { titleOf } from './titles.js?v=20261123145320';
+import { frameOf } from './frames.js?v=20261123145320';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261123145320';
+import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote } from './online.js?v=20261123145320';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123145320';
+import { GACHA_POOL } from './skins.js?v=20261123145320';
 
 // 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
 const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;
@@ -113,11 +113,12 @@ export function createMenus(save, hooks) {
         doAct(arg);
         break;
       case 'start':
-        // はじめてプレイを押したときだけ、先に遊び方を見せる
-        if (!save.howtoDone) open('s_howto', { page: 0, thenPlay: true });
+        // はじめてプレイを押したときだけ、先にチュートリアルを遊ぶ（終わるとそのまま本番）
+        if (!save.tutoDone) { history.length = 0; hooks.tutorial(); }
         else hooks.start();
         break;
       case 'howto': open('s_howto', { page: 0 }); break;
+      case 'tutorial': history.length = 0; hooks.tutorial(); break;   // 遊び方の「チュートリアルを遊ぶ」
       case 'howto-next': st.page = Math.min(HOWTO_LAST, (st.page || 0) + 1); render(); break;
       case 'howto-prev': st.page = Math.max(0, (st.page || 0) - 1); render(); break;
       case 'howto-end':

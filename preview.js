@@ -2,14 +2,14 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123144814';
-import { CONFIG } from './config.js?v=20261123144814';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123144814';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123144814';
-import { GACHA_POOL } from './skins.js?v=20261123144814';
-import { createGame } from './game.js?v=20261123144814';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123144814';
-import { createGachaFx } from './gachafx.js?v=20261123144814';
+import { BOOSTS, CURSES } from './talents.js?v=20261123145320';
+import { CONFIG } from './config.js?v=20261123145320';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123145320';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123145320';
+import { GACHA_POOL } from './skins.js?v=20261123145320';
+import { createGame } from './game.js?v=20261123145320';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123145320';
+import { createGachaFx } from './gachafx.js?v=20261123145320';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -920,7 +920,7 @@ export function createPreview(hud) {
   function view(base) {
     if (tab.startsWith('tu_')) {
       const ok = tab === 'tu_ok', n = ok ? 3 : +tab.slice(3), S = n ? TUTO_STEPS[n - 1] : TUTO_INTRO;
-      hud.showTutorial({ step: n, total: TUTO_STEPS.length, text: ok ? 'できた！' : S.text, sub: ok ? 'まっすぐな仲間ができた' : S.sub, ok, intro: n === 0 });
+      hud.showTutorial({ step: n, total: TUTO_STEPS.length, text: ok ? 'できた！' : S.text, sub: ok ? S.done : S.sub, ok, intro: n === 0 });
       return { ...stepMode(n !== 4 && n !== 5), labels: [], mode: 'play', over: false };
     }
     if (tab === 'md_move' || tab === 'md_draw') return { ...stepMode(tab === 'md_draw'), labels: [], mode: 'play', over: false };

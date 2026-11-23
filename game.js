@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123144814';
-import { spawnPop, stepParticle } from './pops.js?v=20261123144814';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123144814';
+import { CONFIG } from './config.js?v=20261123145320';
+import { spawnPop, stepParticle } from './pops.js?v=20261123145320';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123145320';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -62,6 +62,7 @@ export function createGame() {
       sfx: [],          // 鳴らす音の順番待ち（main.js が毎フレーム取り出して鳴らす）         // 'ready'（操作待ち）| 'play' | 'select'（スキル選択中）
       over: false,
       firstPick: false,      // 遊び始めの1枚を選んでいる最中
+      tuto: null,            // チュートリアル中なら、その進み具合（step：0＝最初の説明、1〜6＝手順）
       time: 0,
       score: 0,
       kills: 0,
@@ -1944,6 +1945,7 @@ export function createGame() {
       s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: Math.max(16, main.y - 14 * s.zoom), text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
       born = main;
       sfx('born');
+      if (s.tuto) { s.tuto.born.push(straight); s.tuto.lastG = main; }   // チュートリアル：生まれた分身を数える
       { let n = 0; for (const id of ['gigant', 'giant', 'awe', 'swarm', 'taunt']) { if (n < 2 && skLv(id) && !(id === 'giant' && skLv('gigant'))) { skSfx(id); n++; } } }
       // 千の影：同じ軌跡を、間をあけて往復する写しが生まれる（軌跡の総量は1本分）
       if (s.st.sk.thousand) {
@@ -2521,6 +2523,7 @@ export function createGame() {
   function hurtPlayer(amount, from) {
     const p = s.player;
     if (p.demonT > 0) return;   // 鬼神：無敵
+    if (s.tuto) return;         // チュートリアルの練習場では、ダメージを受けない
     if (p.drawMode) amount *= DM.damage;   // 描いている間は、受けるダメージが増える
     // 生命の泉：たまったシールドが先に減る
     if (s.lifeShield > 0) {
@@ -2768,7 +2771,7 @@ export function createGame() {
   function updateEnemies() {
     // 1秒あたりに出す「敵の体力の合計」をためていき、たまったら1体出す
     const frozen = s.timeStop > 0;
-    if (frozen) { /* 時間停止中は敵が出てこない */ }
+    if (frozen || s.tuto) { /* 時間停止中は敵が出てこない／チュートリアルでは決まった数だけ出す */ }
     else if (s.spawnDelay > 0) s.spawnDelay -= DT;
     else {
       maybeSpawnElite();
@@ -3079,7 +3082,7 @@ export function createGame() {
     const raw = needOf(s.phase);
     if (skLv('keeper') && skLv('shortcut')) { const C = SK.shortcut; s.need = Math.max(Math.ceil(raw * C.floor), Math.round(raw * (1 - C.base - C.per * (skLv('shortcut') - 1)))); }
     else s.need = raw;
-    if (s.shards >= s.need && !s.bossPhase && s.mode === 'play') clearPhase();
+    if (s.shards >= s.need && !s.bossPhase && s.mode === 'play' && !s.tuto) clearPhase();
   }
 
   // ---------- フェーズ ----------
@@ -3753,6 +3756,7 @@ export function createGame() {
       s.mode = 'play';
       s.banner = { text: 'PHASE 1', sub: '', t: 1.6 };
     }
+    if (s.tuto && tutoWaiting(input)) { updateEffects(); return; }
     if (s.mode === 'returning') { updateReturn(); updateEffects(); return; }
     if (s.over || s.mode === 'select') { updateEffects(); return; }
     if (s.hitstop > 0) {
@@ -3783,6 +3787,7 @@ export function createGame() {
     updateBoss();
     updateEnemies();
     updatePickups();
+    if (s.tuto) tutoCheck();
     updateEffects();
   }
 
@@ -3801,6 +3806,59 @@ export function createGame() {
     if (s.mode === 'play' && !s.over) clearPhase();
   }
 
+  // ---------- チュートリアル ----------
+  //   練習場（敵は決まった数だけ・ダメージなし・フェーズは進まない）で、手順を1つずつこなす
+  //   できたら緑に光って少し待ち、次の手順へ。最後まで終わると done（main.js が本番を始める）
+  const TUTO_LAST = 6, TUTO_OK = 1.1;
+  function startTutorial() {
+    reset();
+    s.tuto = { step: 0, hold: false, okT: 0, born: [], lastG: null, spawned: false, done: false };
+    s.mode = 'play';
+  }
+  // 止めておくとき true：最初の説明（タップで手順1へ）／終わったあと
+  function tutoWaiting(input) {
+    const T = s.tuto;
+    if (T.done) return true;
+    if (T.step > 0) return false;
+    // 離した瞬間に始める（押した指で、そのまま線を描き始めないように）
+    if (input.held) T.hold = true;
+    else if (T.hold) { T.step = 1; sfx('tap'); }
+    return true;
+  }
+  function tutoCheck() {
+    const T = s.tuto, p = s.player;
+    if (T.okT > 0) {
+      T.okT -= DT;
+      if (T.okT <= 0) { if (T.step >= TUTO_LAST) T.done = true; else T.step++; }
+      return;
+    }
+    let ok = false;
+    switch (T.step) {
+      case 1: ok = s.record.enough || T.born.length > 0; break;          // 分身になれる長さまで描けた
+      case 2: ok = T.born.length > 0; break;                              // 分身が生まれた
+      case 3: ok = T.born.some((v) => v >= 0.8); break;                   // 命中80%以上の分身が生まれた
+      case 4: ok = !p.drawMode; break;                                    // 動くモードになった
+      case 5:
+        // 弱い敵を3体出す。全部倒して、かけらを拾えたらできた（拾えずに消えたら、もう一度出す）
+        if (!T.spawned) {
+          T.spawned = true; s.shards = 0;
+          for (let k = 0; k < 3; k++) spawnEnemy(pickNextEnemy());
+        } else if (!s.enemies.length && !s.pickups.length) {
+          if (s.shards > 0) ok = true; else T.spawned = false;
+        }
+        break;
+      case 6: ok = p.drawMode; break;                                     // 描くモードに戻った
+    }
+    if (!ok) return;
+    T.okT = T.step >= TUTO_LAST ? TUTO_OK + 0.8 : TUTO_OK;
+    T.born = [];   // ここから先に生まれた分身は、次の手順で数える
+    sfx('pickBig');
+    ring(p.x, p.y, p.r, p.r * 5, 0.4, 'white', 0, 3);
+    // 分身が生まれた手順は、分身のまわりを大きく光らせる
+    const g = T.lastG;
+    if ((T.step === 2 || T.step === 3) && g) { ring(g.x, g.y, 6, 70, 0.55, 'white', 0, 4); flash(g.x, g.y, 46, 0.3, 'white'); }
+  }
+
   reset();
   // 遊び始めに、スキルを1つ選ぶ（フェーズ1の前）
   function firstPick() {
@@ -3808,5 +3866,5 @@ export function createGame() {
     s.choices = rollChoices(s, { first: true });
     s.mode = 'select';
   }
-  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, firstPick };
+  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, firstPick, startTutorial };
 }
