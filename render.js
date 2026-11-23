@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123133150';
-import { makeForms } from './forms.js?v=20261123133150';
-import { CONFIG } from './config.js?v=20261123133150';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123133407';
+import { makeForms } from './forms.js?v=20261123133407';
+import { CONFIG } from './config.js?v=20261123133407';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1937,9 +1937,9 @@ export function createRenderer(canvas, view) {
     ctx.fill();
   }
 
-  // 描くモードの本体：ペン。進む向きにペン先（銀色）が向き、うしろに軸（本体の色）が伸びる
+  // 描くモードの本体：ペン。向きは動きに関係なくいつも同じ（ペン先＝銀色が左下、持ち手＝本体の色が右上）
   function drawPenTip(p, t) {
-    const r = p.r * 1.25, a = p.dir == null ? -Math.PI / 2 : p.dir;
+    const r = p.r * 1.25, a = Math.PI * 0.75;
     const tipX = r * 1.5;              // ペン先のいちばん前（本体の中心より少し前で、線を描く）
     const nibBack = -r * 0.2;          // ペン先と軸のつなぎ目
     const gripBack = -r * 0.75;        // にぎりの終わり
