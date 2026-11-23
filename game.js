@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124042424';
-import { spawnPop, stepParticle } from './pops.js?v=20261124042424';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124042424';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124042424';
+import { CONFIG } from './config.js?v=20261124043247';
+import { spawnPop, stepParticle } from './pops.js?v=20261124043247';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124043247';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124043247';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -61,6 +61,7 @@ export function createGame() {
     Object.assign(s, {
       mode: 'ready',
       test: null,       // ボスを試す（調整パネル）の途中なら、その中身
+      bossSpawned: false,   // このフェーズでボスが出たか（いなくなったら倒した扱いにする確認用）
       sfx: [],          // 鳴らす音の順番待ち（main.js が毎フレーム取り出して鳴らす）         // 'ready'（操作待ち）| 'play' | 'select'（スキル選択中）
       over: false,
       firstPick: false,      // 遊び始めの1枚を選んでいる最中
@@ -3031,8 +3032,8 @@ export function createGame() {
 
     // 倒れた敵：スコアとかけら
     for (const e of s.enemies) {
-      if (e.hp <= 0 && e.selfDestruct) continue;   // 自爆して消えた：スコアもかけらもなし
-      if (e.hp <= 0) {
+      if (!(e.hp > 0) && e.selfDestruct) continue;   // 自爆して消えた：スコアもかけらもなし
+      if (!(e.hp > 0)) {   // 体力が数でなくなっていても（NaN）、倒れた扱いにする
         s.kills++;
         const src = e.lastSrc || 'ghost';
         s.killBy[src] = (s.killBy[src] || 0) + 1;
@@ -3052,21 +3053,7 @@ export function createGame() {
           for (let k = 0; k < 3; k++) ring(e.x, e.y, e.r, e.r * (2.5 + k * 1.5), 0.45 + k * 0.12, 'enemy', 0, 5 - k);
           continue;
         }
-        if (e.boss) {
-          s.bossKills.push(e.kind);
-          sfx('bossdown');
-          s.bossDown = { t: 0, x: e.x, y: e.y };   // はじける輪と白い光
-          s.slowT = 0.5;                            // 0.5秒ほどゆっくりにする
-          if (s.twin) s.twin.dead = null;
-          // 影：倒すと影の分身も消える
-          for (const o of s.enemies) if (o.kind === 'echo' && o.hp > 0) { o.hp = 0; o.selfDestruct = true; enemyDeathFx(o); }
-          s.bossDownT = BOSS.clearDelay;
-          s.shake = Math.max(s.shake, 14);
-          for (let k = 0; k < 4; k++) ring(e.x, e.y, e.r, e.r * (3 + k * 2), 0.5 + k * 0.15, 'enemy', 0, 6 - k);
-          flash(e.x, e.y, e.r * 6, 0.4, 'white');
-          s.banner = { text: 'BOSS DOWN', sub: '', t: 1.2 };
-          continue;
-        }
+        if (e.boss) { bossDefeated(e); continue; }
         dropShards(e);
         if (e.elite && e.burstOf) eliteBurst(e);
         // 吸血：倒すたびにHPが少し回復
@@ -3209,6 +3196,21 @@ export function createGame() {
     if (!b || b.done) return;
     b.done = true; b.win = win; b.sec = Math.round(s.time - b.t0);
   }
+  // ボスを倒した：はじける演出・BOSS DOWN・少しして（ボスの）フェーズクリアへ
+  function bossDefeated(e) {
+    s.bossKills.push(e.kind);
+    sfx('bossdown');
+    s.bossDown = { t: 0, x: e.x, y: e.y };   // はじける輪と白い光
+    s.slowT = 0.5;                            // 0.5秒ほどゆっくりにする
+    if (s.twin) s.twin.dead = null;
+    // 影：倒すと影の分身も消える／終筆：墨の分身も消える
+    for (const o of s.enemies) if ((o.kind === 'echo' || o.kind === 'inkghost') && o.hp > 0) { o.hp = 0; o.selfDestruct = true; enemyDeathFx(o); }
+    s.bossDownT = BOSS.clearDelay;
+    s.shake = Math.max(s.shake, 14);
+    for (let k = 0; k < 4; k++) ring(e.x, e.y, e.r, e.r * (3 + k * 2), 0.5 + k * 0.15, 'enemy', 0, 6 - k);
+    flash(e.x, e.y, e.r * 6, 0.4, 'white');
+    s.banner = { text: 'BOSS DOWN', sub: '', t: 1.2 };
+  }
   function clearPhase(afterBoss = false) {
     // ボスを試す：目当てのボスを倒したら、カード選びに進まずに結果へ
     if (s.test && afterBoss && s.phase === s.test.target && !s.test.skipping) { endBossTest(true); return; }
@@ -3262,6 +3264,7 @@ export function createGame() {
     s.twin = null;
     s.timeStop = 0;
     s.bossPhase = false;
+    s.bossSpawned = false;
   }
 
   // ---------- ボス ----------
@@ -3274,6 +3277,7 @@ export function createGame() {
   }
   function spawnBoss(kind) {
     seeKind(kind);
+    s.bossSpawned = true;
     s.bossLog.push({ n: Math.round(s.phase / BOSS.every), kind, t0: s.time, sec: 0, win: false, done: false });
     if (kind === 'twin') { spawnTwins(); return; }
     const B2 = BOSS[kind], W = s.world.w, H = s.world.h;
@@ -3299,6 +3303,11 @@ export function createGame() {
     if (s.bossAppear > 0) { s.bossAppear -= DT; if (s.bossAppear <= 0) spawnBoss(s.bossPhase); }
     if (s.twin) updateTwins();
     if (s.bossDownT > 0) { s.bossDownT -= DT; if (s.bossDownT <= 0) clearPhase(true); }
+    // 念のため：ボスが倒れた扱いにならないまま、いなくなっていたら、倒したことにする（敵がいないまま続かないように）
+    else if (s.bossPhase && s.bossSpawned && s.mode === 'play' && !s.over && !(s.twin && s.twin.dead) && !s.enemies.some((e) => e.boss && e.hp > 0)) {
+      console.warn('ボスがいなくなっていたので、倒したことにします', s.bossPhase);
+      bossDefeated({ x: s.world.w / 2, y: s.world.h * 0.3, r: 30, kind: s.bossPhase });
+    }
   }
 
   // ---------- ボスに共通する流れ ----------

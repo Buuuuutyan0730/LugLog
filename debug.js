@@ -1,8 +1,8 @@
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261124042424';
-import { CATS } from './preview.js?v=20261124042424';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124043247';
+import { CATS } from './preview.js?v=20261124043247';
 
 // スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
 const PARAM = {
