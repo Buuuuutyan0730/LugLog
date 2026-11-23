@@ -1,27 +1,27 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261124000512';
-import { createGame, DT } from './game.js?v=20261124000512';
-import { applyForms } from './talents.js?v=20261124000512';
-import { createRenderer } from './render.js?v=20261124000512';
-import { createHud } from './ui.js?v=20261124000512';
-import { createInput } from './input.js?v=20261124000512';
-import { setupDebugPanel } from './debug.js?v=20261124000512';
-import { createPreview } from './preview.js?v=20261124000512';
-import { createMenus } from './menus.js?v=20261124000512';
-import { createDemo } from './demo.js?v=20261124000512';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261124000512';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261124000512';
-import { ensureDaily, addRun } from './missions.js?v=20261124000512';
-import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261124000512';
-import { SKILL_ROADS } from './skilldefs.js?v=20261124000512';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261124000512';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261124000512';
-import { setEquipped } from './skinshot.js?v=20261124000512';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261124000512';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261124000512';
-import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261124000512';
+import { CONFIG } from './config.js?v=20261124001748';
+import { createGame, DT } from './game.js?v=20261124001748';
+import { applyForms } from './talents.js?v=20261124001748';
+import { createRenderer } from './render.js?v=20261124001748';
+import { createHud } from './ui.js?v=20261124001748';
+import { createInput } from './input.js?v=20261124001748';
+import { setupDebugPanel } from './debug.js?v=20261124001748';
+import { createPreview } from './preview.js?v=20261124001748';
+import { createMenus } from './menus.js?v=20261124001748';
+import { createDemo } from './demo.js?v=20261124001748';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261124001748';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261124001748';
+import { ensureDaily, addRun } from './missions.js?v=20261124001748';
+import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261124001748';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124001748';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261124001748';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261124001748';
+import { setEquipped } from './skinshot.js?v=20261124001748';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261124001748';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261124001748';
+import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261124001748';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);

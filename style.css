@@ -2112,3 +2112,6 @@ body.previewing .efx { z-index: 8; bottom: 26%; }
 .efx-thanks.on { opacity: 1; }
 .efx-go { width: 80cqw; opacity: 0; pointer-events: none; transition: opacity 0.8s ease; }
 .efx-go.on { opacity: 1; pointer-events: auto; }
+
+/* ホーム左上：アイコンだけ（名前と ID はプロフィール画面で見る） */
+.ms-prof.only-icon { padding: 1cqw; border-radius: 50%; }
