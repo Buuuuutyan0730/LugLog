@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124041603';
-import { spawnPop, stepParticle } from './pops.js?v=20261124041603';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124041603';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124041603';
+import { CONFIG } from './config.js?v=20261124042424';
+import { spawnPop, stepParticle } from './pops.js?v=20261124042424';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124042424';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124042424';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2116,7 +2116,9 @@ export function createGame() {
     if (g.echo) g.power *= SK.thousand.power;    // 千の影の写しは弱め
     if (g.split != null) g.power *= SK.split.power;   // 分裂した分身は弱め
     if (s.st.evo.turret) g.power *= s.st.ghostSpeed;
-    g.r = radiusOf(g.power) * G.sizeMul;
+    // 大きさは強さで決まるが、後半に画面が分身で埋まらないように上限をつける（巨大化の一番大きい分身だけ、上限も大きく）
+    const maxR = G.maxRadius * s.zoom * (g === s.big && skLv('giant') ? G.giantMaxMul * (titanOn() ? 1.3 : 1) : 1);
+    g.r = Math.min(maxR, radiusOf(g.power) * G.sizeMul);
     // おとり：分身がHPを持つ（最大HPは攻撃力に比例。受けたダメージ g.lost を引いた残りが今のHP）
     const dl = skLv('decoy');
     if (dl) {
