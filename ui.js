@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261124033523';
-import { choiceView, ownedViews } from './talents.js?v=20261124033523';
-import { iconSvg, snapIcons } from './icons.js?v=20261124033523';
+import { ghostColor } from './theme.js?v=20261124035150';
+import { choiceView, ownedViews } from './talents.js?v=20261124035150';
+import { iconSvg, snapIcons } from './icons.js?v=20261124035150';
 
 const $ = (id) => document.getElementById(id);
 
@@ -142,7 +142,8 @@ export function createHud() {
     const minPos = ((pos + r.minLength) / budget) * 100;
     html += `<div class="bar-min${r.enough ? ' reached' : ''}" style="left:${minPos}%"></div>`;
     if (html !== lastBar) { lastBar = html; el.bar.innerHTML = html; }
-    setText(el.budgetNum, `${Math.round(state.used + rec)}/${budget}`);
+    const cm = state.comp || 1;   // 圧縮している分を戻して、本当の軌跡の量で見せる
+    setText(el.budgetNum, `${Math.round((state.used + rec) * cm)}/${Math.round(budget * cm)}`);
 
     // 案内：動くモード／描くモード（待っている・短い・作れる）
     const drawing = !!state.player.drawMode;

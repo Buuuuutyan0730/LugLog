@@ -2180,3 +2180,30 @@ body.previewing .efx { z-index: 8; bottom: 13%; }
 .dbg-export { position: sticky; bottom: 14cqw; z-index: 3; background: var(--panel); border: 0.6cqw solid var(--gold); border-radius: 2cqw; padding: 2cqw; margin-top: 2cqw; display: flex; flex-direction: column; gap: 1.4cqw; }
 .dbg-export textarea { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 2.8cqw; color: #eef3ff; background: #0c1030; border: 0.5cqw solid var(--ink); border-radius: 1.4cqw; padding: 1.4cqw; }
 .dbg-export[hidden], .dbg-bossgo[hidden] { display: none; }
+
+/* 記録：ボス試験 */
+.dbg-rk { margin-bottom: 2.4cqw; }
+.dbg-rk button { font-size: 3cqw; }
+.dbg-tboss { display: flex; flex-wrap: wrap; gap: 1cqw; margin-bottom: 2cqw; }
+.dbg-tboss button { font-family: 'Press Start 2P', monospace; font-size: 2.4cqw; color: var(--muted); background: #121735; border: 0.5cqw solid var(--ink); border-radius: 1.4cqw; padding: 1.2cqw 1.8cqw; cursor: pointer; }
+.dbg-tboss button:first-child { font-family: inherit; font-size: 2.8cqw; }
+.dbg-tboss button.active { color: var(--ink); background: var(--gold); }
+.dbg-srow { display: grid; grid-template-columns: 22cqw 1fr 13cqw 8cqw; align-items: center; gap: 1.6cqw; font-size: 3cqw; padding: 0.8cqw 0; }
+.dbg-srow b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 2.4cqw; text-align: right; }
+.dbg-srow b.bad { color: #ff6b81; }
+.dbg-srow b.low { color: var(--cyan); }
+.dbg-srow small { font-size: 2.4cqw; color: var(--muted); text-align: right; }
+.dbg-rbar { display: block; height: 1.8cqw; background: rgba(255, 255, 255, 0.08); border-radius: 1cqw; overflow: hidden; position: relative; }
+.dbg-rbar::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 0.4cqw; background: rgba(255, 255, 255, 0.35); }
+.dbg-rbar em { display: block; height: 100%; background: linear-gradient(90deg, #5b7cff, #ffd84a); }
+.dbg-test { border: 0.5cqw solid var(--ink); border-left: 1.2cqw solid #5b7cff; border-radius: 1.6cqw; background: #121735; padding: 1.8cqw 2.2cqw; margin-bottom: 1.6cqw; }
+.dbg-test.win { border-left-color: var(--gold); }
+.dbg-test-h { display: flex; align-items: baseline; gap: 2cqw; }
+.dbg-test-h b { font-size: 3.2cqw; font-weight: normal; }
+.dbg-test-h span { font-size: 2.8cqw; color: var(--muted); }
+.dbg-test-h em { margin-left: auto; font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 2.3cqw; color: var(--cyan); }
+.dbg-test-sk { display: flex; flex-wrap: wrap; gap: 1cqw; margin: 1.4cqw 0; }
+.dbg-test-sk span { font-size: 2.6cqw; background: rgba(255, 255, 255, 0.07); border-radius: 1cqw; padding: 0.4cqw 1.2cqw; }
+.dbg-test-sk small { font-family: 'Press Start 2P', monospace; font-size: 1.9cqw; color: var(--gold); margin-left: 0.8cqw; }
+.dbg-test-f { display: flex; justify-content: space-between; }
+.dbg-test-f small { font-size: 2.3cqw; color: var(--muted); }

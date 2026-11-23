@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124033523';
-import { spawnPop, stepParticle } from './pops.js?v=20261124033523';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124033523';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124033523';
+import { CONFIG } from './config.js?v=20261124035150';
+import { spawnPop, stepParticle } from './pops.js?v=20261124035150';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124035150';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124035150';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -216,6 +216,10 @@ export function createGame() {
   const budgetNow = () => Math.round(T.trailBudget.value * s.st.budget);
   // 孤独な王・ギガント：軌跡の総量をすべて1体に使える
   const dragLimitNow = () => (s.st.curse.lonely || s.st.sk.gigant ? budgetNow() : Math.min(T.dragLimit.value * s.st.drag, budgetNow()));
+  // 圧縮：画面に置ける軌跡の長さは、最初の総量（1000）までに抑える。軌跡＋で総量がそれを超えた分は、
+  //   1本の線をその倍率だけ強くする（総量が2倍なら、画面の上で100の線が200の長さ分の強さになる）
+  const compNow = () => Math.max(1, budgetNow() / T.trailBudget.value);
+  const screenBudget = () => budgetNow() / compNow();
   const skLv = (id) => s.st.sk[id] || 0;
   // タイタン：分身が1体だけのとき
   const titanOn = () => s.st.evo.giant && s.ghosts.length === 1;
@@ -1862,7 +1866,7 @@ export function createGame() {
     for (let i = 0; i < n; i++) {
       const clip = old.clip.slice(i * per, (i + 1) * per + 1);
       const g = {
-        clip, len: clip.length - 1, dist: 0, idx: old.idx, power: 0, r: 4,
+        clip, len: clip.length - 1, comp: old.comp || 1, dist: 0, idx: old.idx, power: 0, r: 4,
         x: clip[0].x, y: clip[0].y, life: 1, fireCd: rand(0, 0.3), trail: [], spawnGlow: 0,
         full: false, age: 0, dir: 1, fade: life, fadeMax: life, split: 1,
       };
@@ -1997,12 +2001,13 @@ export function createGame() {
       const clip = resample(r.path);
       const len = clip.length - 1;
       // 軌跡の総量を超える分だけ、古い分身から押し出す（孤独な王：前の分身はすべて押し出す）
-      while (s.ghosts.length && (cu.lonely || usedLength() + len > budgetNow())) evictOldest();
+      while (s.ghosts.length && (cu.lonely || usedLength() + len > screenBudget())) evictOldest();
+      const comp = compNow();
       // まっすぐさ（0〜1）：線の端から端までの距離 ÷ 線の長さ。まっすぐな線ほど弾がよく当たる
       const st0 = r.path[0], st1 = r.path[r.path.length - 1];
       const straight = clamp(Math.hypot(st1.x - st0.x, st1.y - st0.y) / Math.max(1, r.length), 0, 1);
       const main = {
-        clip, len, dist: 0, idx, power: 0, r: 4, straight,
+        clip, len, comp, dist: 0, idx, power: 0, r: 4, straight,
         x: clip[0].x, y: clip[0].y,
         life: 1, fireCd: rand(0, 0.3), trail: [], spawnGlow: 0,
         full: atLimit,       // フルチャージ用：上限まで描いた分身か
@@ -2011,7 +2016,10 @@ export function createGame() {
       s.ghosts.push(main);
       ghostSpawnFx(main);
       // 生まれた分身の上に、命中率を出す
-      s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: Math.max(16, main.y - 14 * s.zoom), text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
+      const ny = Math.max(16, main.y - 14 * s.zoom);
+      s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: ny, text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
+      // その下に、圧縮の倍率（軌跡の総量が増えて、1本が強くなっているとき）
+      if (comp > 1.001) s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: ny + 13, text: `強さ ×${comp.toFixed(1)}`, kind: 'aim', t: 1.1, max: 1.1 });
       born = main;
       sfx('born');
       if (s.tuto) { s.tuto.born.push(straight); s.tuto.lastG = main; }   // チュートリアル：生まれた分身を数える
@@ -2054,7 +2062,7 @@ export function createGame() {
   function updateRecord(held) {
     const r = s.record;
     const p = s.player;
-    const limit = dragLimitNow();
+    const limit = dragLimitNow() / compNow();   // 画面の上で描ける長さ（圧縮の分だけ短く、その分強い）
     // 押した瞬間：追従のときは、本体が指の位置へ追いつくまで軌跡を描き始めない
     if (held && !s.wasHeld) {
       p.catching = X.control.value === 'follow';
@@ -2100,7 +2108,7 @@ export function createGame() {
   // 記録した軌跡を、一定の速さで行ったり来たりさせる
   // 分身の攻撃力と大きさ
   function ghostPower(g) {
-    g.power = (g.len / G.powerUnit) * s.st.ghostAttack * (g.full && s.st.fullCharge ? BN.fullCharge.mult : 1);
+    g.power = (g.len * (g.comp || 1) / G.powerUnit) * s.st.ghostAttack * (g.full && s.st.fullCharge ? BN.fullCharge.mult : 1);
     // 巨大化：一番大きい分身が強くなる。タイタン：分身が1体だけのとき、さらに2倍
     if (g === s.big) g.power *= (1 + SK.giant.per * skLv('giant')) * (titanOn() ? SK.giant.titanMult : 1);
     g.power *= legionMul();
@@ -2164,8 +2172,9 @@ export function createGame() {
 
   function updateGhosts() {
     s.ghostAttack = X.ghostAttack.value;
-    const budget = budgetNow();
+    const budget = screenBudget();
     s.budget = budget;
+    s.comp = compNow();   // 表示用：軌跡の数字は、圧縮する前の長さで見せる
 
     while (s.ghosts.length && usedLength() > budget) evictOldest();
 
@@ -4229,6 +4238,9 @@ export function createGame() {
       bossLeft: win ? 0 : Math.max(0, Math.round(((b && b.hp) || 0) / Math.max(1, (b && b.maxHp) || 1) * 100)),
       hpLeft: win ? Math.round((s.hp / Math.max(1, s.maxHp)) * 100) : 0,
     };
+    // 1秒あたりにボスへ与えたダメージ
+    const maxHp = (b && b.maxHp) || 0;
+    T.done.dps = Math.round((maxHp * (1 - T.done.bossLeft / 100)) / Math.max(1, T.done.sec));
     s.mode = 'btdone';
   }
 
