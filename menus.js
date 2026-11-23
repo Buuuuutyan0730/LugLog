@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261123180817';
-import { snapIcons } from './icons.js?v=20261123180817';
-import { writeSave } from './save.js?v=20261123180817';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261123180817';
-import { playSound } from './audio.js?v=20261123180817';
-import { createGachaFx } from './gachafx.js?v=20261123180817';
-import { titleOf } from './titles.js?v=20261123180817';
-import { frameOf } from './frames.js?v=20261123180817';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261123180817';
-import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote, adminSetScore, adminDeleteScore } from './online.js?v=20261123180817';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123180817';
-import { GACHA_POOL } from './skins.js?v=20261123180817';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261123182543';
+import { snapIcons } from './icons.js?v=20261123182543';
+import { writeSave } from './save.js?v=20261123182543';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261123182543';
+import { playSound } from './audio.js?v=20261123182543';
+import { createGachaFx } from './gachafx.js?v=20261123182543';
+import { titleOf } from './titles.js?v=20261123182543';
+import { frameOf } from './frames.js?v=20261123182543';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261123182543';
+import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote, adminSetScore, adminDeleteScore } from './online.js?v=20261123182543';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123182543';
+import { GACHA_POOL } from './skins.js?v=20261123182543';
 
 // 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
 const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;

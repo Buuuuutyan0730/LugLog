@@ -1,7 +1,7 @@
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onPreview, coins }) {
+export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onPreview, coins, records }) {
   const sheet = document.getElementById('debug');
   const body = document.getElementById('debug-body');
 
@@ -39,12 +39,25 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
     tune.hidden = b.dataset.t !== 'tune';
     rec.hidden = b.dataset.t !== 'rec';
-    if (!rec.hidden) renderRecords(rec, REC_MOCK, recRange);
+    if (!rec.hidden && !runs) loadRec(); else if (!rec.hidden) showRec();
   });
-  let recRange = 'all';
+  // 記録はタブを開いたときに1回だけ読む（「読み込み直す」でもう一度）
+  let recRange = 'all', runs = null, recErr = '';
+  const showRec = () => {
+    if (recErr) { rec.innerHTML = `<div class="dbg-rec-note">${recErr}</div><button class="btn btn-small btn-sub dbg-reload">読み込み直す</button>`; return; }
+    if (!runs) { rec.innerHTML = '<div class="dbg-rec-hint">読み込み中…</div>'; return; }
+    const from = recRange === 'week' ? records.weekStart() : 0;
+    renderRecords(rec, summarize(runs.filter((r) => r.at >= from), config), recRange);
+  };
+  const loadRec = () => {
+    runs = null; recErr = ''; showRec();
+    if (!records) { recErr = '記録を読む仕組みがありません'; showRec(); return; }
+    records.load().then((r) => { runs = r; showRec(); }, (e) => { recErr = `読み込めませんでした（${String((e && (e.code || e.message)) || 'unknown').replace(/[<>&]/g, '').slice(0, 60)}）`; showRec(); });
+  };
   rec.addEventListener('click', (e) => {
+    if (e.target.closest('.dbg-reload')) { loadRec(); return; }
     const b = e.target.closest('[data-range]'); if (!b) return;
-    recRange = b.dataset.range; renderRecords(rec, REC_MOCK, recRange);
+    recRange = b.dataset.range; showRec();
   });
 
   const title = (text) => {
@@ -131,39 +144,31 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
 }
 
 // ---------- プレイの記録（見た目） ----------
-// 見本の数字（あとでデータベースから読んだものに置きかえる）
-const REC_MOCK = {
-  all: {
-    plays: 128, since: '11/23',
-    bosses: [
-      { n: 1, name: 'コア', phase: 10, tries: 96, wins: 81, winSec: 212, loseSec: 140 },
-      { n: 2, name: 'ハンター', phase: 20, tries: 64, wins: 42, winSec: 248, loseSec: 171 },
-      { n: 3, name: '双子', phase: 30, tries: 31, wins: 14, winSec: 301, loseSec: 205 },
-      { n: 4, name: '時計', phase: 40, tries: 6, wins: 1, winSec: 388, loseSec: 240 },
-      { n: 5, name: '影', phase: 50, tries: 0, wins: 0, winSec: 0, loseSec: 0 },
-    ],
-    ends: [[1, 10, 32], [11, 20, 33], [21, 30, 46], [31, 40, 12], [41, 50, 5], [51, 999, 0]],
-    elite: { seen: 74, killed: 51, sec: 21, skipped: 23 },
-    control: { drag: 102, stick: 26 },
-  },
-  week: {
-    plays: 41, since: '11/17',
-    bosses: [
-      { n: 1, name: 'コア', phase: 10, tries: 30, wins: 26, winSec: 205, loseSec: 150 },
-      { n: 2, name: 'ハンター', phase: 20, tries: 21, wins: 15, winSec: 240, loseSec: 160 },
-      { n: 3, name: '双子', phase: 30, tries: 11, wins: 5, winSec: 290, loseSec: 199 },
-      { n: 4, name: '時計', phase: 40, tries: 2, wins: 0, winSec: 0, loseSec: 233 },
-      { n: 5, name: '影', phase: 50, tries: 0, wins: 0, winSec: 0, loseSec: 0 },
-    ],
-    ends: [[1, 10, 9], [11, 20, 10], [21, 30, 16], [31, 40, 4], [41, 50, 2], [51, 999, 0]],
-    elite: { seen: 25, killed: 18, sec: 19, skipped: 7 },
-    control: { drag: 33, stick: 8 },
-  },
-};
+// 読んだ記録をまとめる
+const median = (a) => { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
+function summarize(runs, config) {
+  const B = config.boss, kinds = B.order;
+  const bosses = [];
+  const maxN = Math.max(kinds.length, ...runs.flatMap((r) => (r.bosses || []).map((b) => b.n)));
+  for (let n = 1; n <= maxN; n++) {
+    const all = runs.flatMap((r) => (r.bosses || []).filter((b) => b.n === n));
+    const kind = (all[0] && all[0].kind) || kinds[(n - 1) % kinds.length];
+    const wins = all.filter((b) => b.win), loses = all.filter((b) => !b.win);
+    bosses.push({ n, name: (B[kind] && B[kind].name) || kind, phase: n * B.every, tries: all.length, wins: wins.length, winSec: median(wins.map((b) => b.sec)), loseSec: median(loses.map((b) => b.sec)) });
+  }
+  const ends = [[1, 10], [11, 20], [21, 30], [31, 40], [41, 50], [51, 999]].map(([a, b]) => [a, b, runs.filter((r) => r.phase >= a && r.phase <= b).length]);
+  const sum = (k) => runs.reduce((v, r) => v + (r[k] || 0), 0);
+  const first = runs.length ? new Date(Math.min(...runs.map((r) => r.at || Date.now()))) : null;
+  return {
+    plays: runs.length, since: first ? `${first.getMonth() + 1}/${first.getDate()}` : '—',
+    bosses, ends,
+    elite: { seen: sum('eliteSeen'), killed: sum('eliteKilled'), skipped: sum('eliteSkipped'), sec: median(runs.flatMap((r) => r.eliteSecs || [])) },
+    control: { drag: runs.filter((r) => r.ctrl !== 'stick').length, stick: runs.filter((r) => r.ctrl === 'stick').length },
+  };
+}
 const mmss = (sec) => (sec > 0 ? `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}` : '—');
 const pct = (a, b) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—');
-function renderRecords(root, all, range) {
-  const d = all[range];
+function renderRecords(root, d, range) {
   const maxEnd = Math.max(1, ...d.ends.map((x) => x[2]));
   const ctl = d.control.drag + d.control.stick;
   root.innerHTML = `
@@ -174,7 +179,7 @@ function renderRecords(root, all, range) {
       </div>
       <div class="dbg-rec-count"><b>${d.plays.toLocaleString()}</b>回のプレイ<small>${d.since}から</small></div>
     </div>
-    <div class="dbg-rec-note">見本の数字です（まだ記録していません）</div>
+    ${d.plays ? '' : '<div class="dbg-rec-note">まだ記録がありません</div>'}
 
     <div class="group-title">▼ ボス</div>
     <table class="dbg-tbl">

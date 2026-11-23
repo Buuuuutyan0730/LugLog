@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123180817';
-import { spawnPop, stepParticle } from './pops.js?v=20261123180817';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123180817';
+import { CONFIG } from './config.js?v=20261123182543';
+import { spawnPop, stepParticle } from './pops.js?v=20261123182543';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123182543';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -70,6 +70,8 @@ export function createGame() {
       killBy: {},            // 攻撃ごとの倒した数
       killsByKind: {},       // 敵の種類ごとの倒した数（図鑑用）
       bossKills: [],         // 倒したボス
+      bossLog: [],           // プレイの記録：ボスごとの { n：何体目, kind, t0：出た時刻, sec：戦った秒数, win：倒したか, done }
+      eliteLog: { seen: 0, killed: 0, skipped: 0, secs: [] },   // プレイの記録：中ボス（出た数・倒した数・倒さずに進んだ数・倒すまでの秒数）
       rerolls: 0,
       shardsGot: 0,            // このプレイで引き直した回数（値段が上がる）
       volleyCd: 0,           // 一斉射撃の残りの待ち時間
@@ -2558,11 +2560,14 @@ export function createGame() {
     for (let i = 0; i < 20 && !next; i++) { const c = pickNextEnemy(); if (!EL.skip.includes(c.kind)) next = c; }
     if (!next) next = { kind: 'chaser', tier: rollTier(), hp: ET.chaser.hp };
     const e = spawnEnemy(next, true);
+    e.eliteT0 = s.time; s.eliteLog.seen++;
     e.burstOf = { kind: next.kind, tier: next.tier, hp: next.hp / (ET[next.kind].group || 1), scale: next.scale };
   }
   // 中ボスが倒れたとき：同じ種類の小さい敵がはじけ出る
   function eliteBurst(e) {
     sfx('elite');
+    s.eliteLog.killed++;
+    if (e.eliteT0 != null && s.eliteLog.secs.length < 200) s.eliteLog.secs.push(Math.round(s.time - e.eliteT0));
     const EL = CONFIG.elite, B0 = e.burstOf;
     const n = Math.round(rand(EL.burst[0], EL.burst[1]));
     for (let i = 0; i < n; i++) {
@@ -2635,6 +2640,7 @@ export function createGame() {
     }
     if (s.hp <= 0) {
       s.over = true;
+      logBoss(false);   // プレイの記録：ボスの途中でやられた
       s.hitstop = 0;
       sfx('dead');
       s.record.active = false;
@@ -3145,11 +3151,20 @@ export function createGame() {
   }
 
   // ---------- フェーズ ----------
+  // プレイの記録：今戦っているボスの結果を書く
+  function logBoss(win) {
+    const b = s.bossLog[s.bossLog.length - 1];
+    if (!b || b.done) return;
+    b.done = true; b.win = win; b.sec = Math.round(s.time - b.t0);
+  }
   function clearPhase(afterBoss = false) {
     if (s.sfx) s.sfx.push(['clear', 1], ['clearBurst', 1]);   // パーン（たくさん鳴っているフレームでも必ず鳴らす）
     // 画面上の敵・弾・かけらを消して、HPを全回復し、スキル選択へ
     //   クリアの演出：残っていた敵が一斉にはじけ、本体から大きな光の輪が広がり、画面がゆれる
     const p0 = s.player, big = Math.max(s.world.w, s.world.h);
+    // プレイの記録：ボスを倒した／中ボスを倒さずに進んだ
+    if (afterBoss) logBoss(true);
+    if (s.enemies.some((e) => e.elite && e.hp > 0)) s.eliteLog.skipped++;
     for (const e of s.enemies) { enemyDeathFx(e); sparks(e.x, e.y, 'enemy', 6, 260); flash(e.x, e.y, e.r * 3, 0.25, 'white'); }
     flash(p0.x, p0.y, big * 1.2, 0.3, 'white');
     for (let k = 0; k < 3; k++) ring(p0.x, p0.y, p0.r, big * (0.45 + k * 0.3), 0.45 + k * 0.15, 'shard', 0, 8 - k * 2);
@@ -3205,6 +3220,7 @@ export function createGame() {
   }
   function spawnBoss(kind) {
     seeKind(kind);
+    s.bossLog.push({ n: Math.round(s.phase / BOSS.every), kind, t0: s.time, sec: 0, win: false, done: false });
     if (kind === 'twin') { spawnTwins(); return; }
     const B2 = BOSS[kind], W = s.world.w, H = s.world.h;
     const hp = bossHp();

@@ -2,7 +2,7 @@
 //   人の見分け：名前の登録なしで端末ごとに見分ける「匿名ログイン」
 //   全期間の最高は scores/<見分けの番号>、その週の最高は weeks/<週の番号>/scores/<見分けの番号> に1つずつ
 //   つながらないとき（電波がない・読みこめない）は、ゲームはそのまま遊べる。ランキングだけ「つながりません」と出す
-import { CONFIG as GAME } from './config.js?v=20261123180817';
+import { CONFIG as GAME } from './config.js?v=20261123182543';
 const CONFIG = {
   apiKey: 'AIzaSyA9JWRT-1pPiMH4wnL78nrt_7icvCd_v7M',
   authDomain: 'luglog.firebaseapp.com',
@@ -33,7 +33,7 @@ function connect() {
   if (ready) return ready;
   ready = (async () => {
     // Firebaseの部品はゲームに同梱（外のサイトから読みこまない）。ランキングを使うときだけ読みこむ
-    const fs = await import('./firebase.js?v=20261123180817');
+    const fs = await import('./firebase.js?v=20261123182543');
     const app = fs.initializeApp(CONFIG);
     const auth = fs.getAuth(app);
     const cred = auth.currentUser ? { user: auth.currentUser } : await fs.signInAnonymously(auth);
@@ -141,6 +141,35 @@ export async function checkDev() {
   } catch (e) {
     return e && e.code === 'permission-denied' ? 'no' : 'offline';
   }
+}
+
+// ---------- プレイの記録（調整のため） ----------
+//   1回のプレイが終わるたびに、名前を入れずに1件送る。読めるのは開発者の端末だけ（サーバー側のきまり）
+export async function submitRun(save, run) {
+  const { fs, db, uid } = await withTimeout(connect());
+  const data = {
+    phase: Math.max(1, Math.min(999, Math.round(run.phase || 1))),
+    sec: Math.max(0, Math.min(36000, Math.round(run.time || 0))),
+    ctrl: save.settings.control === 'stick' ? 'stick' : 'drag',
+    bosses: (run.bossLog || []).filter((b) => b.done).slice(0, 20).map((b) => ({ n: b.n, kind: String(b.kind).slice(0, 12), sec: Math.max(0, Math.min(36000, b.sec)), win: !!b.win })),
+    eliteSeen: run.eliteLog ? run.eliteLog.seen : 0,
+    eliteKilled: run.eliteLog ? run.eliteLog.killed : 0,
+    eliteSkipped: run.eliteLog ? run.eliteLog.skipped : 0,
+    eliteSecs: run.eliteLog ? run.eliteLog.secs.slice(0, 200) : [],
+    at: fs.serverTimestamp(),
+  };
+  await withTimeout(fs.setDoc(fs.doc(db, 'runs', `${uid}_${Date.now()}`), data));
+}
+// 開発者だけ：プレイの記録を読む（新しい順に最大2000件）
+export async function loadRuns() {
+  const { fs, db } = await withTimeout(connect());
+  const snap = await withTimeout(fs.getDocs(fs.query(fs.collection(db, 'runs'), fs.orderBy('at', 'desc'), fs.limit(2000))), 30000);
+  return snap.docs.map((d) => { const v = d.data(); return { ...v, at: v.at && v.at.toMillis ? v.at.toMillis() : 0 }; });
+}
+// 今週の始まり（月曜の朝4時・日本時間）のミリ秒
+export function weekStartMs(now = new Date()) {
+  const k = weekKey(now);
+  return Date.UTC(+k.slice(0, 4), +k.slice(4, 6) - 1, +k.slice(6, 8)) - 9 * 3600 * 1000 + 4 * 3600 * 1000;
 }
 
 // 開発者だけ：ランキングの記録を直す・消す（サーバー側のきまりで、開発者の端末でなければはじかれる）
