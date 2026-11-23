@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123151244';
-import { spawnPop, stepParticle } from './pops.js?v=20261123151244';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123151244';
+import { CONFIG } from './config.js?v=20261123151421';
+import { spawnPop, stepParticle } from './pops.js?v=20261123151421';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123151421';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -607,8 +607,8 @@ export function createGame() {
   function placeTrap(x, y, kind, dmg, idx = 0, size = 0) {
     s.traps = s.traps || [];
     const life = SK.trap.life * s.st.dur;
-    const hits = kind === 'spike' && skLv('barb') ? (s.st.evo.barb ? Infinity : SK.barb.hits[skLv('barb') - 1]) : 1;
-    const tr = { x, y, kind, dmg, idx, life, max: life, hits, rot: Math.random() * Math.PI, size };
+    const hits = kind === 'spike' && skLv('barb') ? (s.st.evo.barb ? Infinity : SK.barb.hits) : 1;
+    const tr = { x, y, kind, dmg, idx, life, max: life, hits, stab: 0, rot: Math.random() * Math.PI, size };
     if (kind === 'mine' && skLv('timebomb')) tr.fuse = SK.timebomb.time;   // 時限爆弾：置いてから時間で爆発
     s.traps.push(tr);
     if (s.traps.length > SK.trap.max) s.traps.shift();
@@ -658,9 +658,11 @@ export function createGame() {
         // スロウフィールド（持続時間＋の最大ボーナス）：罠に触れた敵が遅くなる
         if (s.st.slowField) e.trapSlowT = SK.trap.slowTime;
         if ((e.trapHit || 0) > s.time && tr.hits > 1) continue;
-        damageEnemy(e, tr.dmg);
+        // 返し針：同じマキビシは、刺さるたびに威力が上がる
+        const grow = tr.kind === 'spike' && skLv('barb') ? 1 + SK.barb.grow[skLv('barb') - 1] * Math.min(tr.stab, SK.barb.growMax) : 1;
+        damageEnemy(e, tr.dmg * grow);
         addCombo();
-        tr.hits--;
+        tr.hits--; tr.stab++;
         e.trapHit = s.time + SK.barb.again;
         skSfx(tr.kind === 'light' ? 'keepsake' : tr.kind === 'spike' ? (skLv('snare') ? 'snare' : skLv('barb') ? 'barb' : 'caltrop') : 'caltrop');
         sparks(tr.x, tr.y, tr.kind === 'light' ? 'ghost' : 'white', 5, 150, tr.idx);
