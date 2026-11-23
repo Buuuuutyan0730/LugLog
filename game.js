@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123151421';
-import { spawnPop, stepParticle } from './pops.js?v=20261123151421';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123151421';
+import { CONFIG } from './config.js?v=20261123151703';
+import { spawnPop, stepParticle } from './pops.js?v=20261123151703';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123151703';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -612,6 +612,27 @@ export function createGame() {
     if (kind === 'mine' && skLv('timebomb')) tr.fuse = SK.timebomb.time;   // 時限爆弾：置いてから時間で爆発
     s.traps.push(tr);
     if (s.traps.length > SK.trap.max) s.traps.shift();
+    return tr;
+  }
+  // 軌跡の罠：マキビシ・地雷・炎の道を、分身の軌跡の上に置く。生まれたときと、軌跡を1往復するたびに置き直す
+  //   （描くモードで過ごす時間が短くても、描いた線の形がそのまま罠の置き場所になる）
+  function layTrail(g) {
+    if (!skLv('mine') && !skLv('flamepath') && !skLv('caltrop')) return;
+    // 前の往復で置いた分は片付ける（同じ場所に重ならないように）。動き出した地雷（時限・吸着）は残す
+    s.traps = s.traps.filter((tr) => tr.owner !== g || (tr.kind === 'mine' && (tr.fuse != null || tr.stuck)));
+    s.fires = s.fires.filter((f) => f.owner !== g);
+    s.firePillars = s.firePillars.filter((f) => f.owner !== g);
+    const c = g.clip;
+    if (skLv('mine')) {
+      const dmg = g.power * SK.mine.power * (1 + SK.mine.per * (skLv('mine') - 1));
+      placeTrap(c[0].x, c[0].y, 'mine', dmg, g.idx).owner = g;
+      placeTrap(c[c.length - 1].x, c[c.length - 1].y, 'mine', dmg, g.idx).owner = g;
+    }
+    if (skLv('flamepath')) igniteTrail(g);
+    if (skLv('caltrop')) {
+      const gap = Math.max(1, Math.round(SK.caltrop.gap * s.zoom));
+      for (let i = Math.floor(gap / 2); i < c.length; i += gap) placeTrap(c[i].x, c[i].y, 'spike', spikePower(g), g.idx).owner = g;
+    }
   }
   function updateTraps() {
     s.traps = s.traps || [];
@@ -1413,7 +1434,7 @@ export function createGame() {
     const pts = []; for (let i = 0; i < c.length; i += gap) pts.push({ x: c[i].x, y: c[i].y });
     const life = F2.life * hell * s.st.dur;
     const dps = flameDps(g);
-    s.fires.push({ kind: 'path', pts, life, max: life, width: F2.width * hell * s.zoom, dps, idx: g.idx });
+    s.fires.push({ kind: 'path', pts, life, max: life, width: F2.width * hell * s.zoom, dps, idx: g.idx, owner: g });
     skSfx('flamepath');
     // 火柱：大きく折れ曲がった場所
     if (skLv('pillar')) {
@@ -1423,14 +1444,14 @@ export function createGame() {
         let d = Math.abs(a2 - a1); if (d > Math.PI) d = Math.PI * 2 - d;
         if (d < P2.turn || (last && Math.hypot(c[i].x - last.x, c[i].y - last.y) < P2.gap * s.zoom)) continue;
         last = c[i];
-        s.firePillars.push({ x: c[i].x, y: c[i].y, life, max: life, cd: 0, dmg: g.power * P2.power, idx: g.idx });
+        s.firePillars.push({ x: c[i].x, y: c[i].y, life, max: life, cd: 0, dmg: g.power * P2.power, idx: g.idx, owner: g });
       }
     }
     // 火の海：軌跡が輪になったら、内側全体が燃える
     if (skLv('firesea')) {
       const a = c[0], b = c[c.length - 1];
       if (Math.hypot(a.x - b.x, a.y - b.y) < SK.firesea.close * s.zoom && c.length >= SK.firesea.minLen * s.zoom) {
-        s.fires.push({ kind: 'sea', poly: pts, life, max: life, dps, idx: g.idx });
+        s.fires.push({ kind: 'sea', poly: pts, life, max: life, dps, idx: g.idx, owner: g });
         skSfx('firesea');
       }
     }
@@ -1982,18 +2003,8 @@ export function createGame() {
       pickBig();
       for (const g of s.ghosts) ghostPower(g);   // 生まれたばかりの分身の攻撃力を先に決める
       volley();
-      // マキビシ：軌跡の線の上に、一定の間隔でまく
-      // 地雷：軌跡の始めと終わりに置く
-      if (born && skLv('mine')) {
-        const c = born.clip, dmg = born.power * SK.mine.power * (1 + SK.mine.per * (skLv('mine') - 1));
-        placeTrap(c[0].x, c[0].y, 'mine', dmg, born.idx);
-        placeTrap(c[c.length - 1].x, c[c.length - 1].y, 'mine', dmg, born.idx);
-      }
-      if (born && skLv('flamepath')) igniteTrail(born);
-      if (born && skLv('caltrop')) {
-        const gap = Math.max(1, Math.round(SK.caltrop.gap * s.zoom));
-        for (let i = Math.floor(gap / 2); i < born.clip.length; i += gap) placeTrap(born.clip[i].x, born.clip[i].y, 'spike', spikePower(born), born.idx);
-      }
+      // マキビシ（線の上に一定の間隔）・地雷（始めと終わり）・炎の道（線の全体）
+      if (born) layTrail(born);
     }
     r.active = false;
     r.path = [];
@@ -2079,13 +2090,16 @@ export function createGame() {
       g.leg = (g.leg || 0) + advance;
       if (g.leg >= g.len) {
         g.leg -= g.len;
+        if (!g.echo) layTrail(g);   // 軌跡の罠を置き直す
         if (s.st.turnBurst) shockwave(g.x, g.y, BN.turnBurst.radius, g.power * BN.turnBurst.ofPower, 'ghost', g.idx);
       }
       return;
     }
     const len = g.clip.length;
     const period = 2 * (len - 1);
+    const before = g.dist;
     g.dist = (g.dist + advance) % period;
+    if (g.dist < before && !g.echo) layTrail(g);   // 1往復した：軌跡の罠を置き直す
     const m = Math.floor(g.dist);
     const dir = m < len - 1 ? 1 : -1;
     const pos = g.clip[m < len ? m : period - m];
