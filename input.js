@@ -32,13 +32,13 @@ export function createInput(target, extra = []) {
   //   その間にまた触れたら、同じ指の続きとして扱う（本体が止まらず、描いている線も切れない）
   const CANCEL_WAIT = 250;   // ミリ秒
   // 画面の端：指が端からこの幅の中に入ると、その向きへ進み続ける（触れ始めた場所がもう端なら、その向きは使わない）
-  const EDGE = 64;   // 画面上のピクセル（40→64：端に着く前から早めに受け付ける）
+  const EDGE = 96;   // 画面上のピクセル（40→64→96：端に着く前から早めに受け付ける）
   let startX = 0, startY = 0;
   const edgeOf = (v, size, start) => {
     const lo = v < EDGE && start >= EDGE ? -(EDGE - v) / EDGE : 0;
     const hi = v > size - EDGE && start <= size - EDGE ? (v - (size - EDGE)) / EDGE : 0;
     const k = lo || hi;
-    return k ? Math.sign(k) * (0.8 + 0.2 * Math.min(1, Math.abs(k))) : 0;   // 入ったらすぐ8割の速さ、奥ほど速く
+    return k ? Math.sign(k) : 0;   // 入ったらすぐ最高速度
   };
   let cancelAt = 0;
 
