@@ -92,7 +92,7 @@ export const CONFIG = {
   phase: {
     // クリアに必要なかけら＝「そのフェーズで約 needSec 秒の間に出てくる敵が落とすかけら」× needRatio
     //   （出てきた敵のおよそ6割を倒せば次へ進む。敵の量が増えれば必要な数も同じ割合で増える）
-    needSec: 28, needRatio: 0.6,
+    needSec: 40, needRatio: 0.6,   // 28→40：1フェーズを長くして、中ボスをかけらだけで越えにくく
     baseNeed: 15,          // （古い決め方。今は使わない）
     needStep: 10,
     hpRateBase: 40,        // フェーズ1で1秒あたりに出てくる敵の体力の合計
@@ -104,7 +104,7 @@ export const CONFIG = {
       { until: Infinity, rate: 1.2 },
     ],
     // 敵の数の伸び：フェーズ11からは、数はこの倍率までしか増やさず、残りは1体ずつの体力で伸ばす（多すぎて逃げ回るだけになるため）
-    countFrom: 11, countGrowth: 1.03,
+    countFrom: 3, countGrowth: 1.03,   // 11→3：大きい敵の割合で強くするより、どの敵も少しずつ硬くする
     zoomEvery: 0,          // 何フェーズごとにステージが広がるか（0＝広げない。敵の数を抑えたので、引いて見せる必要がなくなった）
     zoomFactor: 1.25,      // 1回で広がる倍率
     clearBonus: 100,       // フェーズクリアのスコア（× フェーズ数）
@@ -166,8 +166,10 @@ export const CONFIG = {
     every: 10,
     order: ['core', 'hunter', 'twin', 'clock', 'shade'],
     ready: ['core', 'hunter', 'twin', 'clock', 'shade'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
-    hpSeconds: 32.4,          // 1体目のボスの体力＝フェーズ10で1秒に出てくる敵の体力の合計 × この秒数
-    hpGrowth: 1.7,            // 2体目からは、1体ごとにこの倍率で体力が増える（ふつうの敵の伸び 4.4倍 だと、こちらの火力が追いつかないため）
+    hpList: [4300, 5600, 7200],   // 1〜3体目のボスの体力。4体目からは、最後の数字に「ふつうの敵の強くなり方」を掛けて増やす（後半のボスが中ボスより弱くならないように）
+    eliteCap: 0.15,           // 中ボスの体力の上限＝次に出てくるボスの体力のこの割合
+    // ボスのねらい撃ち：動いている間も、決まった間隔で本体をねらって撃つ（何もしてこない時間をなくす）
+    pressure: { every: 1.4, rageEvery: 0.9, speed: 150, ways: 1, rageWays: 3, spread: 0.22 },
     normalRate: 0.3,          // ボスのフェーズでの、ふつうの敵の出る勢い（倍）
     appear: 1.5,              // フェーズが始まってから、ボスが現れるまでの秒数
     clearDelay: 1.2,          // ボスを倒してから、カード選びになるまでの秒数
@@ -177,7 +179,8 @@ export const CONFIG = {
             rageAt: 0.5, rageSpin: 1.5, rageArms: 5,
             moveSpeed: 55, moveTime: 1.6, spiralTime: 2.2, rageSpiralTime: 2.8, ringWays: 16, rageRingWays: 22, ringCount: 3, ringGap: 0.45, ringSpeed: 95, rageCallCount: 5, blastR: 120, blastDamage: 1.5, blastWays: 14 },   // 回る速さ／渦の本数／撃つ間隔／弾の速さ／追跡を呼ぶ間隔と数／HPがこの割合を切ると怒る（回る速さの倍・渦の本数）
     hunter: { name: 'ハンター', radius: 30, y: 0.3, speed: 150, keep: 120, every: 3, windup: 1, rageWindup: 0.5, dashSpeed: 600, over: 60, maxLen: 340, recover: 0.8, rageAt: 0.5,
-              moveTime: 1.6, tripleWindup: 0.45, tripleLen: 0.6, fanWays: 5, fanSpread: 0.9, fanVolleys: 3, fanGap: 0.35, fanSpeed: 170 },
+              moveTime: 1.6, tripleWindup: 0.45, tripleLen: 0.6, fanWays: 5, fanSpread: 0.9, fanVolleys: 3, fanGap: 0.35, fanSpeed: 170,
+              landWays: 8, rageLandWays: 12, landSpeed: 130 },   // 突進して止まったとき、まわりにばらまく弾の数／怒ったとき／速さ
     twin: { name: '双子', radius: 32, orbit: 150, spin: 0.45, follow: 60, every: 4, fan: 5, fanSpread: 0.55, bulletSpeed: 150,
             rageSpin: 1.5, rageEvery: 2, rageWays: 8, revive: 8, reviveHp: 0.3,
             tetherOff: 1.7, tetherWarn: 0.8, tetherOn: 1.5, tetherWidth: 6, tetherDamage: 1.2,
@@ -198,8 +201,8 @@ export const CONFIG = {
   },
   // 大きい個体（体力2倍・4倍）が出る割合。フェーズが進むほど増える
   enemyTiers: {
-    x2: { from: 3, perPhase: 0.06, max: 0.4 },
-    x4: { from: 7, perPhase: 0.05, max: 0.3 },
+    x2: { from: 3, perPhase: 0.06, max: 0.3 },   // 大きい敵の割合の上限：合わせて70%→40%（強さは基本の体力で上げる）
+    x4: { from: 7, perPhase: 0.05, max: 0.1 },
     noBig: ['drift', 'swarm'],   // 大きくならない種類（漂い・群れ）
   },
   enemyBullet: { speed: 140, radius: 5, damage: 10, life: 6 },

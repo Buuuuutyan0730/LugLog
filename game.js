@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123174724';
-import { spawnPop, stepParticle } from './pops.js?v=20261123174724';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123174724';
+import { CONFIG } from './config.js?v=20261123174951';
+import { spawnPop, stepParticle } from './pops.js?v=20261123174951';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123174951';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2514,7 +2514,8 @@ export function createGame() {
     if (sc == null) { sc = hpScaleOf(s.phase); one *= sc; }
     let r = radiusOf(one / sc) * (t.sizeMul || 1);
     // 中ボス：1体だけ、体力が多く、少し大きい（大きさは今まで通り）。ふつうの敵だけ enemySize 倍
-    if (elite) { r *= CONFIG.elite.size; one *= CONFIG.elite.hp; } else r *= CONFIG.enemySize;
+    // 中ボスの体力は、次に出てくるボスの体力の eliteCap 倍まで（後半でも、中ボスがボスより強くならないように）
+    if (elite) { r *= CONFIG.elite.size; one = Math.min(one * CONFIG.elite.hp, bossHpOf(Math.ceil(s.phase / BOSS.every)) * BOSS.eliteCap); } else r *= CONFIG.enemySize;
     r *= s.zoom;   // ステージが広がっても、画面の上での大きさは変わらない（本体・分身・ボスと同じ）
     const W = s.world.w, H = s.world.h;
     const m = r + 12;
@@ -3213,11 +3214,13 @@ export function createGame() {
     ring(e.x, e.y, 4, e.r * 3, 0.6, 'enemy', 0, 6);
     s.shake = Math.max(s.shake, 8);
   }
-  // ボスの体力：1体目はフェーズ10の敵の量が基準。2体目からは、ふつうの敵よりゆるやかに増やす
-  function bossHp() {
-    const n = Math.max(1, Math.round(s.phase / BOSS.every));
-    return PH.hpRateBase * growthOf(BOSS.every) * BOSS.hpSeconds * BOSS.hpGrowth ** (n - 1);
+  // ボスの体力：1〜3体目は決めた数。4体目からは、最後の数字に「ふつうの敵の強くなり方」を掛ける
+  function bossHpOf(n) {
+    const L = BOSS.hpList, k = Math.max(1, n);
+    if (k <= L.length) return L[k - 1];
+    return L[L.length - 1] * growthOf(k * BOSS.every) / growthOf(L.length * BOSS.every);
   }
+  function bossHp() { return bossHpOf(Math.round(s.phase / BOSS.every)); }
   function updateBoss() {
     if (s.bossAppear > 0) { s.bossAppear -= DT; if (s.bossAppear <= 0) spawnBoss(s.bossPhase); }
     if (s.twin) updateTwins();
@@ -3228,8 +3231,10 @@ export function createGame() {
   //   動く（場所を変える）→ 予告（赤く光る）→ 技 → すき（止まる。受けるダメージ×1.5）→ 動く … をくり返す
   //   技は袋から順に引く（同じ技が続かないように混ぜる）。怒ると技が1つ増え、予告とすきが短くなる
   //   F：技の表（warn：予告の秒数、aim：予告の始まり、warnTick：予告中、start：技の始まり、tick：毎フレーム→終わったら true、end：終わり）
-  function bossFlow(e, F, list, move, moveTime) {
+  // shooters：ねらい撃ちをする体（ふつうはボス自身。双子は2体）
+  function bossFlow(e, F, list, move, moveTime, shooters = [e]) {
     if (!e.flow) { e.flow = 'move'; e.ft = 1.0; e.bag = []; }
+    if (e.flow === 'move' || e.flow === 'rest') bossPressure(e, shooters);
     if (e.flow === 'move') {
       move(e);
       e.ft -= DT;
@@ -3260,6 +3265,19 @@ export function createGame() {
       if (e.ft <= 0) { e.flow = 'move'; e.ft = moveTime; e.wx = null; }
     }
     e.vuln = e.flow === 'rest';
+  }
+  // ねらい撃ち：技の合間（動いている間・すきの間）も、決まった間隔で本体をねらって撃つ（怒ると間隔が短く、3方向）
+  function bossPressure(e, shooters) {
+    const Q = BOSS.pressure;
+    e.pcd = (e.pcd == null ? Q.every : e.pcd) - DT;
+    if (e.pcd > 0) return;
+    e.pcd = e.rage ? Q.rageEvery : Q.every;
+    const n = e.rage ? Q.rageWays : Q.ways;
+    for (const b of shooters) {
+      if (!b || b.hp <= 0 || b.x == null) continue;
+      const a0 = angTo(b, s.player);
+      for (let k = 0; k < n; k++) bossShot(b, a0 + (n > 1 ? (k / (n - 1) - 0.5) * 2 * Q.spread : 0), Q.speed);
+    }
   }
   // 予告の形（赤く光る）。k：'circle'（x,y,r）・'line'（x1,y1,x2,y2,w）・'fan'（x,y,a,spread,len）・'path'（pts,w）
   //   follow：その敵についていく、hot：当たる状態（明るく）
@@ -3341,6 +3359,8 @@ export function createGame() {
     if (e.dashT <= 0 || e.x < m || e.x > W - m || e.y < m || e.y > H - m) {
       e.x = clamp(e.x, m, W - m); e.y = clamp(e.y, m, H - m);
       s.shake = Math.max(s.shake, 4); e.vx = 0; e.vy = 0; e.phase = 'land';
+      // 止まったとき、まわりに弾をばらまく
+      { const n = e.rage ? H2.rageLandWays : H2.landWays, off = Math.random() * Math.PI * 2; for (let k = 0; k < n; k++) bossShot(e, off + (k * Math.PI * 2) / n, H2.landSpeed); }
       return true;
     }
     return false;
@@ -3472,7 +3492,7 @@ export function createGame() {
     if (!live.length && !tw.dead) return;
     const solo = live.length === 1;
     tw.rage = solo;
-    bossFlow(tw, TWIN_TECH, solo ? ['burst', 'fan'] : ['fan', 'tether', 'pincer'], () => {}, T2.moveTime);
+    bossFlow(tw, TWIN_TECH, solo ? ['burst', 'fan'] : ['fan', 'tether', 'pincer'], () => {}, T2.moveTime, live);
     // 回る中心は、本体をゆっくり追う（突進中・すきの間は止まる）
     if (!tw.hold) {
       const dx = p.x - tw.cx, dy = p.y - tw.cy, d = Math.hypot(dx, dy), step = T2.follow * z * DT;
