@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261123141413';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261123141413';
+import { CONFIG } from './config.js?v=20261123142809';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261123142809';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -41,21 +41,21 @@ export const BOOST_MAX = 5;
 // ---------- カース ----------
 //   bans：取った後に出なくなる才能、clash：すでに持っていると、このカースは出ない
 export const CURSES = [
-  { id: 'brush', name: '呪われた筆', bind: '最大軌跡以外で分身ができない', reward: '分身の攻撃力2倍',
+  { id: 'brush', name: '呪われた筆', bind: '命中80%以上のまっすぐな線しか分身にならない', reward: '分身の攻撃力2倍',
     clash: ['lost'] },
   { id: 'doom', name: '破滅への誘い', bind: '最大HPが半分', reward: 'すべての攻撃力 +50%' },
   { id: 'lonely', name: '孤独な王', bind: '分身が1体のみになる', reward: '軌跡を全部1体に使え、攻撃力 +50%',
     clash: ['lost'] },
-  { id: 'lost', name: '失われた影', bind: '軌跡は描けるが、分身にならない', reward: '本体が体当たりで戦え、最大HP2倍',
+  { id: 'lost', name: '失われた影', bind: '描くモードが使えず、分身が作れない', reward: '本体が体当たりで戦え、最大HP2倍',
     bans: ['gspeed', 'budget'], clash: ['gspeed', 'budget', 'brush', 'lonely', 'hourglass', 'trigger'] },
   { id: 'hourglass', name: '死の砂時計', bind: '分身が20秒で消える', reward: '分身の攻撃速度2倍',
     clash: ['lost'] },
   { id: 'hungry', name: '飢えた手', bind: 'かけらを吸い寄せる範囲がとても狭くなる', reward: '落ちるかけら5倍',
     bans: ['magnet'], clash: ['magnet'] },
   { id: 'reaper', name: '死神の契約', bind: 'HPが自然に回復しない', reward: '攻撃に即死の力が宿る' },
-  { id: 'trigger', name: '狂った引き金', bind: '分身の弾がでたらめな方向に飛ぶ', reward: '分身が撃つ回数3倍',
+  { id: 'trigger', name: '狂った引き金', bind: '分身の弾が大きくぶれる（まっすぐな線でも左右に最大30度）', reward: '分身が撃つ回数3倍',
     clash: ['lost'] },
-  { id: 'chain', name: '重い鎖', bind: '本体の動きが半分の速さ', reward: '最大HP2倍。本体が大きくなる' },
+  { id: 'chain', name: '重い鎖', bind: '本体の動きが半分の速さ（描くモードの遅さとは重ならない）', reward: '最大HP2倍。本体が大きくなる' },
   { id: 'memory', name: '記憶の呪い', bind: 'スキルのレベルが上がらない', reward: 'カードが5枚から選べる' },
   { id: 'abyss', name: '絶望の淵', bind: 'フェーズクリアでHPが回復しない', reward: 'レア以上のカードが出やすい' },
 ];

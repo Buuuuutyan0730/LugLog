@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261123141413';
-import { choiceView, ownedViews } from './talents.js?v=20261123141413';
-import { iconSvg, snapIcons } from './icons.js?v=20261123141413';
+import { ghostColor } from './theme.js?v=20261123142809';
+import { choiceView, ownedViews } from './talents.js?v=20261123142809';
+import { iconSvg, snapIcons } from './icons.js?v=20261123142809';
 
 const $ = (id) => document.getElementById(id);
 
@@ -146,12 +146,15 @@ export function createHud() {
 
     // 案内：動くモード／描くモード（待っている・短い・作れる）
     const drawing = !!state.player.drawMode;
-    const phase = !drawing ? 'move' : !r.active ? 'idle' : r.enough ? 'ok' : 'short';
+    const lostC = state.curses.includes('lost'), brushC = state.curses.includes('brush');
+    const phase = !drawing ? (lostC ? 'lost' : 'move') : !r.active ? 'idle' : r.enough ? 'ok' : brushC && r.length >= r.minLength ? 'bent' : 'short';
     if (phase !== lastPhase) {
       el.recLabel.classList.toggle('on', r.active);
       el.recText.textContent = !drawing ? '動くモード' : r.active ? '軌跡を紡ぐ' : '描くモード';
       el.recHint.textContent = phase === 'move' ? 'タップで描くモード'
         : phase === 'idle' ? 'ドラッグで描く・タップで動くモード'
+        : phase === 'lost' ? '失われた影：描くモードは使えない'
+        : phase === 'bent' ? '呪われた筆：もっとまっすぐに描く'
         : phase === 'short' ? 'もっと長く描くと分身が作れる'
         : '指を離すと分身が生まれる';
       lastPhase = phase;

@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123141413';
-import { spawnPop, stepParticle } from './pops.js?v=20261123141413';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123141413';
+import { CONFIG } from './config.js?v=20261123142809';
+import { spawnPop, stepParticle } from './pops.js?v=20261123142809';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123142809';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -323,6 +323,13 @@ export function createGame() {
     return { x: target.x + vx * t, y: target.y + vy * t };
   }
 
+  // 分身の弾のぶれ（ラジアン）：曲がった線から生まれた分身ほど大きい。
+  //   狂った引き金：まっすぐな線でも左右に最大30度、曲がった線は最大60度
+  function ghostSpread(g) {
+    const st = g.straight == null ? 1 : g.straight;
+    const maxDeg = s.st.curse.trigger ? CU.triggerBase + CU.triggerBase * (1 - st) : DM.spread * (1 - st);
+    return rand(-1, 1) * maxDeg * Math.PI / 180;
+  }
   // opts.blast：当たると爆発（重砲）、opts.pierce：攻撃力を減らさずに突き抜ける（タイタン）
   function fire(from, target, owner, idx, power, opts = {}) {
     s.stats.shots++;
@@ -331,22 +338,12 @@ export function createGame() {
     // 会心の一撃：たまにダメージが2倍
     let crit = false;
     if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) { power *= BN.crit.mult; crit = true; }
-    // 狂った引き金：分身の弾はでたらめな方向へ（狙った敵の予約もしない）
-    if (owner === 'ghost' && s.st.curse.trigger) {
-      const a = rand(0, Math.PI * 2);
-      s.shots.push({
-        x: from.x, y: from.y, vx: Math.cos(a) * CONFIG.shot.speed, vy: Math.sin(a) * CONFIG.shot.speed,
-        life: 0.8 * s.zoom, owner, idx, power, size: radiusOf(power) * 0.3, target: null, reserved: 0, hit: new Set(), src: s.dmgSrc,
-        base: power, blast: opts.blast || 0, pierce: !!opts.pierce, crit,
-      });
-      return;
-    }
     const aimAt = leadPoint(from, target);
     const d = Math.max(1, dist(aimAt, from));
     // 分身の弾のぶれ：曲がった線から生まれた分身ほど、狙いから左右にずれる
     let ax = (aimAt.x - from.x) / d, ay = (aimAt.y - from.y) / d, spread = 0;
-    if (owner === 'ghost' && from.straight != null) {
-      spread = rand(-1, 1) * (1 - from.straight) * DM.spread * Math.PI / 180;
+    if (owner === 'ghost') {
+      spread = ghostSpread(from);
       if (spread) { const c = Math.cos(spread), sn = Math.sin(spread); [ax, ay] = [ax * c - ay * sn, ax * sn + ay * c]; }
     }
     const sh = {
@@ -477,7 +474,7 @@ export function createGame() {
       // スティック：中心からのずれの向きへ、ずれの大きさに合わせた速さで進む（指を止めていても進み続ける）
       //   速さだけを、決まった加速でなめらかに上げる（どれだけ倒しても、0.2秒かけて最高速度になる）。
       //   向きはスティックの向きにすぐ合わせ、ゆるめたときもすぐ遅くする
-      const max = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1) * (p.drawMode ? DM.speed : 1);
+      const max = T.moveSpeed.value * s.zoom * Math.min(s.st.curse.chain ? 0.5 : 1, p.drawMode ? DM.speed : 1);
       const sx = input.stickX || 0, sy = input.stickY || 0, mag = Math.hypot(sx, sy);
       const goal = input.held ? mag * max : 0;
       p.sspd = Math.min(goal, (p.sspd || 0) + (max / P.stickAccelTime) * DT);
@@ -510,7 +507,7 @@ export function createGame() {
     const dx = p.tx - p.x, dy = p.ty - p.y;
     const d = Math.hypot(dx, dy);
     // 最高速はスティックもドラッグも同じ。ドラッグで指がそれより速く動いた分は捨てずに残るので、少し遅れても指の動いた分だけ必ず進む
-    const step = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1) * (p.drawMode ? DM.speed : 1) * DT;   // 描くモードは遅い
+    const step = T.moveSpeed.value * s.zoom * Math.min(s.st.curse.chain ? 0.5 : 1, p.drawMode ? DM.speed : 1) * DT;   // 描くモードは遅い
     if (d <= step) { p.x = p.tx; p.y = p.ty; p.catching = false; }
     else { p.x += dx / d * step; p.y += dy / d * step; }
     if (p.inv > 0) p.inv -= DT;
@@ -1865,8 +1862,7 @@ export function createGame() {
     let crit = false;
     if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) { power *= BN.crit.mult; crit = true; }
     let a;
-    if (s.st.curse.trigger) a = rand(0, Math.PI * 2);
-    else { const aim = leadPoint(g, target); a = Math.atan2(aim.y - g.y, aim.x - g.x); }
+    { const aim = leadPoint(g, target); a = Math.atan2(aim.y - g.y, aim.x - g.x) + ghostSpread(g); }   // 分身のぶれはレーザーにも
     const dx = Math.cos(a), dy = Math.sin(a);
     // 画面の端までの長さ
     const W = s.world.w, H = s.world.h;
@@ -1918,8 +1914,10 @@ export function createGame() {
     let born = null;
     const r = s.record;
     const cu = s.st.curse;
-    // 失われた影：分身にならない／呪われた筆：上限まで描いたときだけ分身になる
-    const allowed = !cu.lost && (!cu.brush || atLimit);
+    // 失われた影：分身にならない／呪われた筆：まっすぐな線（命中が決まった割合以上）だけ分身になる
+    const sp0 = r.path[0], sp1 = r.path[r.path.length - 1];
+    const strokeStraight = sp0 && sp1 ? clamp(Math.hypot(sp1.x - sp0.x, sp1.y - sp0.y) / Math.max(1, r.length), 0, 1) : 0;
+    const allowed = !cu.lost && (!cu.brush || strokeStraight >= CU.brushStraight);
     if (!allowed && r.length >= CONFIG.record.minStroke && r.path.length > 1) {
       const end = r.path[r.path.length - 1];
       ring(end.x, end.y, 4, 26, 0.25, 'white', 0, 2);   // 軌跡は消えるだけ
@@ -1986,6 +1984,7 @@ export function createGame() {
   // 描く／動くモードの切り替え。描いている途中なら、その線はそこで分身になる
   function toggleDrawMode() {
     const p = s.player;
+    if (s.st.curse.lost) { p.drawMode = false; ring(p.x, p.y, p.r, p.r * 2, 0.2, 'enemy', 0, 2); return; }   // 失われた影：描くモードは使えない
     if (p.drawMode && s.record.active) finishStroke();
     p.drawMode = !p.drawMode;
     sfx(p.drawMode ? 'draw' : 'tap');
@@ -2030,7 +2029,7 @@ export function createGame() {
     if (r.active && r.path.length > 1 && r.length > 0) { const a0 = r.path[0], a1 = r.path[r.path.length - 1]; r.straight = clamp(Math.hypot(a1.x - a0.x, a1.y - a0.y) / r.length, 0, 1); }
     else r.straight = 1;
     r.minLength = CONFIG.record.minStroke;
-    r.enough = r.active && r.length >= CONFIG.record.minStroke && !s.st.curse.lost && !s.st.curse.brush;
+    r.enough = r.active && r.length >= CONFIG.record.minStroke && !s.st.curse.lost && (!s.st.curse.brush || r.straight >= CU.brushStraight);
   }
 
   // 記録した軌跡を、一定の速さで行ったり来たりさせる
@@ -3766,6 +3765,7 @@ export function createGame() {
     if (s.combo.t > 0) { s.combo.t -= DT; if (s.combo.t <= 0) s.combo.stacks = 0; }
     // タップ：描く／動くモードを切り替える
     if (input.tap) toggleDrawMode();
+    if (s.st.curse.lost && s.player.drawMode) s.player.drawMode = false;   // 失われた影を取ったら、動くモードに固定
     { const goal = s.player.drawMode ? 1 : 0; s.drawEdge = (s.drawEdge || 0) + clamp(goal - (s.drawEdge || 0), -DT * 6, DT * 6); }
     movePlayer(input);
     updateHp();
