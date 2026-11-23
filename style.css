@@ -2021,3 +2021,35 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .ms-rkrow span { width: 18cqw; color: var(--muted); }
 .ms-rkin { flex: 1; min-width: 0; font-family: inherit; font-size: 4cqw; color: var(--text); background: #0b0f26; border: 0.5cqw solid #3a4280; border-radius: 1.6cqw; padding: 1.6cqw 2.4cqw; outline: none; -webkit-user-select: text; user-select: text; }
 .ms-rkmsg { color: #ff8a9a; }
+/* 調整パネル：上のタブ（調整｜プレイの記録） */
+.dbg-tabs { margin-bottom: 2.4cqw; }
+/* プレイの記録 */
+.dbg-rec-top { display: flex; align-items: center; justify-content: space-between; gap: 3cqw; }
+.dbg-range { flex: 0 0 38cqw; }
+.dbg-rec-count { font-size: 3cqw; color: var(--muted); text-align: right; }
+.dbg-rec-count b { font-family: 'Press Start 2P', monospace; font-size: 3.4cqw; color: var(--text); margin-right: 1cqw; font-weight: normal; }
+.dbg-rec-count small { display: block; font-size: 2.6cqw; }
+.dbg-rec-note { margin-top: 1.6cqw; font-size: 2.7cqw; color: #ff8a9a; }
+.dbg-tbl { width: 100%; border-collapse: collapse; font-size: 3cqw; }
+.dbg-tbl th { font-size: 2.6cqw; color: var(--muted); font-weight: normal; text-align: right; padding: 0 0 1.2cqw; }
+.dbg-tbl th:first-child, .dbg-tbl td:first-child { text-align: left; }
+.dbg-tbl td { text-align: right; padding: 1.6cqw 0; border-top: 0.4cqw solid rgba(255, 255, 255, 0.08); font-family: 'Press Start 2P', monospace; font-size: 2.4cqw; }
+.dbg-tbl td:first-child { font-family: inherit; font-size: 3.1cqw; }
+.dbg-tbl td:first-child b { color: var(--gold); margin-right: 1cqw; }
+.dbg-tbl td:first-child small { margin-left: 1.4cqw; font-size: 2.4cqw; color: var(--muted); }
+.dbg-tbl tr.none td { opacity: 0.4; }
+.dbg-tbl td.bad, .dbg-kv b.bad { color: #ff8a9a; }
+.dbg-rec-hint { margin-top: 1cqw; font-size: 2.5cqw; color: var(--muted); }
+.dbg-bars { display: flex; flex-direction: column; gap: 1.2cqw; }
+.dbg-bar { display: grid; grid-template-columns: 16cqw 1fr 8cqw; align-items: center; gap: 2cqw; font-size: 2.8cqw; }
+.dbg-bar i { height: 2.6cqw; background: rgba(255, 255, 255, 0.08); border-radius: 1.3cqw; overflow: hidden; }
+.dbg-bar em { display: block; height: 100%; background: var(--cyan); border-radius: 1.3cqw; }
+.dbg-bar b { font-family: 'Press Start 2P', monospace; font-size: 2.4cqw; font-weight: normal; text-align: right; }
+.dbg-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6cqw 4cqw; }
+.dbg-kv div { display: flex; justify-content: space-between; font-size: 3cqw; }
+.dbg-kv span { color: var(--muted); }
+.dbg-kv b { font-family: 'Press Start 2P', monospace; font-size: 2.5cqw; font-weight: normal; }
+.dbg-split { height: 3cqw; border-radius: 1.5cqw; background: #a77bff; overflow: hidden; }
+.dbg-split i { display: block; height: 100%; background: var(--cyan); }
+.dbg-split-label { display: flex; justify-content: space-between; margin-top: 1cqw; font-size: 2.8cqw; color: var(--muted); }
+.dbg-reload { margin-top: 4cqw; width: 100%; }
