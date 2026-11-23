@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123150911';
-import { spawnPop, stepParticle } from './pops.js?v=20261123150911';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123150911';
+import { CONFIG } from './config.js?v=20261123151244';
+import { spawnPop, stepParticle } from './pops.js?v=20261123151244';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123151244';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1220,7 +1220,8 @@ export function createGame() {
     if (e.hp <= 0) return;
     skSfx('reaper');
     damageEnemy(e, e.maxHp * SK.reaper.bossCut, true, false, 'crit');
-    // 見た目は即死と同じ（文字は出さない）
+    // 見た目は即死と同じ（死神が発動したとわかるように、文字も出す）
+    s.floats.push({ x: e.x, y: e.y - e.r, text: '即死', t: 0.9, max: 0.9 });
     ring(e.x, e.y, e.r, e.r * 3, 0.3, 'white', 0, 3);
     ring(e.x, e.y, e.r * 0.5, e.r * 4.5, 0.45, 'enemy', 0, 5);
     sparks(e.x, e.y, 'white', 12, 220);
