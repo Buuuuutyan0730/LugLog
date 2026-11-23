@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261124031941">
+  <link rel="stylesheet" href="style.css?v=20261124032312">
 </head>
 <body>
   <div id="app">
@@ -153,7 +153,6 @@
         <div class="sheet-head">
           <span class="sheet-title">調整パネル</span>
           <div class="sheet-actions">
-            <button class="btn btn-small btn-sub" id="open-preview">見本</button>
             <button class="btn btn-small btn-sub" id="restart">やり直す</button>
             <button class="btn btn-small" id="close-debug">とじる</button>
           </div>
@@ -163,14 +162,14 @@
 
       <!-- 新しい見た目の見本（動かない。preview.js） -->
       <div class="preview-bar" id="preview-bar" aria-hidden="true">
-        <div class="preview-nav">
-          <div class="preview-cats" id="preview-cats"></div>
-          <div class="preview-tabs" id="preview-tabs"></div>
-        </div>
+        <!-- 見本を見ている間の小さなバー：前後の見本へ・印・提出・調整パネルへ戻る（見本の一覧は調整パネルの「見本」タブ） -->
+        <button class="btn btn-small btn-sub pv-step" id="pv-prev">◀</button>
+        <div class="pv-name" id="pv-name"><small></small><b></b></div>
+        <button class="btn btn-small btn-sub pv-step" id="pv-next">▶</button>
         <div class="preview-side">
           <button class="btn btn-small btn-sub" id="mark-mode">印モード</button>
           <button class="btn btn-small" id="mark-submit">提出<span class="mark-count" id="mark-count">0</span></button>
-          <button class="btn btn-small btn-sub" id="close-preview">とじる</button>
+          <button class="btn btn-small btn-sub" id="close-preview">パネルへ</button>
         </div>
       </div>
 
@@ -187,6 +186,6 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=20261124031941"></script>
+  <script type="module" src="main.js?v=20261124032312"></script>
 </body>
 </html>

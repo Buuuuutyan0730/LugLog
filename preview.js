@@ -2,15 +2,15 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261124031941';
-import { CONFIG } from './config.js?v=20261124031941';
-import { SKILL_ROADS } from './skilldefs.js?v=20261124031941';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261124031941';
-import { GACHA_POOL } from './skins.js?v=20261124031941';
-import { createGame } from './game.js?v=20261124031941';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261124031941';
-import { createGachaFx } from './gachafx.js?v=20261124031941';
-import { createEndingFx, sampleTrails } from './endingfx.js?v=20261124031941';
+import { BOOSTS, CURSES } from './talents.js?v=20261124032312';
+import { CONFIG } from './config.js?v=20261124032312';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124032312';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261124032312';
+import { GACHA_POOL } from './skins.js?v=20261124032312';
+import { createGame } from './game.js?v=20261124032312';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261124032312';
+import { createGachaFx } from './gachafx.js?v=20261124032312';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261124032312';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -792,7 +792,7 @@ const OUGI_FX = [
 });
 const OUGI_EVERY = 3.5;   // 見本では、この秒数ごとに発動させる
 
-const CATS = [
+export const CATS = [
   { id: 'card', label: 'カード', tabs: [['rarity', 'レア度'], ['mythic', 'ミシック'], ['curse', 'カース'], ['ghostcards', '巨像'], ['swarmcards', '群体1'], ['swarmcards2', '群体2'], ['turretcards', '砲台1'], ['turretcards2', '砲台2'], ['guardcards', '守護1'], ['guardcards2', '守護2'], ['bodycards', '本体1'], ['bodycards2', '本体2']] },
   { id: 'screens', label: '画面づくり', tabs: SCREEN_TABS },
   { id: 'sound', label: '音', tabs: SOUND_TABS },
@@ -813,8 +813,9 @@ const TAB_LABEL = Object.fromEntries(CATS.flatMap((c) => c.tabs.map(([id, label]
 
 export function createPreview(hud) {
   const bar = document.getElementById('preview-bar');
-  const catsEl = document.getElementById('preview-cats');
-  const tabsEl = document.getElementById('preview-tabs');
+  const nameEl = document.getElementById('pv-name');
+  // すべての見本を1列に並べたもの（◀ ▶ で順に見る）
+  const FLAT = CATS.flatMap((c) => c.tabs.map(([tid]) => [c.id, tid]));
   const scene = buildStates();
   const bossFxScene = buildBossCore();
   const SCENES = { fx_bossin: bossFxScene, fx_finalin: buildBossShuhitsu(), fx_bossdown: bossFxScene, enemies: buildEnemyTypes(), boss: buildBoss(), effects: buildEffects(), bcore: buildBossCore(), bhunter: buildBossHunter(), btwin: buildBossTwins(), bclock: buildBossClock(), bclockstop: buildBossClockStop(), bshade: buildBossShade(), bcomet: buildBossComet(), bmirage: buildBossMirage(), beclipse: buildBossEclipse(), babyss: buildBossAbyss(), bshuhitsu: buildBossShuhitsu(), belite: buildElites() };
@@ -892,23 +893,19 @@ export function createPreview(hud) {
   let cat = 'enemy';
   let tab = 'enemies';
 
-  catsEl.innerHTML = CATS.map((c) => `<button class="btn" data-cat="${c.id}">${c.label}</button>`).join('');
-  catsEl.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => selectCat(b.dataset.cat)));
-  document.getElementById('close-preview').addEventListener('click', () => close());
-
-  // 分類を選ぶ：下の段をその分類の項目に入れかえ、最初の項目を開く
-  function selectCat(id, keepTab) {
-    cat = id;
-    const c = CATS.find((x) => x.id === id);
-    catsEl.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.cat === id));
-    tabsEl.innerHTML = c.tabs.map(([tid, label]) => `<button class="btn" data-tab="${tid}">${label}</button>`).join('');
-    tabsEl.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => select(b.dataset.tab)));
-    select(keepTab && c.tabs.some(([tid]) => tid === keepTab) ? keepTab : c.tabs[0][0]);
-  }
+  let onBack = null;
+  // 「パネルへ」：見本を閉じて、調整パネルの「見本」タブに戻る
+  document.getElementById('close-preview').addEventListener('click', () => { const cb = onBack; close(); if (cb) cb(tab); });
+  const step = (d) => { const i = FLAT.findIndex(([, t]) => t === tab), [c, t] = FLAT[(i + d + FLAT.length) % FLAT.length]; cat = c; select(t); };
+  document.getElementById('pv-prev').addEventListener('click', () => step(-1));
+  document.getElementById('pv-next').addEventListener('click', () => step(1));
 
   function select(id) {
     tab = id;
-    tabsEl.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
+    const c = CATS.find((x) => x.tabs.some(([t]) => t === id)) || CATS[0];
+    cat = c.id;
+    nameEl.querySelector('small').textContent = c.label;
+    nameEl.querySelector('b').textContent = (c.tabs.find(([t]) => t === id) || ['', id])[1];
     hud.hideOwned();
     marks.closeNote();
     // カード選び（引き直し）：本物のカード選びの画面に、引き直すボタンを出して見せる
@@ -937,11 +934,13 @@ export function createPreview(hud) {
     marks.attachDom(id);
   }
 
-  function open() {
+  // 見本を開く（調整パネルの「見本」タブから。id を渡すとその見本を開く）
+  function open(id, back) {
     active = true;
+    onBack = back || null;
     bar.classList.add('show');
     bar.setAttribute('aria-hidden', 'false');
-    selectCat(cat, tab);
+    select(id || tab);
   }
 
   function close() {

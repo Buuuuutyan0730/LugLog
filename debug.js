@@ -1,7 +1,8 @@
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261124031941';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124032312';
+import { CATS } from './preview.js?v=20261124032312';
 
 // スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
 const PARAM = {
@@ -40,25 +41,23 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
   document.getElementById('open-debug').addEventListener('click', open);
   document.getElementById('close-debug').addEventListener('click', close);
   document.getElementById('restart').addEventListener('click', () => { onRestart(); close(); });
-  document.getElementById('open-preview').addEventListener('click', () => { close(); onPreview(); });
 
   // ---- 上のタブ：テスト｜スキルの数値｜プレイの記録 ----
   const tabs = document.createElement('div');
   tabs.className = 'seg dbg-tabs';
-  tabs.innerHTML = '<button class="active" data-t="test">テスト</button><button data-t="skill">スキルの数値</button><button data-t="rec">プレイの記録</button>';
+  tabs.innerHTML = '<button class="active" data-t="test">テスト</button><button data-t="skill">スキルの数値</button><button data-t="sample">見本</button><button data-t="rec">記録</button>';
   body.appendChild(tabs);
   const test = document.createElement('div');
   const skill = document.createElement('div'); skill.className = 'dbg-skill'; skill.hidden = true;
+  const sample = document.createElement('div'); sample.className = 'dbg-sample'; sample.hidden = true;
   const rec = document.createElement('div'); rec.className = 'dbg-rec'; rec.hidden = true;
-  body.append(test, skill, rec);
-  tabs.addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
-    test.hidden = b.dataset.t !== 'test';
-    skill.hidden = b.dataset.t !== 'skill';
-    rec.hidden = b.dataset.t !== 'rec';
+  body.append(test, skill, sample, rec);
+  const showTab = (t) => {
+    tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x.dataset.t === t));
+    test.hidden = t !== 'test'; skill.hidden = t !== 'skill'; sample.hidden = t !== 'sample'; rec.hidden = t !== 'rec';
     if (!rec.hidden && !runs) loadRec(); else if (!rec.hidden) showRec();
-  });
+  };
+  tabs.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showTab(b.dataset.t); });
   // 見た目だけのボタン：押したら「まだ動きません」と出す
   const notYet = (btn) => { const t = btn.textContent; btn.textContent = 'まだ見た目だけ'; setTimeout(() => { btn.textContent = t; }, 1000); };
 
@@ -71,7 +70,7 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     <div class="dbg-bosses">${bossRows}</div>
     <div class="dbg-bossgo" hidden>
       <div class="dbg-bossgo-h"><b></b><span></span></div>
-      <div class="dbg-hint">カードを <b class="dbg-n"></b> 回選んでから戦います</div>
+      <div class="dbg-hint">カードを <b class="dbg-n"></b> 回選んでから戦います。<br>おまかせ：持っているスキルや、同じ道のカードの中から、いちばんレア度の高いものを取ります（レア度が同じなら、持っているスキルのレベル上げを先に）。関係ない道のスキルは取りません。自分で選ぶ途中からでも「残りはおまかせ」にできます。</div>
       <div class="dbg-2btn">
         <button class="btn btn-sub" data-go="pick">自分で選ぶ</button>
         <button class="btn" data-go="auto">おまかせで選ぶ</button>
@@ -160,6 +159,23 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     }
   });
 
+  // ================= 見本 =================
+  //   上で分類を選び、下の項目を押すと、パネルを閉じてその見本を開く。見本の下のバーの「パネルへ」でここに戻る
+  let sCat = CATS[0].id, sTab = '';
+  const drawSample = () => {
+    const c = CATS.find((x) => x.id === sCat);
+    sample.innerHTML = `
+      <div class="dbg-hint">見たい見本を押すと開きます。見本を見ている間は、下のバーの ◀ ▶ で前後の見本に移れます。</div>
+      <div class="dbg-cats">${CATS.map((x) => `<button class="${x.id === sCat ? 'active' : ''}" data-cat="${x.id}">${x.label}<small>${x.tabs.length}</small></button>`).join('')}</div>
+      <div class="group-title">▼ ${c.label}</div>
+      <div class="dbg-items">${c.tabs.map(([id, label]) => `<button class="btn btn-sub ${id === sTab ? 'last' : ''}" data-item="${id}">${label}</button>`).join('')}</div>`;
+  };
+  drawSample();
+  sample.addEventListener('click', (e) => {
+    const c = e.target.closest('[data-cat]'); if (c) { sCat = c.dataset.cat; drawSample(); return; }
+    const it = e.target.closest('[data-item]'); if (it) { sTab = it.dataset.item; close(); onPreview(sTab); }
+  });
+
   // ================= プレイの記録 =================
   //   タブを開いたときに1回だけ読む（「読み込み直す」でもう一度）
   let recRange = 'all', runs = null, recErr = '';
@@ -180,6 +196,14 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     recRange = b.dataset.range; showRec();
   });
 
+  // 外から開く：見本から戻ってきたときは「見本」タブを、最後に見た見本の分類で開く
+  return {
+    open(t, lastTab) {
+      if (lastTab) { const c = CATS.find((x) => x.tabs.some(([id]) => id === lastTab)); if (c) sCat = c.id; sTab = lastTab; drawSample(); }
+      if (t) showTab(t);
+      open();
+    },
+  };
 }
 
 // ---------- プレイの記録（見た目） ----------
