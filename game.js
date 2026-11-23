@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123155032';
-import { spawnPop, stepParticle } from './pops.js?v=20261123155032';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123155032';
+import { CONFIG } from './config.js?v=20261123155346';
+import { spawnPop, stepParticle } from './pops.js?v=20261123155346';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123155346';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2056,8 +2056,13 @@ export function createGame() {
     // 押した瞬間：追従のときは、本体が指の位置へ追いつくまで軌跡を描き始めない
     if (held && !s.wasHeld) {
       p.catching = X.control.value === 'follow';
-      // 相対：触れた場所が基準。押し直したときに、前に残っていた行き先を捨てる（本体が飛んでいかない）
-      if (X.control.value !== 'follow') { p.tx = p.x; p.ty = p.y; }
+      // 相対：触れた場所が基準。押し直したとき、前に残っていた行き先はすぐ捨てず、少しだけ残す
+      //   （捨てると、さっさっと何回かに分けて動かしたとき、触り直すたびに本体がぴたっと止まる。
+      //     全部残すと飛んでいくので、最高速度で0.15秒ぶんまで）
+      if (X.control.value !== 'follow') {
+        const bx = p.tx - p.x, by2 = p.ty - p.y, bl = Math.hypot(bx, by2), keep = T.moveSpeed.value * s.zoom * 0.15;
+        if (bl > keep) { p.tx = p.x + bx / bl * keep; p.ty = p.y + by2 / bl * keep; }
+      }
     }
     s.wasHeld = held;
 
@@ -3826,9 +3831,11 @@ export function createGame() {
     if (s.mode === 'returning') { updateReturn(); updateEffects(); return; }
     if (s.over || s.mode === 'select') { updateEffects(); return; }
     if (s.hitstop > 0) {
-      // 当てた・当たった瞬間のほんの一瞬の停止
+      // 当てた・当たった瞬間のほんの一瞬の停止（敵や弾は止まる。本体は止めずに動ける・切り替えも受け付ける）
       s.hitstop -= DT;
-      aim(input);
+      if (input.tap) toggleDrawMode();
+      movePlayer(input);
+      updateRecord(input.held);
       return;
     }
     s.time += DT;

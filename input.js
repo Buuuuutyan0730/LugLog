@@ -27,16 +27,22 @@ export function createInput(target, extra = []) {
   const TAP_TIME = 220, TAP_MOVE = 12;   // ミリ秒／画面上のピクセル
   let downAt = 0, moved = 0, tapPending = false;
 
-  const release = () => { pointerId = null; };
+  const release = () => { pointerId = null; cancelAt = 0; };
+  // iPhone などが途中で指を横取りした（pointercancel）ときは、すぐ「離した」にせず少し待つ。
+  //   その間にまた触れたら、同じ指の続きとして扱う（本体が止まらず、描いている線も切れない）
+  const CANCEL_WAIT = 250;   // ミリ秒
+  let cancelAt = 0;
 
   const onDown = (e) => {
     // 離した合図を取りこぼしていても、新しく触れたらその指／ボタンで操作を始め直す
+    const resumed = cancelAt > 0;   // 横取りされたあと、待っている間にまた触れた
+    cancelAt = 0;
     pointerId = e.pointerId;
     pointerType = e.pointerType || 'mouse';
     lastX = curX = e.clientX;
     lastY = curY = e.clientY;
     stickOX = curX; stickOY = curY;
-    downAt = performance.now(); moved = 0;
+    if (!resumed) { downAt = performance.now(); moved = 0; } else moved = TAP_MOVE;   // 続きのときはタップにしない
     try { target.setPointerCapture(e.pointerId); } catch (_) { /* 何もしない */ }
     listeners.forEach((fn) => fn());
     e.preventDefault();
@@ -61,6 +67,7 @@ export function createInput(target, extra = []) {
 
   const end = (e) => {
     if (e.pointerId !== pointerId) return;
+    if (e.type === 'pointercancel' || e.type === 'lostpointercapture') { if (!cancelAt) cancelAt = performance.now(); return; }
     if (e.type === 'pointerup' && performance.now() - downAt < TAP_TIME && moved < TAP_MOVE) tapPending = true;
     release();
   };
@@ -86,6 +93,7 @@ export function createInput(target, extra = []) {
   return {
     // toWorld(clientX, clientY) → ゲーム内の座標、scale：画面1ピクセルのゲーム内での長さ
     consume(toWorld, scale) {
+      if (cancelAt && performance.now() - cancelAt > CANCEL_WAIT) release();   // 待っても戻ってこなかった：離したことにする
       let x = (keys.has('r') ? 1 : 0) - (keys.has('l') ? 1 : 0);
       let y = (keys.has('d') ? 1 : 0) - (keys.has('u') ? 1 : 0);
       const len = Math.hypot(x, y);
