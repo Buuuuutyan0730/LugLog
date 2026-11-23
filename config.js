@@ -161,7 +161,7 @@ export const CONFIG = {
     { from: 18, fixed: { drift: 33, chaser: 27, tank: 15, shooter: 7, swarm: 5, dasher: 5, shield: 5, thief: 3 } },
     { from: 23, fixed: { drift: 30, chaser: 27, tank: 15, shooter: 6, swarm: 5, dasher: 5, shield: 5, thief: 2, bomber: 5 } },
   ],
-  elite: { from: 12, at: 0.5, hp: 8, size: 1.5, shards: 5, burst: [5, 6], skip: ['thief', 'bomber'] },
+  elite: { from: 12, at: 0.5, hp: 6.4, size: 1.5, shards: 5, burst: [5, 6], skip: ['thief', 'bomber'] },
   boss: {
     every: 10,
     order: ['core', 'hunter', 'twin', 'clock', 'shade'],
