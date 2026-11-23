@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123174951';
-import { spawnPop, stepParticle } from './pops.js?v=20261123174951';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123174951';
+import { CONFIG } from './config.js?v=20261123175620';
+import { spawnPop, stepParticle } from './pops.js?v=20261123175620';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123175620';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3214,11 +3214,11 @@ export function createGame() {
     ring(e.x, e.y, 4, e.r * 3, 0.6, 'enemy', 0, 6);
     s.shake = Math.max(s.shake, 8);
   }
-  // ボスの体力：1〜3体目は決めた数。4体目からは、最後の数字に「ふつうの敵の強くなり方」を掛ける
+  // ボスの体力：1〜3体目は決めた数。4体目からは、1体ごとに hpAfter 倍
   function bossHpOf(n) {
     const L = BOSS.hpList, k = Math.max(1, n);
     if (k <= L.length) return L[k - 1];
-    return L[L.length - 1] * growthOf(k * BOSS.every) / growthOf(L.length * BOSS.every);
+    return L[L.length - 1] * BOSS.hpAfter ** (k - L.length);
   }
   function bossHp() { return bossHpOf(Math.round(s.phase / BOSS.every)); }
   function updateBoss() {
