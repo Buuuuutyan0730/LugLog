@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123150718';
-import { spawnPop, stepParticle } from './pops.js?v=20261123150718';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123150718';
+import { CONFIG } from './config.js?v=20261123150911';
+import { spawnPop, stepParticle } from './pops.js?v=20261123150911';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123150911';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1220,9 +1220,11 @@ export function createGame() {
     if (e.hp <= 0) return;
     skSfx('reaper');
     damageEnemy(e, e.maxHp * SK.reaper.bossCut, true, false, 'crit');
-    ring(e.x, e.y, e.r * 0.6, e.r * 1.6, 0.3, 'white', 0, 3);
-    sparks(e.x, e.y, 'white', 8, 200);
-    s.floats.push({ x: e.x, y: e.y - e.r, text: '刈り取り', t: 0.8, max: 0.8 });
+    // 見た目は即死と同じ（文字は出さない）
+    ring(e.x, e.y, e.r, e.r * 3, 0.3, 'white', 0, 3);
+    ring(e.x, e.y, e.r * 0.5, e.r * 4.5, 0.45, 'enemy', 0, 5);
+    sparks(e.x, e.y, 'white', 12, 220);
+    flash(e.x, e.y, e.r * 3.5, 0.18, 'white');
   }
   // 即死させ、冥府なら近くの敵を1体道連れにする
   function reapWith(e) {
@@ -2812,7 +2814,7 @@ export function createGame() {
       // 足止め：止まっている／スロウフィールド：遅くなっている
       if (e.stunT > 0) e.stunT -= DT;
       if (e.trapSlowT > 0) e.trapSlowT -= DT;
-      const slow = aweSlow(e) * iceSlow(e) * (e.stunT > 0 ? 0 : 1) * (e.trapSlowT > 0 ? SK.trap.slow : 1);
+      const slow = aweSlow(e) * iceSlow(e) * (e.stunT > 0 ? 0 : 1) * (e.trapSlowT > 0 ? SK.trap.slow : 1) * (e.boss && e.inPullT > 0 ? 1 - SK.pull.bossSlow : 1);   // 引力：ボスは引き寄せられない代わりに遅くなる
       e.x += e.vx * slow * DT;
       e.y += e.vy * slow * DT;
       // 押しやられた勢い（だんだん弱まる）

@@ -302,7 +302,7 @@ export const CONFIG = {
     chill: { reach: 40, slow: 0.2, kiwamiReach: 1.5 },            // 冷気：分身のふちから届く距離／遅くなる割合／極
     frostpath: { slow: 0.2, width: 6, gap: 10, kiwamiDamage: 0.2 }, // 霜の道：遅くなる割合／霜の太さ／霜を調べる間隔／極：受けるダメージ↑
     iceage: { every: 15, time: 5, bossTime: 1.5, power: 0.6 },   // 氷河期：間隔／凍る秒数／ボスが凍る秒数（ダメージはふつうの敵と同じ秒数受ける）／凍っている間の毎秒ダメージ（分身の攻撃力の平均×割合）
-    pull: { reach: 100, speed: 40, per: 0.1, holeReach: 1.5, core: 20, corePower: 0.5 }, // 引力：分身のふちから届く距離／吸い寄せる速さ、1Lvで +10%／特異点：範囲の倍・中心からの距離・毎秒（分身の攻撃力×割合）
+    pull: { reach: 100, speed: 40, per: 0.1, holeReach: 1.5, core: 20, corePower: 0.5, bossSlow: 0.3 }, // 引力：分身のふちから届く距離／吸い寄せる速さ、1Lvで +10%／特異点：範囲の倍・中心からの距離・毎秒（分身の攻撃力×割合）／ボスは引き寄せられない代わりに、範囲の中でこの割合だけ遅くなる
     compress: { per: 0.05, cap: 0.5, kiwamiCap: 1 },              // 圧縮：中の敵1体ごと／上限／極の上限
     repel: { reach: 60, every: 3, push: 420, power: 1.5 },        // 斥力：本体のふちから届く距離／押し返す波の間隔（秒）／押し返す強さ／極：波が当たった敵へのダメージ（分身の攻撃力の平均×倍）
     gravshot: { time: 1, radius: 50, speed: 80, kiwamiMult: 2 },  // 重力弾：小さな引力が残る秒数／広さ／寄せる速さ／極の倍
