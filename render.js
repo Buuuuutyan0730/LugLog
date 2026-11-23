@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123185020';
-import { makeForms } from './forms.js?v=20261123185020';
-import { CONFIG } from './config.js?v=20261123185020';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123190008';
+import { makeForms } from './forms.js?v=20261123190008';
+import { CONFIG } from './config.js?v=20261123190008';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -2579,6 +2579,7 @@ export function createRenderer(canvas, view) {
     }
     const B = state.bossIntro;
     if (!B) return;
+    if (B.kind === 'shuhitsu') { drawFinalIntro(B, t, W, H, u); return; }
     const k = B.t;
     const a = Math.min(1, k / 0.1, (1 - k) / 0.18);
     if (a <= 0) return;
@@ -2623,6 +2624,47 @@ export function createRenderer(canvas, view) {
       ctx.fillStyle = '#ff3b5c';
       const lw = 70 * u * nk;
       ctx.fillRect(-lw, 24 * u, lw * 2, Math.max(1, 1.5 * u));
+    }
+    ctx.restore();
+  }
+
+  // ラスボス「終筆」の登場：墨が画面に広がり、金の線が走って、名前が筆で上から書かれる（文字の見出しは出さない）
+  function drawFinalIntro(B, t, W, H, u) {
+    const k = B.t, cx = W / 2, cy = H * 0.46, R = Math.hypot(W, H) * 0.6;
+    const out = Math.max(0, (k - 0.82) / 0.18);   // 最後に引いていく
+    ctx.save();
+    // 墨：にじむように広がる（ふちが波打つ）
+    const grow = Math.min(1, k / 0.22), rr = R * (1 - (1 - grow) ** 3);
+    ctx.globalAlpha = 0.92 * (1 - out);
+    ctx.fillStyle = '#07050a';
+    ctx.beginPath();
+    for (let n = 0; n <= 64; n++) { const a = (n / 64) * TAU, w = 1 + 0.06 * Math.sin(a * 7 + t * 2) + 0.04 * Math.sin(a * 13 - t * 3); const x = cx + Math.cos(a) * rr * w, y = cy + Math.sin(a) * rr * w; n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.fill();
+    // 金の線：真ん中から左右へ走る（上下に1本ずつ）
+    const lk = Math.min(1, Math.max(0, (k - 0.14) / 0.2));
+    if (lk > 0) {
+      ctx.globalAlpha = (1 - out);
+      ctx.fillStyle = '#ffd84a'; ctx.shadowColor = '#ffd84a'; ctx.shadowBlur = 12 * u * PREFS.glow;
+      for (const y of [H * 0.3, H * 0.62]) { const half = W * 0.42 * (1 - (1 - lk) ** 3); ctx.fillRect(cx - half, y, half * 2, Math.max(1, 1.4 * u)); }
+      ctx.shadowBlur = 0;
+    }
+    // 名前：筆で上から下へ書かれていく
+    const wk = Math.min(1, Math.max(0, (k - 0.3) / 0.32));
+    if (wk > 0) {
+      const fs = Math.round(76 * u);
+      ctx.font = `900 ${fs}px 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const top = cy - fs * 0.62, hgt = fs * 1.24;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, top, W, hgt * (1 - (1 - wk) ** 2)); ctx.clip();
+      ctx.globalAlpha = 1 - out;
+      ctx.lineWidth = 6 * u; ctx.strokeStyle = '#000'; ctx.strokeText(B.name, cx, cy);
+      const g = ctx.createLinearGradient(0, top, 0, top + hgt); g.addColorStop(0, '#fff3c0'); g.addColorStop(0.5, '#ffd84a'); g.addColorStop(1, '#b88a12');
+      ctx.fillStyle = g; ctx.shadowColor = 'rgba(255,200,60,0.8)'; ctx.shadowBlur = 18 * u * PREFS.glow;
+      ctx.fillText(B.name, cx, cy);
+      ctx.restore();
+      // 筆先の墨しぶき（書いている所に飛び散る）
+      if (wk < 1) { const y = top + hgt * (1 - (1 - wk) ** 2); ctx.fillStyle = '#ffd84a'; for (let n = 0; n < 6; n++) { const a = n * 2.1 + t * 9; ctx.globalAlpha = 0.7 * (1 - out); ctx.beginPath(); ctx.arc(cx + Math.cos(a) * fs * 0.7, y + Math.sin(a) * 6 * u, 2 * u, 0, TAU); ctx.fill(); } }
     }
     ctx.restore();
   }

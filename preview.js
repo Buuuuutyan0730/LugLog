@@ -2,14 +2,14 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123185020';
-import { CONFIG } from './config.js?v=20261123185020';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123185020';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123185020';
-import { GACHA_POOL } from './skins.js?v=20261123185020';
-import { createGame } from './game.js?v=20261123185020';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123185020';
-import { createGachaFx } from './gachafx.js?v=20261123185020';
+import { BOOSTS, CURSES } from './talents.js?v=20261123190008';
+import { CONFIG } from './config.js?v=20261123190008';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123190008';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123190008';
+import { GACHA_POOL } from './skins.js?v=20261123190008';
+import { createGame } from './game.js?v=20261123190008';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123190008';
+import { createGachaFx } from './gachafx.js?v=20261123190008';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -803,7 +803,7 @@ const CATS = [
   { id: 'attack', label: '攻撃エフェクト', tabs: [['ghostroad', '巨像'], ['swarmroad', '群体'], ['turretroad', '砲台'], ['guardroad', '守護'], ['bodyroad', '拳闘士']] },
   { id: 'fx', label: 'エフェクト', tabs: [['effects', '共通']] },
   { id: 'items', label: 'ガチャの品', tabs: ITEM_TABS },
-  { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_bossdown', 'ボス撃破']] },
+  { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_finalin', 'ラスボス登場'], ['fx_bossdown', 'ボス撃破']] },
   { id: 'ougi', label: '奥義', tabs: OUGI_FX.map((o) => ['og_' + o.id, o.name]) },
   { id: 'mode', label: '描く／動く', tabs: [['md_move', '動くモード'], ['md_draw', '描くモード']] },
   { id: 'tuto', label: 'チュートリアル', tabs: [['tu_0', 'はじめに']].concat(TUTO_STEPS.map((_, i) => ['tu_' + (i + 1), `手順${i + 1}`]), [['tu_ok', 'できた']]) },
@@ -816,7 +816,7 @@ export function createPreview(hud) {
   const tabsEl = document.getElementById('preview-tabs');
   const scene = buildStates();
   const bossFxScene = buildBossCore();
-  const SCENES = { fx_bossin: bossFxScene, fx_bossdown: bossFxScene, enemies: buildEnemyTypes(), boss: buildBoss(), effects: buildEffects(), bcore: buildBossCore(), bhunter: buildBossHunter(), btwin: buildBossTwins(), bclock: buildBossClock(), bclockstop: buildBossClockStop(), bshade: buildBossShade(), bcomet: buildBossComet(), bmirage: buildBossMirage(), beclipse: buildBossEclipse(), babyss: buildBossAbyss(), bshuhitsu: buildBossShuhitsu(), belite: buildElites() };
+  const SCENES = { fx_bossin: bossFxScene, fx_finalin: buildBossShuhitsu(), fx_bossdown: bossFxScene, enemies: buildEnemyTypes(), boss: buildBoss(), effects: buildEffects(), bcore: buildBossCore(), bhunter: buildBossHunter(), btwin: buildBossTwins(), bclock: buildBossClock(), bclockstop: buildBossClockStop(), bshade: buildBossShade(), bcomet: buildBossComet(), bmirage: buildBossMirage(), beclipse: buildBossEclipse(), babyss: buildBossAbyss(), bshuhitsu: buildBossShuhitsu(), belite: buildElites() };
   const ghostScene = buildGhostRoad();
   const swarmScene = buildSwarmRoad();
   const turretScene = buildTurretRoad();
@@ -967,6 +967,7 @@ export function createPreview(hud) {
     const fx = {};
     const now = performance.now() / 1000;
     if (tab === 'fx_bossin') { const k = (now % 2.6) / 1.5; if (k < 1) fx.bossIntro = { t: k, name: 'コア' }; fx.enemies = (sc.enemies || []).filter((e) => !e.boss || k > 0.6); }
+    if (tab === 'fx_finalin') { const k = (now % 5) / 3.6; if (k < 1) fx.bossIntro = { t: k, name: '終筆', kind: 'shuhitsu' }; fx.enemies = (sc.enemies || []).filter((e) => e.boss && k > 0.85); fx.bossTrails = []; fx.labels = []; }
     if (tab === 'fx_bossdown') {
       const k = now % 2.4, core = (sc.enemies || []).find((e) => e.boss);
       fx.enemies = (sc.enemies || []).filter((e) => !e.boss || k < 0.7);

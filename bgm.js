@@ -2,7 +2,7 @@
 //   どの曲も、目立たず、落ち着いていて、でも体が揺れる感じ。盛り上げない（フェーズが進んでも変えない）。
 //   4曲は、楽器・リズム・拍子・調をそれぞれ別に作る（同じ曲の手直しにしない）。
 //   曲を切りかえるときは、前の曲を少しずつ小さく、次の曲を少しずつ大きくする。
-import { audioParts, onAudioReset } from './audio.js?v=20261123185020';
+import { audioParts, onAudioReset } from './audio.js?v=20261123190008';
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const vary = (v) => v * (0.88 + Math.random() * 0.24);
@@ -43,6 +43,10 @@ function hitNoise(song, t, v, d, out, a = 0.003) {
   src.start(t, Math.random() * 0.5); src.stop(t + d + 0.05);
   song.track(src, t + d + 0.05);
 }
+// ラスボスの曲の激しさ（1〜3）。終筆の段階に合わせて、外から変える
+let finalLevel = 1;
+export function setFinalLevel(n) { finalLevel = Math.max(1, Math.min(3, n | 0)); }
+export const finalLevelNow = () => finalLevel;
 const I = {
   // エレピ（ホーム）
   epiano(song, m, t, d, v, out) {
@@ -109,6 +113,24 @@ const I = {
   },
   // ウッドベース（はじいてすぐ減る）
   upright(song, m, t, d, v, out) { const len = Math.min(0.9, d + 0.2); osc(song, 'triangle', mtof(m), t, len, env(song, t, 0.008, v, len, out, 0.45)); osc(song, 'sine', mtof(m), t, len, env(song, t, 0.008, v * 0.6, len, out, 0.45)); },
+  // 三味線：撥（ばち）で弾いた、鼻にかかったような明るい音。弾いた瞬間に高さが少しすべり、すぐ減る
+  shami(song, m, t, v, out) {
+    const f = mtof(m), len = 0.24;
+    const g = env(song, t, 0.0015, v, len, out, 0.22);
+    const o1 = osc(song, 'sawtooth', f, t, len, g, (Math.random() - 0.5) * 6);
+    const o2 = osc(song, 'square', f * 2, t, len * 0.6, g);
+    o1.frequency.setValueAtTime(f * 1.025, t); o1.frequency.exponentialRampToValueAtTime(f, t + 0.025);
+    o2.frequency.setValueAtTime(f * 2.05, t); o2.frequency.exponentialRampToValueAtTime(f * 2, t + 0.025);
+    hitNoise(song, t, v * 0.55, 0.012, out);   // 撥が当たる音
+  },
+  // 太鼓：低く長く響く ドン
+  taiko(song, t, v, out) {
+    const g = env(song, t, 0.004, v, 0.55, out);
+    const o = song.ctx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(52, t + 0.2);
+    o.connect(g); o.start(t); o.stop(t + 0.6); song.track(o, t + 0.6);
+    hitNoise(song, t, v * 0.35, 0.05, out);
+  },
   kick(song, t, v, out, hi = 110, lo = 45) {
     const g = env(song, t, 0.004, v, 0.3, out);
     const o = song.ctx.createOscillator(); o.type = 'sine';
@@ -363,6 +385,67 @@ export const SONGS = {
       }
     },
   },
+
+  // ラスボス「終筆」：速い三味線のリフに太鼓と篠笛。ホ音の都節（ミ・ファ・ラ・シ・ド）で、和の緊張感。
+  //   32小節で1回り：前奏（三味線と太鼓だけ・4）→ A（リフに全部が入る・8）→ B（篠笛の旋律・8）→ C（いちばん激しい山・8）→ 三味線のひとり弾き（4）
+  //   段階（finalLevel）が上がるほど楽器が増える：2＝4つ打ちと厚いベース、3＝ひずんだ和音・細かいハイハット・笛を高く重ねる
+  final: {
+    name: 'ラスボス', bpm: 184, swing: 0, steps: 16, div: 4, gain: 1.15, lp: 9000,
+    riffs: {
+      r1: [64, 0, 64, 76, 0, 64, 72, 71, 69, 0, 65, 64, 0, 69, 71, 72],
+      r2: [64, 0, 64, 76, 0, 64, 72, 71, 69, 71, 72, 76, 77, 76, 72, 71],
+      r3: [69, 0, 69, 81, 0, 69, 77, 76, 72, 0, 71, 69, 0, 72, 71, 69],
+      r4: [65, 0, 65, 77, 0, 65, 72, 71, 69, 71, 69, 65, 64, 0, 59, 0],
+      solo: [76, 77, 76, 72, 71, 72, 71, 69, 65, 69, 65, 64, 59, 60, 59, 57],
+    },
+    roots: { r1: 40, r2: 40, r3: 45, r4: 41, solo: 40 },
+    order: ['r1', 'r2', 'r1', 'r4', 'r3', 'r3', 'r1', 'r4'],
+    flute: [[0, 76, 6], [6, 77, 2], [8, 81, 8], [16, 83, 4], [20, 84, 4], [24, 83, 4], [28, 81, 4], [32, 77, 8], [40, 76, 4], [44, 77, 4], [48, 76, 16],
+      [64, 81, 6], [70, 83, 2], [72, 84, 8], [80, 88, 4], [84, 84, 4], [88, 83, 8], [96, 81, 4], [100, 77, 4], [104, 76, 4], [108, 72, 4], [112, 76, 16]],
+    arrange(song, i, bar, t, sd) {
+      const S = this, p = bar % 32, lv = finalLevel;
+      const sec = p < 4 ? 'intro' : p < 12 ? 'A' : p < 20 ? 'B' : p < 28 ? 'C' : 'solo';
+      const rk = sec === 'solo' ? (p === 31 ? 'r4' : 'solo') : S.order[p % 8];
+      const R = S.riffs[rk], root = S.roots[rk];
+      const duck = song.duck, drums = song.drums;
+      const shOut = song.f('shami', 'bandpass', 1500, 0.8, duck), bassOut = song.f('bass', 'lowpass', 700, 0, duck);
+      const flOut = song.f('flute', 'lowpass', 6000, 0, song.out), chopOut = song.f('chop', 'lowpass', 2200, 1.5, duck);
+      const hhOut = song.f('hh', 'highpass', 8000, 0.6, drums), snOut = song.f('sn', 'bandpass', 1700, 0.8, drums), crOut = song.f('cr', 'highpass', 4500, 0.4, drums);
+      // ---- 三味線のリフ（ずっと）。Cでは同じ音を2回ずつ細かく弾く ----
+      const m = R[i];
+      if (m) { I.shami(song, m, t, vary(i % 4 === 0 ? 0.075 : 0.055), shOut); if (sec === 'C' || lv >= 3) I.shami(song, m, t + sd * 0.5, vary(0.03), shOut); }
+      if (sec === 'C' && i % 4 === 0) I.shami(song, m ? m - 12 : root + 12, t, 0.05, shOut);   // 低い音を重ねて厚く
+      // ---- 太鼓 ----
+      if (sec === 'intro' || sec === 'solo') { if (i === 0 || i === 6 || i === 10) I.taiko(song, t, 0.5, drums); }
+      else {
+        if (i === 0 || i === 10 || (i === 6 && bar % 2)) I.taiko(song, t, 0.45, drums);
+        if (sec === 'C' && i >= 12) I.taiko(song, t, 0.18 + (i - 12) * 0.05, drums);   // 小節の終わりの連打
+      }
+      // ---- 4つ打ち・スネア・ハイハット（A から。段階2で4つ打ち） ----
+      if (sec !== 'intro' && sec !== 'solo') {
+        if (lv >= 2 && i % 4 === 0) { I.kick(song, t, 0.4, drums, 100, 42); song.pump(t, 0.7); }
+        if (i === 4 || i === 12) { I.noise(song, t, vary(0.11), 0.16, snOut); }
+        const hh = lv >= 3 ? true : i % 2 === 0;
+        if (hh) I.noise(song, t, vary(i % 4 === 2 ? 0.03 : 0.014), 0.03, hhOut);
+      }
+      if ((p === 4 || p === 12 || p === 20) && i === 0) I.noise(song, t, 0.07, 1.4, crOut, 0.005);
+      if (sec === 'solo' && p === 31 && i === 0) riser(song, t, 16 * sd, song.out);
+      // ---- ベース（8分で根の音。段階2から跳ねる） ----
+      if (sec !== 'intro' && i % 2 === 0) {
+        const off = lv >= 2 && (i === 6 || i === 14) ? 12 : 0;
+        I.fingerBass(song, root - 12 + off, t, sd * 1.6, vary(0.3), bassOut);
+      }
+      // ---- ひずんだ和音（段階3・Cでは段階2から） ----
+      if ((lv >= 3 || (sec === 'C' && lv >= 2)) && sec !== 'intro' && sec !== 'solo' && (i === 0 || i === 3 || i === 6 || i === 10)) {
+        for (const o of [0, 7, 12]) { const g = env(song, t, 0.004, 0.022, 0.18, chopOut, 0.4); osc(song, 'sawtooth', mtof(root + o), t, 0.18, g, -8); osc(song, 'sawtooth', mtof(root + o), t, 0.18, g, 8); }
+      }
+      // ---- 篠笛の旋律（B と C） ----
+      if (sec === 'B' || sec === 'C') {
+        const j = ((p - (sec === 'B' ? 12 : 20)) % 8) * 16 + i;
+        for (const [at, mm, len] of S.flute) if (at === j) { I.whistle(song, mm, t, len * sd * 0.95, 0.05, flOut); if (lv >= 3 || sec === 'C') I.whistle(song, mm + 12, t, len * sd * 0.95, 0.018, flOut); }
+      }
+    },
+  },
 };
 export const SONG_LIST = Object.entries(SONGS).map(([id, s]) => [id, s.name]);
 
@@ -371,7 +454,7 @@ function startSong(P, id, fade) {
   const { ctx } = P, S = SONGS[id];
   const out = ctx.createGain();
   // 全体を少しこもらせる（くすんだ、落ち着いた音にする）
-  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = S.lp || 4200;   // ラスボスの曲は、三味線が抜けるように明るく
   out.connect(lp); lp.connect(P.bus);
   const t0 = ctx.currentTime + 0.06;
   out.gain.setValueAtTime(0, ctx.currentTime);

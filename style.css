@@ -2053,3 +2053,37 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .dbg-split i { display: block; height: 100%; background: var(--cyan); }
 .dbg-split-label { display: flex; justify-content: space-between; margin-top: 1cqw; font-size: 2.8cqw; color: var(--muted); }
 .dbg-reload { margin-top: 4cqw; width: 100%; }
+/* BGMの見本：ラスボスの曲の激しさ */
+.ms-flvrow { margin-top: 3cqw; font-size: 3cqw; color: var(--muted); }
+.ms-flv { display: flex; gap: 2cqw; margin-top: 1.4cqw; }
+.ms-flv button { flex: 1; font-family: inherit; font-size: 3.6cqw; padding: 2cqw 0; border-radius: 2cqw; border: 0.6cqw solid var(--ink); background: #1b2050; color: var(--text); }
+.ms-flv button.on { background: var(--gold); color: #1a1208; }
+/* ---------- エンディング ---------- */
+.ms-ending { background: radial-gradient(ellipse at 50% 30%, #fbf6ea 0%, #efe5cf 70%, #e2d4b6 100%); color: #1a1410; align-items: center; overflow: hidden; }
+.ms-end-kanji { position: absolute; top: 6cqw; left: 0; right: 0; text-align: center; font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif; font-weight: 900; font-size: 62cqw; line-height: 1;
+  color: #120d0a; text-shadow: 0.6cqw 0.6cqw 0 rgba(0,0,0,0.12); clip-path: inset(0 0 100% 0); animation: endWrite 1.8s cubic-bezier(.5,0,.3,1) 0.4s forwards, endKanjiUp 1.2s ease-in-out 3.2s forwards; }
+@keyframes endWrite { to { clip-path: inset(0 0 0 0); } }
+@keyframes endKanjiUp { to { transform: translateY(-8cqw) scale(0.55); opacity: 0.16; } }
+.ms-end-rec { position: absolute; top: 44cqw; left: 7cqw; right: 7cqw; opacity: 0; animation: endFade 1s ease 3.6s forwards, endOut 1s ease 11s forwards; }
+@keyframes endOut { to { opacity: 0; transform: translateY(-4cqw); } }
+@keyframes endFade { to { opacity: 1; } }
+.ms-end-title { text-align: center; font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif; font-size: 5cqw; letter-spacing: 0.4cqw; margin-bottom: 4cqw; }
+.ms-end-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2cqw; }
+.ms-end-cell { display: flex; flex-direction: column; align-items: center; padding: 2.2cqw 0; border-top: 0.5cqw solid rgba(26,20,16,0.25); }
+.ms-end-cell.wide { grid-column: 1 / 3; }
+.ms-end-cell span { font-size: 2.8cqw; color: #6b5a45; }
+.ms-end-cell b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 4cqw; margin-top: 1.2cqw; }
+.ms-end-cell.wide b { font-size: 5.4cqw; color: #9a6a00; }
+.ms-end-skills { margin-top: 3cqw; display: flex; flex-direction: column; align-items: center; gap: 1.2cqw; }
+.ms-end-skills .ms-chip { background: #1a1410; }
+.ms-end-roll { position: absolute; top: 50cqw; bottom: 24cqw; left: 0; right: 0; overflow: hidden; opacity: 0; animation: endFade 0.8s ease 11.8s forwards;
+  -webkit-mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); }
+.ms-end-rollin { text-align: center; transform: translateY(100cqw); animation: endRoll 12s linear 11.8s forwards; }
+@keyframes endRoll { to { transform: translateY(8cqw); } }
+.ms-end-logo { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif; font-size: 9cqw; letter-spacing: 1cqw; margin-bottom: 8cqw; }
+.ms-end-cb { margin-bottom: 5cqw; }
+.ms-end-cb small { display: block; font-size: 2.8cqw; color: #6b5a45; }
+.ms-end-cb b { display: block; font-size: 4.4cqw; font-weight: normal; margin-top: 0.8cqw; }
+.ms-end-thanks { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif; font-size: 4.6cqw; margin-top: 8cqw; }
+.ms-end-go { position: absolute; left: 10cqw; right: 10cqw; bottom: 6cqw; width: auto; opacity: 0; pointer-events: none; animation: endFade 0.8s ease 6s forwards, endPoint 0s linear 6s forwards; }
+@keyframes endPoint { to { pointer-events: auto; } }
