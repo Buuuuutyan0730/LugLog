@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123194320';
-import { makeForms } from './forms.js?v=20261123194320';
-import { CONFIG } from './config.js?v=20261123194320';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123194529';
+import { makeForms } from './forms.js?v=20261123194529';
+import { CONFIG } from './config.js?v=20261123194529';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -2584,11 +2584,22 @@ export function createRenderer(canvas, view) {
     const C = fin
       ? { band: 'rgba(70,46,0,0.82)', stripe: 'rgba(255,210,80,0.3)', word: '#fff1c4', line: '#ffd84a', tag: '#ffd84a', glow: 'rgba(255,180,40,0.55)', size: 36 }
       : { band: 'rgba(120,10,30,0.75)', stripe: 'rgba(255,70,100,0.35)', word: '#ffd6de', line: '#ff3b5c', tag: '#ff8fa3', glow: 'rgba(255,40,80,0.9)', size: 30 };
-    const k = B.t;
-    const a = Math.min(1, k / 0.1, (1 - k) / 0.18);
+    const a = Math.min(1, B.t / 0.1, (1 - B.t) / 0.18);
     if (a <= 0) return;
     ctx.save();
-    if (fin) { ctx.globalAlpha = a * 0.45; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
+    // ラスボス：まず墨がにじむように画面へ広がって真っ暗になり、そのあと帯と名前が出る。最後に墨ごと引いていく
+    if (fin) {
+      const cx = W / 2, cy = H * 0.44, R = Math.hypot(W, H) * 0.62;
+      const grow = Math.min(1, B.t / 0.22), rr = R * (1 - (1 - grow) ** 3);
+      ctx.globalAlpha = 0.9 * Math.min(1, (1 - B.t) / 0.15);
+      ctx.fillStyle = '#05040a';
+      ctx.beginPath();
+      for (let n = 0; n <= 64; n++) { const an = (n / 64) * TAU, w = 1 + 0.06 * Math.sin(an * 7 + t * 2) + 0.04 * Math.sin(an * 13 - t * 3); const x = cx + Math.cos(an) * rr * w, y = cy + Math.sin(an) * rr * w; n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.fill();
+    }
+    // 帯と名前の進み具合（ラスボスは墨が広がってから始める）
+    const k = fin ? Math.max(0, (B.t - 0.2) / 0.8) : B.t;
+    if (k <= 0) { ctx.restore(); return; }
     // 上下の警告の帯：斜めのしま模様と「WARNING」の文字が流れる
     const bh = 22 * u, shift = (t * 60 * u) % (24 * u);
     for (const [y0, dir] of [[H * 0.16, 1], [H * 0.84 - bh, -1]]) {
