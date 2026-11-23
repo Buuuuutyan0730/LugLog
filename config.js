@@ -174,7 +174,8 @@ export const CONFIG = {
     order: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'],   // 6〜10体目は見た目だけ（ready に入るまで、ふつうのフェーズのまま）
     ready: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
     hpList: [4300, 5600, 7200],   // 1〜3体目のボスの体力
-    hpPow: 1.8,               // 4体目からは 3体目の体力 ×（何体目 − 2）のこの乗。前のボスとの伸びが 3.5倍→2.1倍→1.7倍… と、だんだん小さくなる
+    hpPow: 3.06,              // 4体目からは 3体目の体力 ×（何体目 − 2）のこの乗。5体目（影）が約20万8千になる値（試したら1.8では35秒で倒せた）。
+                              //   6万→20.8万→50万→99万→173万→278万→418万（前のボスとの伸びが 8.3倍→3.5倍→2.4倍→2.0倍… と、だんだん小さくなる）
     eliteCap: 0.3,            // 中ボスの体力の上限＝次に出てくるボスの体力のこの割合
     // ボスのねらい撃ち：動いている間も、決まった間隔で本体をねらって撃つ（何もしてこない時間をなくす）
     pressure: { every: 1.4, rageEvery: 0.9, speed: 150, ways: 1, rageWays: 3, spread: 0.22 },
@@ -218,8 +219,8 @@ export const CONFIG = {
     shuhitsu: { name: '終筆', radius: 44, y: 0.28, moveSpeed: 70, moveTime: 1.5, stage2: 0.66, stage3: 0.33, shiftTime: 1.6,
                 strokeLen: 260, strokeTime: 1.2, inkMax: [3, 4, 4], inkHp: 0.6, inkR: 12, inkSpeed: 90, inkFireEvery: 2.2, inkShotSpeed: 130,
                 blotR: 70, blotDamage: 1.0, splashWays: 7, splashSpread: 1.0, splashSpeed: 160, ensoTime: 7, ensoR: 0.36, ensoDamage: 3 },
-    // hpMul：そのボスだけの体力の倍率（影は試したら35秒で倒せたので4倍）
-    shade: { name: '影', hpMul: 4, radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
+    // hpMul：そのボスだけの体力の倍率（書かなければ1倍）
+    shade: { name: '影', radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
              moveTime: 1.8, traceTime: 1.6, traceWidth: 7, traceOn: 0.5, traceDamage: 1.0, blinkDist: 110, blinkWays: 10, blinkSpeed: 120 },
     // 影：本体の何秒前の場所を追うか・追う速さの上限／影の分身：間隔・なぞる秒数・動き出すまでの秒数・大きさ・体力（1秒に出る敵の体力の何倍）
     //   怒り：分身の間隔（2体ずつ。2体目は、さらにその前の同じ秒数をなぞる）／怒るHPの割合
