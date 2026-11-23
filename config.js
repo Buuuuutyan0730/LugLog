@@ -46,8 +46,8 @@ export const CONFIG = {
     dragLimit: { label: '1回で描ける長さ', min: 100, max: 1200, step: 20, value: 400, unit: '' },
     trailBudget: { label: '軌跡の総量', min: 300, max: 4000, step: 100, value: 1000, unit: '' },
     ghostSpeed: { label: '分身の速さ', min: 40, max: 600, step: 10, value: 150, unit: '' },
-    moveSpeed: { label: '移動速度の上限', min: 200, max: 2000, step: 50, value: 380, unit: '' },   // 本体の最高速度（450→380）（1秒に動ける距離）。動きに関わるスキルの基準
-    sensitivity: { label: '指の感度（相対のとき）', min: 0.6, max: 2.5, step: 0.1, value: 1.0, unit: 'x' },
+    moveSpeed: { label: '移動速度の上限', min: 200, max: 2000, step: 10, value: 400, unit: '' },   // 本体の最高速度（450→380→400）（1秒に動ける距離）。動きに関わるスキルの基準
+    sensitivity: { label: '指の感度（相対のとき）', min: 0.6, max: 2.5, step: 0.1, value: 1.2, unit: 'x' },   // 指を動かした量の何倍、本体が動くか（1.0→1.2：親指の下の余白が少なくても、下まで届くように）
     touchOffset: { label: '指からのずらし（追従のとき）', min: 0, max: 100, step: 5, value: 45, unit: '' },
     contactDamage: { label: '敵に触れた時のダメージ', min: 5, max: 50, step: 5, value: 20, unit: '' },
     regenDelay: { label: '回復が始まるまで', min: 0.5, max: 8, step: 0.5, value: 3, unit: 's' },
@@ -67,7 +67,8 @@ export const CONFIG = {
   //   描いている間は、動きが遅くなり、受けるダメージが増える。分身の弾は、線がまっすぐなほどよく当たる（曲がった線ほど左右にぶれる）
   drawMode: { start: true, speed: 0.6, damage: 1.5, spread: 30 },   // 始めは描くモード／動きの速さの倍率／受けるダメージの倍率／ぐにゃぐにゃな線の分身の弾のぶれ（左右に最大何度）
   player: {
-    stickAccelTime: 0.35,  // スティック：止まった状態から最高速度になるまでの秒数（急に速くならないように。0.2→0.35）
+    stickAccelTime: 0.12,  // スティック：止まった状態から最高速度になるまでの秒数（0.35→0.12：もっさりしないように）
+    accelTime: 0.12,       // ドラッグ・キー：止まった状態から最高速度になるまでの秒数（加速度＝最高速度÷この秒数。最高速度が変わっても同じ時間で届く）
     maxHp: 100,
     power: 20,             // 本体の強さ（今は攻撃しないので大きさだけに使う。半径 約10）
     fireInterval: 0.4,
