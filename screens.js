@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261123184704';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123184704';
-import { CONFIG } from './config.js?v=20261123184704';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123184704';
-import { POP_STYLES } from './pops.js?v=20261123184704';
-import { TITLES, titleChip } from './titles.js?v=20261123184704';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123184704';
-import { titleOf } from './titles.js?v=20261123184704';
+import { iconSvg, snapIcons } from './icons.js?v=20261123185020';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123185020';
+import { CONFIG } from './config.js?v=20261123185020';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123185020';
+import { POP_STYLES } from './pops.js?v=20261123185020';
+import { TITLES, titleChip } from './titles.js?v=20261123185020';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123185020';
+import { titleOf } from './titles.js?v=20261123185020';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123184704';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123185020';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123184704';
-import { iconArtSvg } from './iconart.js?v=20261123184704';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123184704';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123184704';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123185020';
+import { iconArtSvg } from './iconart.js?v=20261123185020';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123185020';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123185020';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -135,6 +135,11 @@ export const HOWTO_LAST = HOWTO.length - 1;
 
 // お知らせ（新しい順）。新しく足したら一番上に入れる
 export const NEWS = [
+  ['更新', '11/23', 'ver 1.1.0　新しいボス5体と最後のボス', 'フェーズ60〜100に、彗星・蜃気楼・日蝕・深淵、そして最後のボス「終筆」が登場しました。どのボスも、技と技の合間にねらい撃ちをしてくるようになりました。ハンターは突進して止まるたびに弾をばらまきます。'],
+  ['更新', '11/23', '描くモードと動くモード', 'タップで「描くモード」と「動くモード」を切り替えられるようになりました。線を描けるのは描くモードのときだけで、遅くなり、受けるダメージも増えます。まっすぐな線ほど、仲間の弾がよく当たって強くなります（命中0%で0.5倍、100%で1.2倍）。'],
+  ['更新', '11/23', 'チュートリアルができました', '初めて遊ぶときは、チュートリアルで線の描き方・モードの切り替え・カードの選び方を練習できます。遊び方の画面からも、いつでも遊べます。'],
+  ['更新', '11/23', '操作が動かしやすくなりました', 'ドラッグで、本体が指と同時に動くようになりました。指を止めて押さえ続けると、動かしていた向きへ進み続けます。iPhoneで長押しすると出ていた虫めがねも出なくなりました。'],
+  ['更新', '11/23', '敵とボスの強さ・スキルの見直し', 'ボスの体力と中ボスの体力、フェーズに必要なかけらの数、後半の敵の強くなり方を見直しました。死神はボスにも効くようになり、返し針・マキビシ・地雷・炎の道・置き土産・仕込み・一斉射撃・浮遊・闘気を強くしました。'],
   ['更新', '11/21', 'ホーム画面と図鑑ができました', 'タイトルがホーム画面になりました。図鑑では、取ったスキルや見た敵・ボスを見返せます。プロフィールでは名前とアイコンを変えられます。'],
   ['更新', '11/21', 'ボス5体と中ボスが登場しました', '10フェーズごとにボスが出るようになりました。コア・ハンター・双子・時計・影の5体です。フェーズ12からは中ボスも混ざります。'],
   ['更新', '11/20', 'スキル115個がすべて使えるようになりました', '影・本体・罠・現象・星環・収穫の6つの系統のスキルが、すべて動くようになりました。'],
@@ -255,7 +260,7 @@ export const SCREENS = {
         ${m('名前を変える', `<span>名前を変える</span><span class="ms-go">${esc(d.name)} ›</span>`, 'ms-set', 'button', act('rename'))}
         ${m('クレジット（設定から）', '<span>クレジット</span><span class="ms-go">›</span>', 'ms-set', 'button', act('credits'))}
         ${m('データを全部消す', 'データを全部消す', 'btn btn-danger wide ms-wipe', 'button', act('wipeopen'))}
-        ${m('バージョン', 'ver 1.0.0', 'ms-ver')}
+        ${m('バージョン', 'ver 1.1.0', 'ms-ver')}
       </div>
       ${st.wipeOpen ? `<div class="ms-dim ms-ttlsheet">
         <div class="box ms-dialog">
