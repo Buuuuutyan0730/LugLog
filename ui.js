@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261123182543';
-import { choiceView, ownedViews } from './talents.js?v=20261123182543';
-import { iconSvg, snapIcons } from './icons.js?v=20261123182543';
+import { ghostColor } from './theme.js?v=20261123183223';
+import { choiceView, ownedViews } from './talents.js?v=20261123183223';
+import { iconSvg, snapIcons } from './icons.js?v=20261123183223';
 
 const $ = (id) => document.getElementById(id);
 

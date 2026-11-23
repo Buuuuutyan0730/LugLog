@@ -146,7 +146,7 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
 // ---------- プレイの記録（見た目） ----------
 // 読んだ記録をまとめる
 const median = (a) => { if (!a.length) return 0; const b = a.slice().sort((x, y) => x - y), m = b.length >> 1; return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2; };
-function summarize(runs, config) {
+export function summarize(runs, config) {
   const B = config.boss, kinds = B.order;
   const bosses = [];
   const maxN = Math.max(kinds.length, ...runs.flatMap((r) => (r.bosses || []).map((b) => b.n)));

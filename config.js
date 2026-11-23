@@ -145,6 +145,12 @@ export const CONFIG = {
     echo:    { name: '影の分身', hp: 0, speed: 0, damage: 1, unlockPhase: Infinity, weight: 0 },
     clock:   { name: '時計', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
     twin:    { name: '双子', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
+    comet:   { name: '彗星', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
+    mirage:  { name: '蜃気楼', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
+    eclipse: { name: '日蝕', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
+    abyss:   { name: '深淵', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
+    shuhitsu: { name: '終筆', hp: 0, speed: 0, damage: 1.5, unlockPhase: Infinity, weight: 0 },
+    inkghost: { name: '墨の分身', hp: 0, speed: 0, damage: 1, unlockPhase: Infinity, weight: 0 },
   },
   // ボス：10フェーズごと。かけらではなくボスを倒すとクリア。60フェーズより後は、5体が強くなってもう一周
   // 中ボス：出始めるフェーズ／フェーズのどこまで進んだら出るか（必要なかけらの割合）／体力（同じ種類の何倍）／大きさ（何倍）
@@ -164,7 +170,7 @@ export const CONFIG = {
   elite: { from: 12, at: 0.5, hp: 6.4, size: 1.5, shards: 5, burst: [5, 6], skip: ['thief', 'bomber', 'drift', 'swarm'] },
   boss: {
     every: 10,
-    order: ['core', 'hunter', 'twin', 'clock', 'shade'],
+    order: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'],   // 6〜10体目は見た目だけ（ready に入るまで、ふつうのフェーズのまま）
     ready: ['core', 'hunter', 'twin', 'clock', 'shade'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
     hpList: [4300, 5600, 7200],   // 1〜3体目のボスの体力
     hpPow: 1.8,               // 4体目からは 3体目の体力 ×（何体目 − 2）のこの乗。前のボスとの伸びが 3.5倍→2.1倍→1.7倍… と、だんだん小さくなる
@@ -189,6 +195,11 @@ export const CONFIG = {
     clock: { name: '時計', radius: 36, y: 0.25, drift: 0.25, driftSpeed: 0.4, every: 5, windup: 1, sweep: 2, hand: 260, rageHand: 150, handWidth: 5, handDamage: 1.5,
              stopEvery: 15, rageStopEvery: 10, stop: 2, ways: 12, rings: [70, 140, 210], bulletSpeed: 130, rageAt: 0.5,
              moveTime: 1.6, warpChance: 0.35, warpY: 0.4, tickRounds: 2, rageTickRounds: 3, tickGap: 0.09, tickSpeed: 120 },
+    comet: { name: '彗星', radius: 30, y: 0.3 },
+    mirage: { name: '蜃気楼', radius: 32, y: 0.3 },
+    eclipse: { name: '日蝕', radius: 40, y: 0.32 },
+    abyss: { name: '深淵', radius: 38, y: 0.35 },
+    shuhitsu: { name: '終筆', radius: 44, y: 0.3 },
     shade: { name: '影', radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
              moveTime: 1.8, traceTime: 1.6, traceWidth: 7, traceOn: 0.5, traceDamage: 1.0, blinkDist: 110, blinkWays: 10, blinkSpeed: 120 },
     // 影：本体の何秒前の場所を追うか・追う速さの上限／影の分身：間隔・なぞる秒数・動き出すまでの秒数・大きさ・体力（1秒に出る敵の体力の何倍）

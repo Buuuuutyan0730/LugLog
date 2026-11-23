@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123182543';
-import { makeForms } from './forms.js?v=20261123182543';
-import { CONFIG } from './config.js?v=20261123182543';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123183223';
+import { makeForms } from './forms.js?v=20261123183223';
+import { CONFIG } from './config.js?v=20261123183223';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -919,8 +919,32 @@ export function createRenderer(canvas, view) {
       ctx.bezierCurveTo(r * 0.9, -r * 1.0, r * 1.1, r * 0.2, r * 0.9, r * 0.9);
       for (let k = 0; k <= 4; k++) { const x = r * 0.9 - (k * r * 1.8) / 4, y = r * (k % 2 ? 0.7 : 1.05); ctx.lineTo(x, y); }
       ctx.bezierCurveTo(-r * 1.1, r * 0.2, -r * 0.9, -r * 1.0, 0, -r * 1.2);
-    } else if (e.kind === 'echo') {
-      // 影が作る「敵の分身」：小さな丸（中は空洞）
+    } else if (e.kind === 'comet') {
+      // ボス「彗星」：前が丸く、後ろへ細くのびる涙の形（進む向きへ回す）
+      const cx = r * 0.25, R = r * 0.95;
+      ctx.moveTo(-r * 2.1, 0);
+      ctx.quadraticCurveTo(-r * 0.8, -R * 0.95, cx, -R);
+      ctx.arc(cx, 0, R, -Math.PI / 2, Math.PI / 2);
+      ctx.quadraticCurveTo(-r * 0.8, R * 0.95, -r * 2.1, 0);
+    } else if (e.kind === 'mirage') {
+      // ボス「蜃気楼」：下を向いた三角。辺が熱でゆらいだように波打つ
+      const P = [[-r * 1.05, -r * 0.8], [r * 1.05, -r * 0.8], [0, r * 1.2]];
+      for (let k = 0; k < 3; k++) {
+        const [x0, y0] = P[k], [x1, y1] = P[(k + 1) % 3];
+        const nx = -(y1 - y0), ny = x1 - x0, nl = Math.hypot(nx, ny) || 1;
+        for (let i = 0; i < 8; i++) { const u = i / 8, w = Math.sin(u * Math.PI * 4) * r * 0.07 * Math.sin(u * Math.PI); const x = x0 + (x1 - x0) * u + (nx / nl) * w, y = y0 + (y1 - y0) * u + (ny / nl) * w; if (k === 0 && i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+      }
+    } else if (e.kind === 'eclipse' || e.kind === 'abyss') {
+      // ボス「日蝕」「深淵」：まるい黒い体（まわりの光や渦は drawBossDetail）
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+    } else if (e.kind === 'shuhitsu') {
+      // ラスボス「終筆」：筆の穂先（下がとがる）。軸と金具は drawBossDetail
+      ctx.moveTo(0, r * 1.6);
+      ctx.bezierCurveTo(r * 0.25, r * 0.9, r * 0.85, r * 0.3, r * 0.72, -r * 0.3);
+      ctx.lineTo(r * 0.62, -r * 0.6); ctx.lineTo(-r * 0.62, -r * 0.6); ctx.lineTo(-r * 0.72, -r * 0.3);
+      ctx.bezierCurveTo(-r * 0.85, r * 0.3, -r * 0.25, r * 0.9, 0, r * 1.6);
+    } else if (e.kind === 'echo' || e.kind === 'inkghost') {
+      // 影が作る「敵の分身」・終筆の「墨の分身」：小さな丸
       ctx.arc(0, 0, r, 0, Math.PI * 2);
     } else {
       // 三角
@@ -1026,12 +1050,13 @@ export function createRenderer(canvas, view) {
       if (e.vuln) drawBossChance(e, t);
       ctx.save();
       if (e.vanish) ctx.globalAlpha *= 0.12;   // 影が消えている間
+      if (e.fake) ctx.globalAlpha *= 0.5 + 0.15 * Math.sin(t * 6 + e.x);   // 蜃気楼の偽物：うすく、ゆらめく
       ctx.translate(e.x, e.y);
-      ctx.rotate(e.kind === 'tank' || (e.boss && e.kind !== 'hunter' && e.kind !== 'twin') ? 0 : e.ang || 0);
+      ctx.rotate(e.kind === 'tank' || (e.boss && e.kind !== 'hunter' && e.kind !== 'twin' && e.kind !== 'comet') ? 0 : e.ang || 0);
       // 体の色：凍結＝水色、毒＝紫（両方なら凍結を優先）。影と敵の分身は黒い体
-      const dark = e.kind === 'shade' || e.kind === 'echo';
-      const body = st.freeze ? STATUS.iceBody : st.chill ? STATUS.chillBody : st.poison ? STATUS.poisonBody : dark ? '#1a0a14' : THEME.enemy;
-      const edge = st.freeze ? STATUS.iceEdge : st.chill ? STATUS.chillEdge : st.poison ? STATUS.poisonEdge : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
+      const dark = e.kind === 'shade' || e.kind === 'echo' || e.kind === 'eclipse' || e.kind === 'abyss' || e.kind === 'shuhitsu' || e.kind === 'inkghost';
+      const body = st.freeze ? STATUS.iceBody : st.chill ? STATUS.chillBody : st.poison ? STATUS.poisonBody : e.kind === 'shuhitsu' || e.kind === 'inkghost' ? '#0d0a0c' : dark ? '#1a0a14' : THEME.enemy;
+      const edge = st.freeze ? STATUS.iceEdge : st.chill ? STATUS.chillEdge : st.poison ? STATUS.poisonEdge : e.kind === 'shuhitsu' || e.kind === 'inkghost' ? '#ffd84a' : dark ? THEME.enemy : (THEME.enemyLine || THEME.enemyEdge);
       // 中ボス：体の外に、もう1本の太い縁取り
       if (e.elite) { ctx.save(); ctx.scale(1.22, 1.22); enemyShape(e); ctx.strokeStyle = THEME.enemy; ctx.globalAlpha = 0.55; ctx.lineWidth = 3; ctx.stroke(); ctx.restore(); }
       // ふつうの敵：体（光・塗り・縁・まんなかの点）は、前に描いた絵を使い回して貼るだけにする（見た目は同じで、ずっと軽い）
@@ -1465,6 +1490,74 @@ export function createRenderer(canvas, view) {
       noGlow(); ctx.restore();
       ctx.strokeStyle = `rgba(${THEME.enemyRgbB}, ${0.4 + 0.3 * Math.sin(t * 4)})`; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(0, 0, r * 1.45, 0, Math.PI * 2); ctx.setLineDash([3, 6]); ctx.lineDashOffset = t * 20; ctx.stroke(); ctx.setLineDash([]);
+    } else if (e.kind === 'comet') {
+      // 彗星：前に白く燃える芯、体の中を後ろへ流れる光の筋、後ろに散る火の粉
+      ctx.save(); enemyShape(e); ctx.clip();
+      for (let k = 0; k < 5; k++) {
+        const y = (k - 2) * r * 0.28, off = ((t * 3 + k * 0.37) % 1);
+        ctx.strokeStyle = `rgba(255,230,200,${0.55 * (1 - off)})`; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.moveTo(r * 0.2 - off * r * 2.2, y * (1 - off * 0.6)); ctx.lineTo(-r * 0.6 - off * r * 2.2, y * (1 - off * 0.8)); ctx.stroke();
+      }
+      ctx.restore();
+      glow('#fff2c8', 18); ctx.fillStyle = '#fff6e0'; ctx.beginPath(); ctx.arc(r * 0.35, 0, r * 0.42, 0, Math.PI * 2); ctx.fill(); noGlow();
+      for (let k = 0; k < 8; k++) { const u = ((t * 1.6 + k / 8) % 1), a = hash(k) * 2 - 1; ctx.fillStyle = `rgba(255,${150 + 80 * (1 - u)},120,${0.8 * (1 - u)})`; ctx.beginPath(); ctx.arc(-r * 2.1 - u * r * 1.6, a * r * 0.5 * u, 2.2 * (1 - u) + 0.6, 0, Math.PI * 2); ctx.fill(); }
+    } else if (e.kind === 'mirage') {
+      // 蜃気楼：体の中を横にゆらめく光の筋と、まんなかの目（ひし形）
+      ctx.save(); enemyShape(e); ctx.clip();
+      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.3;
+      for (let k = 0; k < 5; k++) { const y0 = -r * 0.7 + k * r * 0.38; ctx.beginPath(); for (let i = 0; i <= 12; i++) { const x = -r * 1.1 + (i * r * 2.2) / 12, y = y0 + Math.sin(i * 0.9 + t * 5 + k) * r * 0.06; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+      ctx.restore();
+      glow('#ffffff', 10); ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.moveTo(0, -r * 0.42); ctx.lineTo(r * 0.2, -r * 0.12); ctx.lineTo(0, r * 0.18); ctx.lineTo(-r * 0.2, -r * 0.12); ctx.closePath(); ctx.fill(); noGlow();
+    } else if (e.kind === 'eclipse') {
+      // 日蝕：まわりで燃える光の輪（コロナ）と、ふちを回る強い光の点（ダイヤモンドリング）
+      ctx.save(); ctx.rotate(t * 0.25);
+      glow(THEME.enemy, 18);
+      for (let k = 0; k < 28; k++) {
+        const a = (k * Math.PI * 2) / 28, L = r * (1.28 + 0.22 * Math.sin(t * 3 + k * 1.7) + (k % 2 ? 0.12 : 0));
+        ctx.strokeStyle = k % 3 === 0 ? 'rgba(255,190,120,0.85)' : `rgba(${THEME.enemyRgbL}, 0.75)`; ctx.lineWidth = k % 2 ? 1.5 : 2.5;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 1.06, Math.sin(a) * r * 1.06); ctx.lineTo(Math.cos(a) * L, Math.sin(a) * L); ctx.stroke();
+      }
+      noGlow(); ctx.restore();
+      ctx.strokeStyle = 'rgba(255,235,220,0.9)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, 0, r * 1.0, 0, Math.PI * 2); ctx.stroke();
+      const da = t * 0.9; glow('#ffffff', 22); ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(Math.cos(da) * r, Math.sin(da) * r, 3.4, 0, Math.PI * 2); ctx.fill(); noGlow();
+    } else if (e.kind === 'abyss') {
+      // 深淵：斜めに傾いた光の円盤と、中へ吸い込まれていく渦の腕
+      ctx.save(); ctx.rotate(-0.35);
+      glow(THEME.enemy, 14); ctx.strokeStyle = `rgba(${THEME.enemyRgbL}, 0.8)`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.75, r * 0.42, 0, 0, Math.PI * 2); ctx.stroke(); noGlow();
+      ctx.strokeStyle = 'rgba(255,200,210,0.5)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.ellipse(0, 0, r * 1.45, r * 0.32, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      ctx.save(); ctx.rotate(-t * 1.4);
+      ctx.strokeStyle = THEME.enemy; ctx.lineWidth = 1.8; glow(THEME.enemy, 8);
+      for (let k = 0; k < 4; k++) { ctx.beginPath(); for (let i = 0; i <= 18; i++) { const u = i / 18, a = (k * Math.PI) / 2 + u * 3.4, rr = r * 0.95 * (1 - u * 0.9); i ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.stroke(); }
+      noGlow(); ctx.restore();
+      ctx.fillStyle = '#000000'; ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.fill();
+      for (let k = 0; k < 10; k++) { const u = ((t * 0.7 + k / 10) % 1), a = k * 2.4 + u * 4, rr = r * 1.9 * (1 - u); ctx.fillStyle = `rgba(255,170,190,${0.8 * u})`; ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 1.6, 0, Math.PI * 2); ctx.fill(); }
+    } else if (e.kind === 'shuhitsu') {
+      // 終筆：朱塗りの軸と金の輪、金の金具。穂先は墨で、金の光がふちを走り、先から墨がしたたる
+      const hw = r * 0.2;
+      ctx.fillStyle = '#5a0f14'; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.rect(-hw, -r * 2.5, hw * 2, r * 1.65); ctx.fill(); ctx.stroke();
+      for (const y of [-2.2, -1.2]) { ctx.fillStyle = '#ffd84a'; ctx.fillRect(-hw, r * y, hw * 2, r * 0.08); }
+      ctx.fillStyle = '#c9a227'; ctx.strokeStyle = '#ffe98a';
+      ctx.beginPath(); ctx.rect(-r * 0.62, -r * 0.88, r * 1.24, r * 0.3); ctx.fill(); ctx.stroke();
+      ctx.save(); enemyShape(e); ctx.clip();
+      const g = ((t * 0.6) % 1);
+      const grd = ctx.createLinearGradient(0, -r * 0.6, 0, r * 1.6); grd.addColorStop(0, 'rgba(60,50,60,0.6)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grd; ctx.fillRect(-r, -r * 0.6, r * 2, r * 2.2);
+      // 毛の筋：穂先へ向かって細くまとまる
+      ctx.strokeStyle = 'rgba(150,130,150,0.35)'; ctx.lineWidth = 1;
+      for (let k = -4; k <= 4; k++) { ctx.beginPath(); ctx.moveTo(k * r * 0.14, -r * 0.55); ctx.quadraticCurveTo(k * r * 0.16, r * 0.4, k * r * 0.02, r * 1.45); ctx.stroke(); }
+      ctx.strokeStyle = `rgba(255,216,74,${0.8 * (1 - g)})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-r * 0.7, -r * 0.3 + g * r * 1.8); ctx.lineTo(r * 0.7, -r * 0.3 + g * r * 1.8); ctx.stroke();
+      ctx.restore();
+      glow('#ffd84a', 16); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; enemyShape(e); ctx.stroke(); noGlow();
+      const d = (t * 0.9) % 1; ctx.fillStyle = `rgba(10,8,10,${1 - d * 0.6})`; ctx.strokeStyle = `rgba(255,216,74,${0.6 * (1 - d)})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(0, r * 1.6 + d * r * 1.4, r * 0.12 * (1 - d * 0.4), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else if (e.kind === 'inkghost') {
+      // 終筆が描いた「墨の分身」：金のふちの黒い丸に、金の芯
+      ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.fill();
     } else if (e.kind === 'echo') {
       // 敵の分身：中に赤い芯
       ctx.fillStyle = THEME.enemy; ctx.beginPath(); ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2); ctx.fill();
@@ -1512,6 +1605,49 @@ export function createRenderer(canvas, view) {
       noGlow();
     }
     ctx.restore();
+  }
+  // 新しいボスが画面に残す線：彗星の燃える尾（fire）、終筆の墨の線（ink）
+  function drawBossTrails(state, t) {
+    const L = state.bossTrails;
+    if (!L || !L.length) return;
+    ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const tr of L) {
+      if (!tr.pts || tr.pts.length < 2) continue;
+      const path = () => { ctx.beginPath(); tr.pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); };
+      if (tr.kind === 'fire') {
+        glow('#ff7a3c', 18);
+        ctx.strokeStyle = `rgba(255,90,60,${0.55 + 0.15 * Math.sin(t * 12)})`; ctx.lineWidth = tr.w * 2.2; path(); ctx.stroke();
+        noGlow();
+        ctx.strokeStyle = 'rgba(255,200,120,0.9)'; ctx.lineWidth = tr.w; path(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,230,0.9)'; ctx.lineWidth = Math.max(1, tr.w * 0.3); path(); ctx.stroke();
+      } else {
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = tr.w * 1.6; path(); ctx.stroke();
+        ctx.strokeStyle = '#0d0a0c'; ctx.lineWidth = tr.w; path(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,216,74,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([2, 7]); ctx.lineDashOffset = -t * 20; path(); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    ctx.restore();
+  }
+  // 日蝕の暗転：画面を暗くし、本体とボスのまわりだけ見えるようにする（別の絵に穴をあけてから重ねる）
+  let darkCv = null;
+  function drawDarkness(state) {
+    const D = state.darkness;
+    if (!D || !(D.k > 0)) return;
+    const cw = canvas.width, ch = canvas.height;
+    if (!darkCv) darkCv = document.createElement('canvas');
+    if (darkCv.width !== cw || darkCv.height !== ch) { darkCv.width = cw; darkCv.height = ch; }
+    const c2 = darkCv.getContext('2d');
+    c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, cw, ch);
+    c2.fillStyle = `rgba(2,2,8,${0.94 * D.k})`; c2.fillRect(0, 0, cw, ch);
+    c2.setTransform(ctx.getTransform());
+    c2.globalCompositeOperation = 'destination-out';
+    for (const h of D.holes || []) {
+      const g = c2.createRadialGradient(h.x, h.y, h.r * 0.55, h.x, h.y, h.r);
+      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      c2.fillStyle = g; c2.beginPath(); c2.arc(h.x, h.y, h.r, 0, Math.PI * 2); c2.fill();
+    }
+    c2.globalCompositeOperation = 'source-over';
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(darkCv, 0, 0); ctx.restore();
   }
   // ボスの技の予告：赤く光る形。だんだん中が満ちていき、満ちたら技が来る。hot は当たっている最中（明るく）
   function drawWarns(state, t) {
@@ -2599,6 +2735,7 @@ export function createRenderer(canvas, view) {
     drawPickups(state, t);
     drawShots(state);
     drawBossLinks(state, t);
+    drawBossTrails(state, t);
     drawWarns(state, t);
     drawEnemies(state, t);
     drawGhosts(state, t);
@@ -2614,6 +2751,7 @@ export function createRenderer(canvas, view) {
     drawBossDownWorld(state);
     drawTimeStop(state, t);
     drawPlayer(state, t);
+    drawDarkness(state);
     drawVolleyGauge(state, t);
     drawBars(state, t);
     for (const c of state.trapCells || []) { ctx.save(); ctx.translate(c.x, c.y); F.drawTrapCell(c.look, t, c.w); ctx.restore(); }   // 罠の形の見本

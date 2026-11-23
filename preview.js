@@ -2,14 +2,14 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123182543';
-import { CONFIG } from './config.js?v=20261123182543';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123182543';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123182543';
-import { GACHA_POOL } from './skins.js?v=20261123182543';
-import { createGame } from './game.js?v=20261123182543';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123182543';
-import { createGachaFx } from './gachafx.js?v=20261123182543';
+import { BOOSTS, CURSES } from './talents.js?v=20261123183223';
+import { CONFIG } from './config.js?v=20261123183223';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123183223';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123183223';
+import { GACHA_POOL } from './skins.js?v=20261123183223';
+import { createGame } from './game.js?v=20261123183223';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123183223';
+import { createGachaFx } from './gachafx.js?v=20261123183223';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -112,6 +112,39 @@ function buildBossShade() {
   const e1 = enemy('echo', loop[10].x, loop[10].y, 60, 60, {}, { r: 11, path: loop });
   const e2 = enemy('echo', line[14].x, line[14].y, 60, 60, {}, { r: 11, path: line });
   return { world: { w: W, h: H }, enemies: [s, e1, e2], ghosts: [], labels: [{ x: 180, y: 240, text: '影（フェーズ50）' }, { x: 180, y: 440, text: '赤い点線：真似された分身の道筋' }], boss: bossBar('影') };
+}
+// ---- 新しいボス（6〜10体目）：今は見た目だけ ----
+const lbl = (y, text) => ({ x: 180, y, text });
+function buildBossComet() {
+  const c = enemy('comet', 230, 170, 1, 1, {}, { boss: true, r: 30, ang: Math.PI * 0.85 });
+  const tail = []; for (let k = 0; k <= 60; k++) { const a = -0.25 + (k / 60) * 4.2; tail.push({ x: 180 + Math.cos(a) * 150, y: 280 + Math.sin(a) * 210 }); }
+  const tail2 = []; for (let k = 0; k <= 30; k++) tail2.push({ x: 30 + k * 10, y: 400 + Math.sin(k * 0.25) * 30 });
+  return { world: { w: W, h: H }, enemies: [c], ghosts: [], bossTrails: [{ kind: 'fire', w: 6, pts: tail }, { kind: 'fire', w: 6, pts: tail2 }], labels: [lbl(232, '彗星（フェーズ60）'), lbl(470, '燃える尾が残り、画面が切り分けられていく')], boss: bossBar('彗星') };
+}
+function buildBossMirage() {
+  const a = enemy('mirage', 90, 200, 1, 1, {}, { boss: true, r: 32, fake: true });
+  const b = enemy('mirage', 180, 160, 1, 1, {}, { boss: true, r: 32 });
+  const c = enemy('mirage', 270, 200, 1, 1, {}, { boss: true, r: 32, fake: true });
+  return { world: { w: W, h: H }, enemies: [a, b, c], ghosts: [], labels: [lbl(262, '蜃気楼（フェーズ70）'), lbl(300, '本物は1体だけ。偽物には弾がすり抜ける')], boss: bossBar('蜃気楼') };
+}
+function buildBossEclipse() {
+  const e = enemy('eclipse', 180, 170, 1, 1, {}, { boss: true, r: 40 });
+  const others = [enemy('chaser', 80, 330, 20, 20, {}), enemy('chaser', 290, 300, 20, 20, {}), enemy('shooter', 120, 470, 30, 30, {})];
+  const player = { x: 180, y: 400, r: 10, tx: 180, ty: 400, drawMode: false, look: {}, dir: -Math.PI / 2 };
+  return { world: { w: W, h: H }, showPlayer: true, player, hp: 100, maxHp: 100, enemies: [e, ...others], ghosts: [], darkness: { k: 1, holes: [{ x: 180, y: 400, r: 85 }, { x: 180, y: 170, r: 110 }] }, labels: [lbl(252, '日蝕（フェーズ80）'), lbl(500, '暗転：自分とボスのまわりしか見えない')], boss: bossBar('日蝕') };
+}
+function buildBossAbyss() {
+  const e = enemy('abyss', 180, 200, 1, 1, {}, { boss: true, r: 38 });
+  const enemyShots = []; for (let k = 0; k < 26; k++) { const u = k / 26, a = u * 9, rr = 40 + u * 190; enemyShots.push({ x: 180 + Math.cos(a) * rr, y: 200 + Math.sin(a) * rr * 0.9, vx: 0, vy: 0, r: 4, life: 1 }); }
+  return { world: { w: W, h: H }, enemies: [e], enemyShots, ghosts: [], labels: [lbl(282, '深淵（フェーズ90）'), lbl(470, '弾もかけらも自分も、渦に吸い込まれる')], boss: bossBar('深淵') };
+}
+function buildBossShuhitsu() {
+  const e = enemy('shuhitsu', 180, 150, 1, 1, {}, { boss: true, r: 44 });
+  const s1 = []; for (let k = 0; k <= 30; k++) s1.push({ x: 40 + k * 9, y: 330 + Math.sin(k * 0.3) * 26 });
+  const s2 = []; for (let k = 0; k <= 24; k++) { const a = k / 24 * Math.PI * 1.6; s2.push({ x: 250 + Math.cos(a) * 55, y: 430 + Math.sin(a) * 40 }); }
+  const g1 = enemy('inkghost', s1[12].x, s1[12].y, 60, 60, {}, { r: 12 });
+  const g2 = enemy('inkghost', s2[9].x, s2[9].y, 60, 60, {}, { r: 12 });
+  return { world: { w: W, h: H }, enemies: [e, g1, g2], ghosts: [], bossTrails: [{ kind: 'ink', w: 7, pts: s1 }, { kind: 'ink', w: 7, pts: s2 }], labels: [lbl(272, '終筆（フェーズ100・ラスボス）'), lbl(500, '墨の線が、黒い分身になって撃ってくる')], boss: bossBar('終筆') };
 }
 // 中ボス：通常の敵を大きく硬くしたもの（太い縁取りがもう1本）。倒すと小さいのがはじけ出る
 function buildElites() {
@@ -764,7 +797,7 @@ const CATS = [
   { id: 'sound', label: '音', tabs: SOUND_TABS },
   { id: 'ui', label: '画面', tabs: [['owned', '取得一覧'], ['icons', 'アイコン']] },
   { id: 'enemy', label: '敵', tabs: [['enemies', '種類'], ['battle', '状態']] },
-  { id: 'boss', label: 'ボス', tabs: [['bcore', 'コア'], ['bhunter', 'ハンター'], ['btwin', '双子'], ['bclock', '時計'], ['bclockstop', '時間停止'], ['bshade', '影'], ['belite', '中ボス']] },
+  { id: 'boss', label: 'ボス', tabs: [['bcore', 'コア'], ['bhunter', 'ハンター'], ['btwin', '双子'], ['bclock', '時計'], ['bclockstop', '時間停止'], ['bshade', '影'], ['bcomet', '彗星'], ['bmirage', '蜃気楼'], ['beclipse', '日蝕'], ['babyss', '深淵'], ['bshuhitsu', '終筆'], ['belite', '中ボス']] },
   { id: 'body', label: '本体', tabs: [['bodyforms', '本体の形'], ['orbitforms', '衛星'], ['harvestforms', '収穫']] },
   { id: 'ghost', label: '分身', tabs: [['ghostforms', '分身の形'], ['phenomforms', '現象'], ['trapforms', '罠']] },
   { id: 'attack', label: '攻撃エフェクト', tabs: [['ghostroad', '巨像'], ['swarmroad', '群体'], ['turretroad', '砲台'], ['guardroad', '守護'], ['bodyroad', '拳闘士']] },
@@ -783,7 +816,7 @@ export function createPreview(hud) {
   const tabsEl = document.getElementById('preview-tabs');
   const scene = buildStates();
   const bossFxScene = buildBossCore();
-  const SCENES = { fx_bossin: bossFxScene, fx_bossdown: bossFxScene, enemies: buildEnemyTypes(), boss: buildBoss(), effects: buildEffects(), bcore: buildBossCore(), bhunter: buildBossHunter(), btwin: buildBossTwins(), bclock: buildBossClock(), bclockstop: buildBossClockStop(), bshade: buildBossShade(), belite: buildElites() };
+  const SCENES = { fx_bossin: bossFxScene, fx_bossdown: bossFxScene, enemies: buildEnemyTypes(), boss: buildBoss(), effects: buildEffects(), bcore: buildBossCore(), bhunter: buildBossHunter(), btwin: buildBossTwins(), bclock: buildBossClock(), bclockstop: buildBossClockStop(), bshade: buildBossShade(), bcomet: buildBossComet(), bmirage: buildBossMirage(), beclipse: buildBossEclipse(), babyss: buildBossAbyss(), bshuhitsu: buildBossShuhitsu(), belite: buildElites() };
   const ghostScene = buildGhostRoad();
   const swarmScene = buildSwarmRoad();
   const turretScene = buildTurretRoad();
