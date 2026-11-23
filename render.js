@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123183223';
-import { makeForms } from './forms.js?v=20261123183223';
-import { CONFIG } from './config.js?v=20261123183223';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123183620';
+import { makeForms } from './forms.js?v=20261123183620';
+import { CONFIG } from './config.js?v=20261123183620';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1613,6 +1613,7 @@ export function createRenderer(canvas, view) {
     ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const tr of L) {
       if (!tr.pts || tr.pts.length < 2) continue;
+      ctx.globalAlpha = tr.life != null ? Math.min(1, tr.life / 0.6) : 1;   // 消える前に、うすくなっていく
       const path = () => { ctx.beginPath(); tr.pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); };
       if (tr.kind === 'fire') {
         glow('#ff7a3c', 18);

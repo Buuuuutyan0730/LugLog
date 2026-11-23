@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123183223';
-import { spawnPop, stepParticle } from './pops.js?v=20261123183223';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123183223';
+import { CONFIG } from './config.js?v=20261123183620';
+import { spawnPop, stepParticle } from './pops.js?v=20261123183620';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123183620';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -142,6 +142,7 @@ export function createGame() {
       enemies: [],
       enemyShots: [],
       warns: [],             // ボスの技の予告（赤く光る形）
+      bossTrails: [],        // ボスが画面に残す線（彗星の燃える尾など）。{ kind, w, pts, life, max, damage }
       shots: [],
       pickups: [],           // かけら
       particles: [],
@@ -2662,6 +2663,7 @@ export function createGame() {
     if (e.kind === 'twin') { thinkTwin(e); return; }
     if (e.kind === 'clock') { thinkClock(e); return; }
     if (e.kind === 'shade') { thinkShade(e); return; }
+    if (e.kind === 'comet') { thinkComet(e); return; }
     if (e.kind === 'echo') { thinkEcho(e); return; }
     const t = ET[e.kind];
     const p = targetOf(e);   // ふだんは本体。おとりに引きつけられていれば分身
@@ -3186,7 +3188,7 @@ export function createGame() {
     s.enemyShots = [];
     s.shots = [];
     // 地面に残るもの（マキビシ・地雷・光の罠・炎・火の粉・毒霧・引力・疾走の跡など）も、フェーズごとに消す
-    s.traps = []; s.fires = []; s.embers = []; s.firePillars = []; s.fogs = []; s.wells = [];
+    s.traps = []; s.fires = []; s.embers = []; s.firePillars = []; s.fogs = []; s.wells = []; s.bossTrails = [];
     s.cuts = []; s.slashes = []; s.blinks = []; s.stars = []; s.goldDrops = [];
     // 残っていたかけら：全部が本体に吸い寄せられて消える（数には入らない。見た目だけ）
     s.pickups = s.pickups.map((k, i) => ({ ...k, gather: true, gt: 0, gd: Math.min(0.15, i * 0.006), sx: k.x, sy: k.y }));
@@ -3681,6 +3683,98 @@ export function createGame() {
       start: (e) => { const S = BOSS.shade; e.x = e.bx; e.y = e.by; e.vanish = false; ring(e.x, e.y, e.r, e.r * 3, 0.4, 'enemy', 0, 5); bossRing(e, S.blinkWays, S.blinkSpeed); s.shake = Math.max(s.shake, 4); },
       tick: (e) => e.tt >= 0.3 },
   };
+  // ---------- 彗星 ----------
+  // ボスが残す線：時間で消える。燃える線に触れるとダメージ
+  function updateBossTrails() {
+    if (!s.bossTrails.length) return;
+    const p = s.player;
+    for (const tr of s.bossTrails) tr.life -= DT;
+    s.bossTrails = s.bossTrails.filter((tr) => tr.life > 0);
+    if (s.over || p.inv > 0) return;
+    for (const tr of s.bossTrails) {
+      if (!tr.damage || tr.life < 0.3) continue;
+      const P2 = tr.pts, R = playerHitR() + tr.w * 0.5;
+      for (let i = 1; i < P2.length; i++) if (segDist(P2[i - 1].x, P2[i - 1].y, P2[i].x, P2[i].y, p.x, p.y) < R) { hurtPlayer(T.contactDamage.value * tr.damage, null); return; }
+    }
+  }
+  const cometCenter = () => ({ x: s.world.w / 2, y: s.world.h / 2 });
+  // 尾に点を足す（前の点から少し離れたときだけ）
+  function cometTailPush(tr, x, y) {
+    const L = tr.pts[tr.pts.length - 1];
+    if (!L || Math.hypot(L.x - x, L.y - y) > 6 * s.zoom) tr.pts.push({ x, y });
+  }
+  const COMET_TECH = {
+    // 周回：画面を大きく1周し、燃える尾を残す（怒ると内側にもう1本）
+    orbit: { warn: 0.9,
+      aim: (e) => {
+        const C = BOSS.comet, c = cometCenter(), rx = s.world.w * C.orbitRx, ry = s.world.h * C.orbitRy;
+        e.oa0 = Math.atan2((e.y - c.y) / ry, (e.x - c.x) / rx); e.odir = Math.random() < 0.5 ? 1 : -1;
+        const pts = []; for (let k = 0; k <= 48; k++) { const a = e.oa0 + e.odir * (k / 48) * Math.PI * 2; pts.push({ x: c.x + Math.cos(a) * rx, y: c.y + Math.sin(a) * ry }); }
+        warnShape({ k: 'path', pts, w: C.tailWidth * s.zoom }, e.ft);
+      },
+      warnTick: (e) => {
+        // 予告の間に、回り始める場所へ寄っていく
+        const C = BOSS.comet, c = cometCenter(), tx = c.x + Math.cos(e.oa0) * s.world.w * C.orbitRx, ty = c.y + Math.sin(e.oa0) * s.world.h * C.orbitRy;
+        e.x += (tx - e.x) * 0.15; e.y += (ty - e.y) * 0.15; e.vx = 0; e.vy = 0;
+      },
+      start: (e) => {
+        const C = BOSS.comet, life = e.rage ? C.rageTailLife : C.tailLife;
+        const mk = () => { const tr = { kind: 'fire', w: C.tailWidth * s.zoom, pts: [], life, max: life, damage: C.tailDamage }; s.bossTrails.push(tr); return tr; };
+        e.tail = mk(); e.tail2 = e.rage ? mk() : null;
+        sfx('sk_dash');
+      },
+      tick: (e) => {
+        const C = BOSS.comet, c = cometCenter(), rx = s.world.w * C.orbitRx, ry = s.world.h * C.orbitRy;
+        const k = Math.min(1, e.tt / C.orbitTime), a = e.oa0 + e.odir * k * Math.PI * 2;
+        const nx = c.x + Math.cos(a) * rx, ny = c.y + Math.sin(a) * ry;
+        e.ang = Math.atan2(ny - e.y, nx - e.x);
+        e.x = nx; e.y = ny; e.vx = 0; e.vy = 0;
+        // 尾は、通ってからしばらく燃え続ける（全体が同じ時間で消えるように、毎回のばす）
+        if (e.tail) { cometTailPush(e.tail, nx, ny); e.tail.life = e.tail.max; }
+        if (e.tail2) { cometTailPush(e.tail2, c.x + (nx - c.x) * C.innerScale, c.y + (ny - c.y) * C.innerScale); e.tail2.life = e.tail2.max; }
+        if (Math.random() < 0.5) sparks(e.x, e.y, 'enemy', 1, 120);
+        return k >= 1;
+      },
+      end: (e) => { e.tail = null; e.tail2 = null; } },
+    // 流星雨：本体のまわりに予告の円。少しして星が落ちる
+    rain: { warn: 0.9,
+      aim: (e) => {
+        const C = BOSS.comet, p = s.player, n = e.rage ? C.rageRainCount : C.rainCount, R = C.rainR * s.zoom;
+        e.rain = [];
+        for (let k = 0; k < n; k++) {
+          const a = rand(0, Math.PI * 2), d = k === 0 ? 0 : rand(30, C.rainSpread) * s.zoom;
+          const x = clamp(p.x + Math.cos(a) * d, R, s.world.w - R), y = clamp(p.y + Math.sin(a) * d, R, s.world.h - R);
+          e.rain.push({ x, y }); warnShape({ k: 'circle', x, y, r: R, fill: true }, e.ft + k * 0.06);
+        }
+      },
+      start: (e) => { e.rainN = 0; },
+      tick: (e) => {
+        const C = BOSS.comet, p = s.player, R = C.rainR * s.zoom;
+        while (e.rainN < e.rain.length && e.tt >= e.rainN * 0.06) {
+          const m = e.rain[e.rainN++];
+          if (!s.over && !(p.inv > 0) && Math.hypot(p.x - m.x, p.y - m.y) < R + playerHitR()) hurtPlayer(T.contactDamage.value * C.rainDamage, null);
+          ring(m.x, m.y, 4, R, 0.3, 'enemy', 0, 4); flash(m.x, m.y, R, 0.12, 'white'); sparks(m.x, m.y, 'enemy', 6, 200);
+          s.shake = Math.max(s.shake, 3);
+        }
+        return e.rainN >= e.rain.length && e.tt >= e.rain.length * 0.06 + 0.2;
+      } },
+    // 近日点：真ん中へ飛びこみ、全方向へはじける（2回）
+    peri: { warn: 1.0,
+      aim: (e) => { const c = cometCenter(); warnShape({ k: 'circle', x: c.x, y: c.y, r: e.r * 2.4 }, e.ft); },
+      warnTick: (e) => { const c = cometCenter(); e.ang = Math.atan2(c.y - e.y, c.x - e.x); e.x += (c.x - e.x) * 0.1; e.y += (c.y - e.y) * 0.1; e.vx = 0; e.vy = 0; },
+      start: (e) => { e.shotN = 0; },
+      tick: (e) => {
+        const C = BOSS.comet, n = e.rage ? C.ragePeriWays : C.periWays;
+        while (e.shotN < 2 && e.tt >= e.shotN * 0.35) { bossRing(e, n, C.periSpeed, e.shotN * Math.PI / n); ring(e.x, e.y, e.r, e.r * 3, 0.3, 'enemy', 0, 5); flash(e.x, e.y, e.r * 3, 0.15, 'white'); s.shake = Math.max(s.shake, 6); sfx('sk_misfire'); e.shotN++; }
+        return e.tt >= 0.6;
+      } },
+  };
+  function thinkComet(e) {
+    const C = BOSS.comet;
+    e.rage = e.hp / e.maxHp < C.rageAt;
+    bossFlow(e, COMET_TECH, e.rage ? ['orbit', 'rain', 'peri', 'orbit'] : ['orbit', 'rain', 'peri'], (b) => { bossWander(b, C.moveSpeed); if (b.vx || b.vy) b.ang = Math.atan2(b.vy, b.vx); }, C.moveTime);
+  }
+
   function thinkShade(e) {
     const S = BOSS.shade, p = s.player;
     e.rage = e.hp / e.maxHp < S.rageAt;
@@ -3889,6 +3983,7 @@ export function createGame() {
       by('body', updateBody);
     }
     updateBoss();
+    updateBossTrails();
     updateEnemies();
     updatePickups();
     if (s.tuto) tutoCheck();

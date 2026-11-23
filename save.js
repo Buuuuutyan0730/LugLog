@@ -76,7 +76,7 @@ export function recordRun(d, s, roadOf, { score = true } = {}) {
     if (v.evo) z.evo++;
     z.best = Math.max(z.best, s.phase);
   }
-  const BOSSES = ['core', 'hunter', 'twin', 'clock', 'shade'];
+  const BOSSES = ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'];
   const box = (k) => { const b = BOSSES.includes(k) ? d.zukan.bosses : d.zukan.enemies; return b[k] || (b[k] = { seen: 0, kills: 0 }); };
   for (const k of s.seenKinds || []) box(k).seen++;
   for (const k of s.bossKills || []) box(k).kills++;
@@ -92,7 +92,7 @@ export function recordRun(d, s, roadOf, { score = true } = {}) {
 export function recordSeen(d, s) {
   let changed = false;
   for (const k of s.seenKinds || []) {
-    const box = ['core', 'hunter', 'twin', 'clock', 'shade'].includes(k) ? d.zukan.bosses : d.zukan.enemies;
+    const box = ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'].includes(k) ? d.zukan.bosses : d.zukan.enemies;
     if (!box[k]) { box[k] = { seen: 0, kills: 0 }; changed = true; }
   }
   return changed;

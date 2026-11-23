@@ -171,7 +171,7 @@ export const CONFIG = {
   boss: {
     every: 10,
     order: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet', 'mirage', 'eclipse', 'abyss', 'shuhitsu'],   // 6〜10体目は見た目だけ（ready に入るまで、ふつうのフェーズのまま）
-    ready: ['core', 'hunter', 'twin', 'clock', 'shade'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
+    ready: ['core', 'hunter', 'twin', 'clock', 'shade', 'comet'],          // 仕組みができているボス（ほかはまだ通常のフェーズのまま）
     hpList: [4300, 5600, 7200],   // 1〜3体目のボスの体力
     hpPow: 1.8,               // 4体目からは 3体目の体力 ×（何体目 − 2）のこの乗。前のボスとの伸びが 3.5倍→2.1倍→1.7倍… と、だんだん小さくなる
     eliteCap: 0.3,            // 中ボスの体力の上限＝次に出てくるボスの体力のこの割合
@@ -195,7 +195,11 @@ export const CONFIG = {
     clock: { name: '時計', radius: 36, y: 0.25, drift: 0.25, driftSpeed: 0.4, every: 5, windup: 1, sweep: 2, hand: 260, rageHand: 150, handWidth: 5, handDamage: 1.5,
              stopEvery: 15, rageStopEvery: 10, stop: 2, ways: 12, rings: [70, 140, 210], bulletSpeed: 130, rageAt: 0.5,
              moveTime: 1.6, warpChance: 0.35, warpY: 0.4, tickRounds: 2, rageTickRounds: 3, tickGap: 0.09, tickSpeed: 120 },
-    comet: { name: '彗星', radius: 30, y: 0.3 },
+    // 彗星：画面を大きく回り、燃える尾を残す（尾は数秒残り、触れるとダメージ）／流星雨／近日点（真ん中ではじける）
+    comet: { name: '彗星', radius: 30, y: 0.3, moveSpeed: 90, moveTime: 1.5, rageAt: 0.5,
+             orbitTime: 2.4, orbitRx: 0.4, orbitRy: 0.4, tailLife: 5, rageTailLife: 7, tailWidth: 6, tailDamage: 1.0, innerScale: 0.55,
+             rainCount: 5, rageRainCount: 8, rainR: 34, rainSpread: 140, rainDamage: 1.2,
+             periWays: 20, ragePeriWays: 28, periSpeed: 150 },
     mirage: { name: '蜃気楼', radius: 32, y: 0.3 },
     eclipse: { name: '日蝕', radius: 40, y: 0.32 },
     abyss: { name: '深淵', radius: 38, y: 0.35 },
