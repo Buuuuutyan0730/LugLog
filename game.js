@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124035722';
-import { spawnPop, stepParticle } from './pops.js?v=20261124035722';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124035722';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124035722';
+import { CONFIG } from './config.js?v=20261124040224';
+import { spawnPop, stepParticle } from './pops.js?v=20261124040224';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124040224';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124040224';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2568,6 +2568,31 @@ export function createGame() {
     return s.enemies[s.enemies.length - 1];
   }
   // 中ボス：フェーズ12から、ボスのいないフェーズの半分ほどで1体
+  // ボス戦の援軍：ボスが出てから first 秒後、そのあと every 秒ごと。3回に1回は中ボス、ほかは大きめの敵を2〜3体
+  function updateReinf() {
+    const R = BOSS.reinf;
+    if (!s.boss) { s.reinfT = R.first; s.reinfN = 0; return; }
+    if (s.reinfT == null) { s.reinfT = R.first; s.reinfN = 0; }
+    s.reinfT -= DT;
+    if (s.reinfT > 0) return;
+    s.reinfT = R.every;
+    if (s.enemies.filter((e) => !e.boss && e.hp > 0).length >= R.maxAlive) return;   // まだ残っているときは来ない
+    s.reinfN++;
+    const pick = () => { for (let i = 0; i < 20; i++) { const c = pickNextEnemy(); if (!TIERS.noBig.includes(c.kind) && !CONFIG.elite.skip.includes(c.kind)) return c; } return null; };
+    if (s.reinfN % R.eliteEvery === 0) {
+      const next = pick(); if (!next) return;
+      const e = spawnEnemy(next, true);
+      e.reinf = true;
+      e.burstOf = { kind: next.kind, tier: next.tier, hp: next.hp / (ET[next.kind].group || 1), scale: next.scale };
+      return;
+    }
+    const tier = s.phase >= R.bigX4From ? 4 : 2;
+    const n = Math.round(rand(R.bigCount[0], R.bigCount[1]));
+    for (let k = 0; k < n; k++) {
+      const c = pick(); if (!c) break;
+      spawnEnemy({ ...c, tier, hp: ET[c.kind].hp * tier * (ET[c.kind].group || 1) * c.scale });
+    }
+  }
   function maybeSpawnElite() {
     const EL = CONFIG.elite;
     if (s.eliteDone || s.bossPhase || s.phase < EL.from || s.shards < s.need * EL.at) return;
@@ -2582,7 +2607,7 @@ export function createGame() {
   // 中ボスが倒れたとき：同じ種類の小さい敵がはじけ出る
   function eliteBurst(e) {
     sfx('elite');
-    s.eliteLog.killed++;
+    if (!e.reinf) s.eliteLog.killed++;   // ボス戦の援軍の中ボスは、記録に数えない
     if (e.eliteT0 != null && s.eliteLog.secs.length < 200) s.eliteLog.secs.push(Math.round(s.time - e.eliteT0));
     const EL = CONFIG.elite, B0 = e.burstOf;
     const n = Math.round(rand(EL.burst[0], EL.burst[1]));
@@ -2861,14 +2886,17 @@ export function createGame() {
     if (frozen || s.tuto) { /* 時間停止中は敵が出てこない／チュートリアルでは決まった数だけ出す */ }
     else if (s.spawnDelay > 0) s.spawnDelay -= DT;
     else {
-      maybeSpawnElite();
-      const rate = PH.hpRateBase * growthOf(s.phase) * T.enemyRate.value * (s.bossPhase ? BOSS.normalRate : 1);
-      s.spawnPool += rate * DT;
-      if (!s.nextEnemy) s.nextEnemy = pickNextEnemy();
-      while (s.nextEnemy && s.spawnPool >= s.nextEnemy.hp) {
-        s.spawnPool -= s.nextEnemy.hp;
-        spawnEnemy(s.nextEnemy);
-        s.nextEnemy = pickNextEnemy();
+      if (s.bossPhase) updateReinf();   // ボス戦：ふつうの敵は出さず、ときどき援軍
+      else {
+        maybeSpawnElite();
+        const rate = PH.hpRateBase * growthOf(s.phase) * T.enemyRate.value;
+        s.spawnPool += rate * DT;
+        if (!s.nextEnemy) s.nextEnemy = pickNextEnemy();
+        while (s.nextEnemy && s.spawnPool >= s.nextEnemy.hp) {
+          s.spawnPool -= s.nextEnemy.hp;
+          spawnEnemy(s.nextEnemy);
+          s.nextEnemy = pickNextEnemy();
+        }
       }
     }
 
@@ -3188,7 +3216,7 @@ export function createGame() {
     const p0 = s.player, big = Math.max(s.world.w, s.world.h);
     // プレイの記録：ボスを倒した／中ボスを倒さずに進んだ
     if (afterBoss) logBoss(true);
-    if (s.enemies.some((e) => e.elite && e.hp > 0)) s.eliteLog.skipped++;
+    if (s.enemies.some((e) => e.elite && !e.reinf && e.hp > 0)) s.eliteLog.skipped++;
     for (const e of s.enemies) { enemyDeathFx(e); sparks(e.x, e.y, 'enemy', 6, 260); flash(e.x, e.y, e.r * 3, 0.25, 'white'); }
     flash(p0.x, p0.y, big * 1.2, 0.3, 'white');
     for (let k = 0; k < 3; k++) ring(p0.x, p0.y, p0.r, big * (0.45 + k * 0.3), 0.45 + k * 0.15, 'shard', 0, 8 - k * 2);

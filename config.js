@@ -178,7 +178,10 @@ export const CONFIG = {
     eliteCap: 0.3,            // 中ボスの体力の上限＝次に出てくるボスの体力のこの割合
     // ボスのねらい撃ち：動いている間も、決まった間隔で本体をねらって撃つ（何もしてこない時間をなくす）
     pressure: { every: 1.4, rageEvery: 0.9, speed: 150, ways: 1, rageWays: 3, spread: 0.22 },
-    normalRate: 0.3,          // ボスのフェーズでの、ふつうの敵の出る勢い（倍）
+    // ボス戦では、ふつうの敵は出てこない（ボスが見えなくなるため）。代わりに、ときどき援軍が来る
+    //   first 秒後から every 秒ごと。eliteEvery 回に1回は中ボス、それ以外は大きめの敵を bigCount 体
+    //   （フェーズ bigX4From 以上は、さらに大きい敵）。ボス以外の敵が maxAlive 体いるときは来ない
+    reinf: { first: 10, every: 15, bigCount: [2, 3], bigX4From: 60, eliteEvery: 3, maxAlive: 6 },
     appear: 1.5,
     finalAppear: 2.8,         // ラスボス（終筆）は墨が広がる分だけ長く              // フェーズが始まってから、ボスが現れるまでの秒数
     clearDelay: 1.2,          // ボスを倒してから、カード選びになるまでの秒数
