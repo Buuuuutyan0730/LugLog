@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123133922';
-import { spawnPop, stepParticle } from './pops.js?v=20261123133922';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123133922';
+import { CONFIG } from './config.js?v=20261123134401';
+import { spawnPop, stepParticle } from './pops.js?v=20261123134401';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123134401';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1995,6 +1995,9 @@ export function createGame() {
       }
     }
     r.progress = r.active ? Math.min(1, r.length / limit) : 0;
+    // 今描いている線のまっすぐさ（0〜1）：まっすぐなほど、生まれる分身の弾がよく当たる
+    if (r.active && r.path.length > 1 && r.length > 0) { const a0 = r.path[0], a1 = r.path[r.path.length - 1]; r.straight = clamp(Math.hypot(a1.x - a0.x, a1.y - a0.y) / r.length, 0, 1); }
+    else r.straight = 1;
     r.minLength = CONFIG.record.minStroke;
     r.enough = r.active && r.length >= CONFIG.record.minStroke && !s.st.curse.lost && !s.st.curse.brush;
   }

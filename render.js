@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123133922';
-import { makeForms } from './forms.js?v=20261123133922';
-import { CONFIG } from './config.js?v=20261123133922';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123134401';
+import { makeForms } from './forms.js?v=20261123134401';
+import { CONFIG } from './config.js?v=20261123134401';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -258,7 +258,39 @@ export function createRenderer(canvas, view) {
     ctx.globalAlpha = 1;
   }
 
+  // まっすぐさの光り方（0〜1）：半分より曲がった線は光らず、まっすぐに近いほど強く光る
+  const straightGlow = (s) => Math.max(0, Math.min(1, (s - 0.5) / 0.5)) ** 1.5;
   function drawRecordPath(state, t) {
+    const r0 = state.record;
+    // まっすぐなほど、線の下に水色の光の帯が太く明るく出る
+    if (r0.active && r0.path.length > 1) {
+      const k = straightGlow(r0.straight == null ? 1 : r0.straight);
+      if (k > 0) {
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#bff4ff';
+        ctx.globalAlpha = 0.15 + 0.55 * k;
+        ctx.lineWidth = 2 + 5 * k;
+        glow('#7fe3ff', 16 * k);
+        if (polyline(r0.path, 3)) ctx.stroke();
+        noGlow();
+        ctx.restore();
+      }
+      // ペン先の横に、今の当たりやすさを小さく出す
+      if (r0.enough) {
+        const e = r0.path[r0.path.length - 1], pct = Math.round((r0.straight == null ? 1 : r0.straight) * 100);
+        ctx.save();
+        ctx.font = '9px "DotGothic16", sans-serif';
+        // 画面の右端に近いときは、ペン先の左側に出す（はみ出さないように）
+        const right = e.x > worldW - 70;
+        ctx.textAlign = right ? 'right' : 'left'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,10,24,0.85)';
+        ctx.fillStyle = k > 0.6 ? '#bff4ff' : 'rgba(220,230,255,0.75)';
+        const tx = e.x + (right ? -14 : 14), ty = Math.min(worldH - 10, e.y + 14);
+        ctx.strokeText(`命中 ${pct}%`, tx, ty); ctx.fillText(`命中 ${pct}%`, tx, ty);
+        ctx.restore();
+      }
+    }
     ctx.save();
     ctx.setLineDash([4, 6]);
     ctx.lineDashOffset = -t * 30;
@@ -680,6 +712,19 @@ export function createRenderer(canvas, view) {
 
       ctx.globalAlpha = a;
       const look = g.look || state.ghostLook || null;
+      // まっすぐな線から生まれた分身（弾がよく当たる）：体のまわりに細い水色の輪がゆっくり回る
+      if (g.straight != null) {
+        const k = straightGlow(g.straight);
+        if (k > 0.05) {
+          ctx.save();
+          ctx.globalAlpha = a * (0.25 + 0.6 * k);
+          ctx.strokeStyle = '#bff4ff'; ctx.lineWidth = 1.2;
+          ctx.setLineDash([3, 4]); ctx.lineDashOffset = -t * 12;
+          ctx.beginPath(); ctx.arc(g.x, g.y, g.r + 5, 0, Math.PI * 2); ctx.stroke();
+          ctx.restore();
+          ctx.globalAlpha = a;
+        }
+      }
       drawGhostBody(g, col, look, t);
 
       if (ram) {
