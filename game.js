@@ -1,9 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124032312';
-import { spawnPop, stepParticle } from './pops.js?v=20261124032312';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261124032312';
+import { CONFIG } from './config.js?v=20261124033523';
+import { spawnPop, stepParticle } from './pops.js?v=20261124033523';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124033523';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124033523';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -59,6 +60,7 @@ export function createGame() {
     const W = CONFIG.view.width, H = CONFIG.view.height;
     Object.assign(s, {
       mode: 'ready',
+      test: null,       // ボスを試す（調整パネル）の途中なら、その中身
       sfx: [],          // 鳴らす音の順番待ち（main.js が毎フレーム取り出して鳴らす）         // 'ready'（操作待ち）| 'play' | 'select'（スキル選択中）
       over: false,
       firstPick: false,      // 遊び始めの1枚を選んでいる最中
@@ -3168,6 +3170,8 @@ export function createGame() {
     b.done = true; b.win = win; b.sec = Math.round(s.time - b.t0);
   }
   function clearPhase(afterBoss = false) {
+    // ボスを試す：目当てのボスを倒したら、カード選びに進まずに結果へ
+    if (s.test && afterBoss && s.phase === s.test.target && !s.test.skipping) { endBossTest(true); return; }
     if (s.sfx) s.sfx.push(['clear', 1], ['clearBurst', 1]);   // パーン（たくさん鳴っているフレームでも必ず鳴らす）
     // 画面上の敵・弾・かけらを消して、HPを全回復し、スキル選択へ
     //   クリアの演出：残っていた敵が一斉にはじけ、本体から大きな光の輪が広がり、画面がゆれる
@@ -4107,6 +4111,7 @@ export function createGame() {
       if (ch) takeChoice(s, ch);
       s.st = stats(); s.maxHp = s.st.maxHp; s.hp = s.maxHp;
       s.firstPick = false; s.choices = []; s.mode = 'ready';
+      if (s.test) testAfterPick(ch);
       return;
     }
     if (ch) takeChoice(s, ch);
@@ -4154,6 +4159,77 @@ export function createGame() {
     s.nextEnemy = null;
     s.spawnDelay = 1.0;
     s.mode = 'play';
+    if (s.test) testAfterPick(ch);
+  }
+
+  // ---------- ボスを試す（調整パネル） ----------
+  //   そのフェーズまで遊んだのと同じにするため、「フェーズクリア → カード選び」を目当てのフェーズの手前までくり返す
+  //   （ステージが広がる・HP の上がり方も、ふつうに遊んだときと同じ）。ボスを倒すかやられたら、結果を s.test.done に入れる
+  function startBossTest(n, auto, replay) {
+    reset();
+    s.test = { n, kind: BOSS.order[n - 1], target: n * BOSS.every, auto: !!auto, picks: 0, taken: [], replay: replay ? replay.slice() : null, done: null, t0: 0 };
+    firstPick();
+    testAuto();
+  }
+  // カードを1枚取ったあと：まだ手前なら、そのフェーズをすぐクリアにして、次のカード選びへ
+  function testAfterPick(ch) {
+    const T = s.test;
+    T.picks++;
+    if (ch) T.taken.push(ch);
+    if (s.phase < T.target) {
+      T.skipping = true;
+      clearPhase(!!bossKindOf(s.phase));
+      T.skipping = false;
+      finishReturn();
+      // 飛ばしたフェーズの演出は出さない
+      s.bossIntro = null; s.banner = { text: '', sub: '', t: 0 }; s.particles = []; s.rings = []; s.flashes = []; s.shake = 0; if (s.sfx) s.sfx.length = 0;
+    } else {
+      // 目当てのフェーズ：ふつうに始める（ボスの登場から）
+      s.mode = 'play';
+      T.t0 = s.time;
+    }
+  }
+  // おまかせで1枚選ぶ：持っているスキル・同じ道のカード・強化だけを候補に、いちばんレア度の高いもの
+  //   （同じなら、持っているスキルのレベル上げ → 強化 → 同じ道の新しいスキル）。候補がなければ、カース以外でいちばん高いもの
+  function autoPickIndex() {
+    const roads = new Set(Object.keys(s.skills).map((id) => SKILL_BY_ID[id] && SKILL_BY_ID[id].road));
+    const none = !Object.keys(s.skills).length;
+    const score = (ch) => {
+      const r = RARITIES.indexOf(ch.rarity) * 10;
+      if (ch.kind === 'curse') return -100;
+      if (ch.kind === 'boost') return 1000 + r + 2;
+      const k = SKILL_BY_ID[ch.id];
+      if (s.skills[ch.id]) return 1000 + r + 3;
+      if (none || (k && roads.has(k.road))) return 1000 + r + 1;
+      return r;   // 関係ない道
+    };
+    let best = 0;
+    s.choices.forEach((ch, i) => { if (score(ch) > score(s.choices[best])) best = i; });
+    return best;
+  }
+  // おまかせ（または同じスキルでもう一度）のとき、目当てのフェーズまで一気に選ぶ
+  function testAuto() {
+    const T = s.test;
+    let guard = 0;
+    while (T && s.mode === 'select' && guard++ < 400) {
+      if (T.replay) { const ch = T.replay.shift(); if (!ch) { T.replay = null; continue; } s.choices = [ch]; chooseSkill(0); continue; }
+      if (!T.auto) break;
+      if (!s.choices.length) { s.choices = rollChoices(s, { afterBoss: !!s.choiceAfterBoss }); if (!s.choices.length) break; }
+      chooseSkill(autoPickIndex());
+    }
+  }
+  // 自分で選んでいる途中から、残りをおまかせにする
+  function testAutoRest() { if (s.test) { if (!s.test.auto) s.test.mixed = true; s.test.auto = true; testAuto(); } }
+  function endBossTest(win) {
+    const T = s.test, b = s.boss;
+    const kind = T.kind;
+    T.done = {
+      n: T.n, name: (CONFIG.enemies[kind] || {}).name || kind, phase: T.target, win, auto: T.auto, mixed: !!T.mixed,
+      sec: Math.max(0, s.time - T.t0),
+      bossLeft: win ? 0 : Math.max(0, Math.round(((b && b.hp) || 0) / Math.max(1, (b && b.maxHp) || 1) * 100)),
+      hpLeft: win ? Math.round((s.hp / Math.max(1, s.maxHp)) * 100) : 0,
+    };
+    s.mode = 'btdone';
   }
 
   // ステージを広げる。中身は真ん中に寄せたまま、周りに余白が増える
@@ -4236,7 +4312,7 @@ export function createGame() {
     }
     if (s.tuto && tutoWaiting(input)) { updateEffects(); return; }
     if (s.mode === 'returning') { updateReturn(); updateEffects(); return; }
-    if (s.over || s.mode === 'select') { updateEffects(); return; }
+    if (s.over || s.mode === 'select' || s.mode === 'btdone') { updateEffects(); return; }
     if (s.hitstop > 0) {
       // 当てた・当たった瞬間のほんの一瞬の停止（敵や弾は止まる。本体は止めずに動ける・切り替えも受け付ける）
       s.hitstop -= DT;
@@ -4353,5 +4429,15 @@ export function createGame() {
     s.choices = rollChoices(s, { first: true });
     s.mode = 'select';
   }
-  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, firstPick, startTutorial };
+  // 試作用：フェーズを n 進める（カードはおまかせと同じ決まりで選ぶ）
+  function debugAdvance(n) {
+    for (let k = 0; k < n; k++) {
+      if (s.mode === 'ready') s.mode = 'play';
+      if (s.mode !== 'play' || s.over) break;
+      clearPhase(!!s.bossPhase); finishReturn();
+      chooseSkill(autoPickIndex());
+    }
+    s.bossIntro = s.bossPhase ? s.bossIntro : null;
+  }
+  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, debugAdvance, firstPick, startTutorial, startBossTest, testAutoRest, endBossTest };
 }

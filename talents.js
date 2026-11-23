@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261124032312';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261124032312';
+import { CONFIG } from './config.js?v=20261124033523';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261124033523';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -83,7 +83,7 @@ export function completionsOf(s, id) {
 }
 
 // ---------- 抽選 ----------
-const RARITIES = ['normal', 'rare', 'super', 'mythic'];
+export const RARITIES = ['normal', 'rare', 'super', 'mythic'];
 const GAIN = { normal: 1, rare: 2, super: 3 };
 
 // top：出してよいいちばん上のレア度（遊び始めの1枚はMRを出さない：引き直しの繰り返しで最初からMRを狙えないように）

@@ -1,17 +1,17 @@
 // ゲームの外の画面の切りかえ担当（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィール・名前・お知らせ・クレジット・準備中）
 //   見た目は screens.js。押した部品の data-act を見て、何をするか決める
-import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261124032312';
-import { snapIcons } from './icons.js?v=20261124032312';
-import { writeSave } from './save.js?v=20261124032312';
-import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261124032312';
-import { playSound } from './audio.js?v=20261124032312';
-import { createGachaFx } from './gachafx.js?v=20261124032312';
-import { titleOf } from './titles.js?v=20261124032312';
-import { frameOf } from './frames.js?v=20261124032312';
-import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261124032312';
-import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote, adminSetScore, adminDeleteScore } from './online.js?v=20261124032312';
-import { SKILL_ROADS } from './skilldefs.js?v=20261124032312';
-import { GACHA_POOL } from './skins.js?v=20261124032312';
+import { screenHtml, FULL, NEWS, SRC_INFO, esc, setPhoto, HOWTO_LAST } from './screens.js?v=20261124033523';
+import { snapIcons } from './icons.js?v=20261124033523';
+import { writeSave } from './save.js?v=20261124033523';
+import { GACHA, rollGacha, AVATAR_ITEMS } from './skins.js?v=20261124033523';
+import { playSound } from './audio.js?v=20261124033523';
+import { createGachaFx } from './gachafx.js?v=20261124033523';
+import { titleOf } from './titles.js?v=20261124033523';
+import { frameOf } from './frames.js?v=20261124033523';
+import { ensureDaily, missionView, claim, claimAll, hasClaimable, addPulls } from './missions.js?v=20261124033523';
+import { loadRanking, syncProfile, weekLabel, claimDev, wipeRemote, adminSetScore, adminDeleteScore } from './online.js?v=20261124033523';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124033523';
+import { GACHA_POOL } from './skins.js?v=20261124033523';
 
 // 開発者の合言葉（そのものは入れず、元に戻せない形に変えたものだけ持つ）
 const DEV_HASH = 'ccbc9cbb683d9ddc70bdf3f8593ed2da10ee301d12fa86cae5cba5f08d12e266', DEV_LEN = 9;
@@ -259,6 +259,9 @@ export function createMenus(save, hooks) {
       case 'resume': close(); hooks.resume(); break;
       case 'restart': close(); hooks.restart(); break;
       case 'retry': close(); hooks.restart(); break;
+      case 'bt-again': close(); hooks.btAgain(); break;
+      case 'bt-repick': close(); hooks.btRepick(); break;
+      case 'bt-quit': hooks.toTitle(); home(); break;
       case 'title': hooks.toTitle(); home(); break;
       default: break;
     }

@@ -1,27 +1,27 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261124032312';
-import { createGame, DT } from './game.js?v=20261124032312';
-import { applyForms } from './talents.js?v=20261124032312';
-import { createRenderer } from './render.js?v=20261124032312';
-import { createHud } from './ui.js?v=20261124032312';
-import { createInput } from './input.js?v=20261124032312';
-import { setupDebugPanel } from './debug.js?v=20261124032312';
-import { createPreview } from './preview.js?v=20261124032312';
-import { createMenus } from './menus.js?v=20261124032312';
-import { createDemo } from './demo.js?v=20261124032312';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261124032312';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261124032312';
-import { ensureDaily, addRun } from './missions.js?v=20261124032312';
-import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261124032312';
-import { SKILL_ROADS } from './skilldefs.js?v=20261124032312';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261124032312';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261124032312';
-import { setEquipped } from './skinshot.js?v=20261124032312';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261124032312';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261124032312';
-import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261124032312';
+import { CONFIG } from './config.js?v=20261124033523';
+import { createGame, DT } from './game.js?v=20261124033523';
+import { applyForms } from './talents.js?v=20261124033523';
+import { createRenderer } from './render.js?v=20261124033523';
+import { createHud } from './ui.js?v=20261124033523';
+import { createInput } from './input.js?v=20261124033523';
+import { setupDebugPanel } from './debug.js?v=20261124033523';
+import { createPreview } from './preview.js?v=20261124033523';
+import { createMenus } from './menus.js?v=20261124033523';
+import { createDemo } from './demo.js?v=20261124033523';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261124033523';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261124033523';
+import { ensureDaily, addRun } from './missions.js?v=20261124033523';
+import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261124033523';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124033523';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261124033523';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261124033523';
+import { setEquipped } from './skinshot.js?v=20261124033523';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261124033523';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261124033523';
+import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261124033523';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -97,7 +97,7 @@ const roadOf = (id) => SKILL_ROADS.find((r) => r.skills.some((k) => k.id === id)
 function restart() {
   // 途中でやめたプレイも、図鑑と合計の成績には入れる（最高記録には入れない）
   const s0 = game.state;
-  if (s0.mode !== 'ready' && !s0.over && s0.time > 0 && !s0.tuto) { recordRun(save, s0, roadOf, { score: false }); ensureDaily(save, SKILL_ROADS); addRun(save, s0, roadOf); writeSave(save); }
+  if (s0.mode !== 'ready' && !s0.over && s0.time > 0 && !s0.tuto && !s0.test) { recordRun(save, s0, roadOf, { score: false }); ensureDaily(save, SKILL_ROADS); addRun(save, s0, roadOf); writeSave(save); }
   game.reset();
   hud.hideResult();
   hud.hideSkills();
@@ -111,6 +111,9 @@ const menus = createMenus(save, {
   tutorial() { restart(); game.startTutorial(); menus.close(); },
   resume() {},
   restart() { restart(); game.firstPick(); },   // もう一回・やり直す：最初のスキル選びから
+  // ボスを試すの結果から
+  btAgain() { if (lastTest) startTest(lastTest.n, lastTest.auto, lastTest.taken); },
+  btRepick() { if (lastTest) startTest(lastTest.n, lastTest.auto); },
   toTitle() { restart(); },
   applySettings,
   applySkin,
@@ -130,6 +133,10 @@ const debugPanel = setupDebugPanel(CONFIG, {
   onClose() { pausedByDebug = false; },
   onRestart: () => { restart(); game.firstPick(); menus.close(); },
   onClearPhase: () => game.debugClearPhase(),
+  onAdvance: (n) => { if (menus.id) return; game.debugAdvance(n); },
+  // ボスを試す：最初から始め、カードを選んでいって、目当てのボスと戦う
+  onBossTest: (n, auto) => startTest(n, auto),
+  resetFlag(k) { if (k === 'tuto') { save.tutoDone = false; save.howtoDone = false; } if (k === 'ending') save.endingSeen = false; writeSave(save); },
   // 見本：パネルで選んだ見本を開き、「パネルへ」で調整パネルの見本タブに戻る
   onPreview: (id) => preview.open(id, (t) => debugPanel.open('sample', t)),
   records: { load: loadRuns, weekStart: weekStartMs },
@@ -147,6 +154,25 @@ const debugPanel = setupDebugPanel(CONFIG, {
   },
 });
 
+// ---------- ボスを試す（調整パネル） ----------
+//   lastTest：最後に試した中身（「同じスキルでもう一度」「選び直す」で使う）
+let lastTest = null;
+function startTest(n, auto, replay) {
+  restart();
+  menus.close();
+  lastTest = { n, auto, taken: null };
+  game.startBossTest(n, auto, replay);
+}
+document.getElementById('bt-auto').addEventListener('click', () => {
+  const s = game.state;
+  if (!s.test || s.mode !== 'select') return;
+  playSound('tap');
+  hud.hideSkills();
+  document.getElementById('skill').classList.remove('with-bt');
+  skillShown = false;
+  game.testAutoRest();
+});
+
 // カード選び。引き直しはコインを使い、押すたびに値段が上がる（1回目50、そのあと50ずつ）
 const rerollCost = (s) => 50 * (s.rerolls + 1);
 const REROLL_MAX = 10;   // 引き直しは1回のプレイで10回まで
@@ -155,7 +181,7 @@ function showCards(s) {
   hud.showSkills(s, (id) => {
     game.chooseSkill(id);
     hud.hideSkills();
-    document.getElementById('skill').classList.remove('with-reroll');
+    document.getElementById('skill').classList.remove('with-reroll', 'with-bt');
     skillShown = false;
   }, (i) => playSound(i < 0 ? 'pickBig' : 'deal', { pitch: i < 0 ? 1 : 1 + i * 0.12 }));   // カードが1枚出るたびに「パン」（だんだん高く）／選んだ瞬間に「キラーン」
   // チュートリアル：引き直しは出さず、カードの説明を出す
@@ -169,6 +195,15 @@ function showCards(s) {
   }
   subEl.classList.remove('tuto-pick');
   subEl.textContent = '才能を1つ選ぼう';
+  // ボスを試す準備：何枚目かと「残りはおまかせ」を出す。引き直しは出さない
+  if (s.test) {
+    const k = CONFIG.boss.order[s.test.n - 1];
+    document.getElementById('bt-count').textContent = `${s.test.picks + 1} / ${s.test.target}`;
+    document.getElementById('bt-name').textContent = (CONFIG.enemies[k] || {}).name || k;
+    document.getElementById('skill').classList.remove('with-reroll');
+    document.getElementById('skill').classList.add('with-bt');
+    return;
+  }
   const cost = rerollCost(s);
   document.getElementById('skill').classList.add('with-reroll');
   document.getElementById('reroll-cost').textContent = cost.toLocaleString();
@@ -321,6 +356,14 @@ function tick(now) {
     if (changed) writeSave(save);
   }
 
+  // ボスを試す：倒した・やられた → 試験の結果（ランキング・記録・ミッションには入れない）
+  if (s.test && (s.test.done || s.over) && !resultShown) {
+    resultShown = true;
+    if (!s.test.done) game.endBossTest(false);
+    lastTest = { n: s.test.n, auto: s.test.auto, taken: s.test.taken.slice() };
+    const d = s.test.done;
+    setTimeout(() => menus.open('s_btresult', { bossTest: d }, false), d.win ? 1200 : 700);
+  }
   if (s.over && !resultShown) {
     resultShown = true;
     const { isNew, coins } = recordRun(save, s, roadOf);

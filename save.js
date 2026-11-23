@@ -8,6 +8,7 @@ function defaults() {
     icon: 0,                  // プロフィールのアイコン（ICONS の番号）
     id: `${1000 + Math.floor(Math.random() * 9000)}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
     howtoDone: false,         // 遊び方を一度見たか
+    endingSeen: false,        // エンディングを一度見たか（見たら、2回目からは流さない）
     tutoDone: false,          // チュートリアルを一度終えたか（とばしても終えたことにする）
     settings: { bgm: true, bgmVol: 100, se: true, seVol: 100, control: 'drag', shake: true, glow: 1, v: 4 },
     best: { score: 0, phase: 0 },

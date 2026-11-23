@@ -1,8 +1,8 @@
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261124032312';
-import { CATS } from './preview.js?v=20261124032312';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124033523';
+import { CATS } from './preview.js?v=20261124033523';
 
 // スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
 const PARAM = {
@@ -23,7 +23,7 @@ const paramLabel = (k) => {
 // 数値を「項目名 → 値」に平らにする（レベルごとの表などは「shots.2」のようにする）
 const flatNums = (o, pre = '') => Object.entries(o || {}).flatMap(([k, v]) => (typeof v === 'number' ? [[pre + k, v]] : v && typeof v === 'object' ? flatNums(v, `${pre}${k}.`) : []));
 
-export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onPreview, coins, records }) {
+export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onAdvance, onBossTest, resetFlag, onPreview, coins, records }) {
   const sheet = document.getElementById('debug');
   const body = document.getElementById('debug-body');
 
@@ -58,8 +58,6 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     if (!rec.hidden && !runs) loadRec(); else if (!rec.hidden) showRec();
   };
   tabs.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showTab(b.dataset.t); });
-  // 見た目だけのボタン：押したら「まだ動きません」と出す
-  const notYet = (btn) => { const t = btn.textContent; btn.textContent = 'まだ見た目だけ'; setTimeout(() => { btn.textContent = t; }, 1000); };
 
   // ================= テスト =================
   const B = config.boss;
@@ -105,15 +103,16 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
       go.querySelector('.dbg-n').textContent = ph;
       return;
     }
-    const g = e.target.closest('[data-go]'); if (g) { notYet(g); return; }
+    const g = e.target.closest('[data-go]');
+    if (g) { const a = test.querySelector('.dbg-boss.active'); if (a) { close(); onBossTest(Number(a.dataset.boss), g.dataset.go === 'auto'); } return; }
     const ph = e.target.closest('[data-ph]');
-    if (ph) { if (ph.dataset.ph === '1') { close(); onClearPhase(); } else notYet(ph); return; }
+    if (ph) { close(); if (ph.dataset.ph === '1') onClearPhase(); else onAdvance(Number(ph.dataset.ph)); return; }
     const c = e.target.closest('[data-c]');
     if (c && coins) { const v = Number(c.dataset.c); if (v) coins.add(v); else coins.set(0); showCoins(); return; }
     const r = e.target.closest('[data-reset]');
     if (r) {
-      if (r.dataset.reset === 'skin' && coins) { coins.resetSkins(); const t = r.textContent; r.textContent = '戻しました'; setTimeout(() => { r.textContent = t; }, 1200); }
-      else notYet(r);
+      if (r.dataset.reset === 'skin' && coins) coins.resetSkins(); else if (resetFlag) resetFlag(r.dataset.reset);
+      const t = r.textContent; r.textContent = '戻しました'; setTimeout(() => { r.textContent = t; }, 1200);
     }
   });
 
@@ -122,7 +121,7 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
   const skillHtml = SKILL_ROADS.map((r) => r.skills.map((k) => {
     const nums = flatNums(config.skill[k.id]);
     const rows = nums.map(([key, v]) => `<div class="dbg-prm" data-key="${key}" data-def="${v}"><span>${paramLabel(key.split('.').pop())}${key.includes('.') ? `<i>${key.split('.').slice(0, -1).join('.')}</i>` : ''}<small>${key}</small></span><input type="number" inputmode="decimal" step="any" value="${v}"><button class="dbg-undo" title="戻す">↺</button></div>`).join('');
-    return `<details class="dbg-sk" data-road="${r.id}" data-name="${k.name}"><summary><span class="dbg-kind">${k.kind}</span><b>${k.name}</b><small>${r.name}</small><em>${nums.length ? `${nums.length}個` : '数値なし'}</em></summary>${rows || '<div class="dbg-hint">調整できる数値はありません</div>'}</details>`;
+    return `<details class="dbg-sk" data-road="${r.id}" data-name="${k.name}" data-id="${k.id}"><summary><span class="dbg-kind">${k.kind}</span><b>${k.name}</b><small>${r.name}</small><em>${nums.length ? `${nums.length}個` : '数値なし'}</em></summary>${rows || '<div class="dbg-hint">調整できる数値はありません</div>'}</details>`;
   }).join('')).join('');
   skill.innerHTML = `
     <div class="dbg-sk-top">
@@ -130,7 +129,8 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
       <div class="dbg-roads">${roadsHtml}</div>
     </div>
     <div class="dbg-sklist">${skillHtml}</div>
-    <div class="dbg-sk-foot"><span class="dbg-changed">変えた数値 <b>0</b> 個</span><button class="btn btn-small btn-sub" data-sk="reset">全部戻す</button><button class="btn btn-small" data-sk="export">変えた値を書き出す</button></div>`;
+    <div class="dbg-sk-foot"><span class="dbg-changed">変えた数値 <b>0</b> 個</span><button class="btn btn-small btn-sub" data-sk="reset">全部戻す</button><button class="btn btn-small" data-sk="export">変えた値を書き出す</button></div>
+    <div class="dbg-export" hidden><div class="dbg-hint">コピーしました。このまま貼って送ってもらえれば、本体の設定に書き込みます。</div><textarea readonly rows="6"></textarea><button class="btn btn-small btn-sub" data-sk="exclose">とじる</button></div>`;
   let road = '';
   const filter = () => {
     const q = skill.querySelector('.dbg-search').value.trim();
@@ -142,20 +142,42 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     skill.querySelectorAll('.dbg-sk').forEach((d) => d.classList.toggle('changed', !!d.querySelector('.dbg-prm.changed')));
   };
   skill.querySelector('.dbg-search').addEventListener('input', filter);
+  // 数値をゲームの設定に書き込む（「shots.2」のような入れ子もたどる）。ページを閉じると元に戻る
+  const apply = (row, v) => {
+    const id = row.closest('.dbg-sk').dataset.id, path = row.dataset.key.split('.');
+    let o = config.skill[id];
+    for (const p of path.slice(0, -1)) o = o[p];
+    o[path[path.length - 1]] = v;
+  };
   skill.addEventListener('input', (e) => {
     const row = e.target.closest('.dbg-prm'); if (!row) return;
-    row.classList.toggle('changed', Number(e.target.value) !== Number(row.dataset.def));
+    const v = Number(e.target.value);
+    if (e.target.value === '' || !Number.isFinite(v)) return;
+    apply(row, v);
+    row.classList.toggle('changed', v !== Number(row.dataset.def));
     countChanged();
   });
+  const undoRow = (row) => { row.querySelector('input').value = row.dataset.def; apply(row, Number(row.dataset.def)); row.classList.remove('changed'); };
   skill.addEventListener('click', (e) => {
     const rb = e.target.closest('[data-road]');
     if (rb && rb.tagName === 'BUTTON') { road = rb.dataset.road; skill.querySelectorAll('.dbg-roads button').forEach((x) => x.classList.toggle('active', x === rb)); filter(); return; }
     const u = e.target.closest('.dbg-undo');
-    if (u) { const row = u.closest('.dbg-prm'); row.querySelector('input').value = row.dataset.def; row.classList.remove('changed'); countChanged(); return; }
+    if (u) { undoRow(u.closest('.dbg-prm')); countChanged(); return; }
     const f = e.target.closest('[data-sk]');
-    if (f) {
-      if (f.dataset.sk === 'reset') { skill.querySelectorAll('.dbg-prm').forEach((row) => { row.querySelector('input').value = row.dataset.def; row.classList.remove('changed'); }); countChanged(); }
-      else notYet(f);
+    if (!f) return;
+    if (f.dataset.sk === 'reset') { skill.querySelectorAll('.dbg-prm.changed').forEach(undoRow); countChanged(); }
+    if (f.dataset.sk === 'exclose') skill.querySelector('.dbg-export').hidden = true;
+    if (f.dataset.sk === 'export') {
+      // 変えた数値だけを「スキル名（id）／数値の名前：元 → 新」の形で書き出し、コピーする
+      const lines = [...skill.querySelectorAll('.dbg-prm.changed')].map((row) => {
+        const d = row.closest('.dbg-sk');
+        return `${d.dataset.name}（skill.${d.dataset.id}.${row.dataset.key}）：${row.dataset.def} → ${row.querySelector('input').value}`;
+      });
+      const text = lines.length ? `スキルの数値の変更\n${lines.join('\n')}` : '変えた数値はありません';
+      const box = skill.querySelector('.dbg-export');
+      box.hidden = false; box.querySelector('textarea').value = text;
+      box.querySelector('.dbg-hint').textContent = lines.length ? 'コピーしました。このまま貼って送ってもらえれば、本体の設定に書き込みます。' : '変えた数値はありません。';
+      if (lines.length && navigator.clipboard) navigator.clipboard.writeText(text).catch(() => { box.querySelector('.dbg-hint').textContent = 'コピーできなかったので、下の文字を長押しでコピーしてください。'; });
     }
   });
 

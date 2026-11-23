@@ -2176,3 +2176,7 @@ body.previewing .efx { z-index: 8; bottom: 13%; }
 .dbg-items .btn { font-size: 2.8cqw; padding: 2cqw 0.6cqw; }
 .dbg-items .btn.last { outline: 0.6cqw solid var(--gold); outline-offset: 0.4cqw; }
 .dbg-tabs button { font-size: 2.8cqw; }
+.bt-bar i { font-style: normal; color: var(--gold); }
+.dbg-export { position: sticky; bottom: 14cqw; z-index: 3; background: var(--panel); border: 0.6cqw solid var(--gold); border-radius: 2cqw; padding: 2cqw; margin-top: 2cqw; display: flex; flex-direction: column; gap: 1.4cqw; }
+.dbg-export textarea { width: 100%; box-sizing: border-box; font-family: inherit; font-size: 2.8cqw; color: #eef3ff; background: #0c1030; border: 0.5cqw solid var(--ink); border-radius: 1.4cqw; padding: 1.4cqw; }
+.dbg-export[hidden], .dbg-bossgo[hidden] { display: none; }
