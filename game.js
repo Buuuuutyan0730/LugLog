@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123123929';
-import { spawnPop, stepParticle } from './pops.js?v=20261123123929';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123123929';
+import { CONFIG } from './config.js?v=20261123124635';
+import { spawnPop, stepParticle } from './pops.js?v=20261123124635';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123124635';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3587,7 +3587,7 @@ export function createGame() {
     if (s.bank >= 1) { skSfx('savings'); s.shards = Math.floor(s.bank); s.bank -= Math.floor(s.bank); }
     s.need = needOf(s.phase);
     let sub = '';
-    if ((s.phase - 1) % PH.zoomEvery === 0) {
+    if (PH.zoomEvery > 0 && (s.phase - 1) % PH.zoomEvery === 0) {
       widenStage();
       sub = 'ステージが広がった！';
     }
