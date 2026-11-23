@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124035517';
-import { spawnPop, stepParticle } from './pops.js?v=20261124035517';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124035517';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124035517';
+import { CONFIG } from './config.js?v=20261124035722';
+import { spawnPop, stepParticle } from './pops.js?v=20261124035722';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124035722';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124035722';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -216,9 +216,10 @@ export function createGame() {
   const budgetNow = () => Math.round(T.trailBudget.value * s.st.budget);
   // 孤独な王・ギガント：軌跡の総量をすべて1体に使える
   const dragLimitNow = () => (s.st.curse.lonely || s.st.sk.gigant ? budgetNow() : Math.min(T.dragLimit.value * s.st.drag, budgetNow()));
-  // 圧縮：画面に置ける軌跡の長さは、最初の総量（1000）までに抑える。軌跡＋で総量がそれを超えた分は、
-  //   1本の線をその倍率だけ強くする（総量が2倍なら、画面の上で100の線が200の長さ分の強さになる）
-  const compNow = () => Math.max(1, budgetNow() / T.trailBudget.value);
+  // 圧縮：総量が最初の compressFrom 倍（2000）になるまでは、そのまま置ける線も1回で描ける長さも伸びる。
+  //   それを超えた分は、画面の上の量は増やさずに、1本の線をその倍率だけ強くする
+  //   （総量4000なら、画面の上の量は2000のままで、100の線が200の長さ分の強さになる）
+  const compNow = () => Math.max(1, budgetNow() / (T.trailBudget.value * G.compressFrom));
   const screenBudget = () => budgetNow() / compNow();
   const skLv = (id) => s.st.sk[id] || 0;
   // タイタン：分身が1体だけのとき

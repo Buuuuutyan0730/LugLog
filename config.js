@@ -83,6 +83,7 @@ export const CONFIG = {
     ramInterval: 0.5,      // 体当たり型：同じ敵に当たり直せる間隔
     ramMultiplier: 2,      // 体当たり型は当てにくいぶん威力2倍
     ramReach: 4,
+    compressFrom: 2,     // 軌跡の総量がこの倍（最初の量の）を超えたら、超えた分は画面に置かず、分身の強さに回す
   },
 
   shot: { speed: 460, range: 250 },
