@@ -2,13 +2,13 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123124635';
-import { CONFIG } from './config.js?v=20261123124635';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123124635';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123124635';
-import { GACHA_POOL } from './skins.js?v=20261123124635';
-import { createGame } from './game.js?v=20261123124635';
-import { createGachaFx } from './gachafx.js?v=20261123124635';
+import { BOOSTS, CURSES } from './talents.js?v=20261123132750';
+import { CONFIG } from './config.js?v=20261123132750';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123132750';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123132750';
+import { GACHA_POOL } from './skins.js?v=20261123132750';
+import { createGame } from './game.js?v=20261123132750';
+import { createGachaFx } from './gachafx.js?v=20261123132750';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -771,6 +771,7 @@ const CATS = [
   { id: 'items', label: 'ガチャの品', tabs: ITEM_TABS },
   { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_bossdown', 'ボス撃破']] },
   { id: 'ougi', label: '奥義', tabs: OUGI_FX.map((o) => ['og_' + o.id, o.name]) },
+  { id: 'mode', label: '描く／動く', tabs: [['md_move', '動くモード'], ['md_draw', '描くモード']] },
 ];
 const TAB_LABEL = Object.fromEntries(CATS.flatMap((c) => c.tabs.map(([id, label]) => [id, `${c.label}／${label}`])));
 
@@ -824,6 +825,31 @@ export function createPreview(hud) {
     s.banner.t = 0;   // 「PHASE ○」の文字は出さない
     return s;
   }
+  // 描く／動くモードの見た目の見本（仕組みはまだ入れていない。今のゲームを動かし、見た目だけ切り替える）
+  let md = null;
+  function stepMode(drawing) {
+    if (!md) {
+      const g = createGame(), s = g.state;
+      const inp = (held, x = 180, y = 330) => ({ held, pointer: held ? { x, y } : null, isTouch: false, dx: 0, dy: 0, keyX: 0, keyY: 0 });
+      g.step(inp(true)); s.phase = 3; g.debugClearPhase();
+      s.choices = [{ id: 'atk', kind: 'boost', rarity: 'normal' }]; g.chooseSkill(0);
+      md = { g, inp, t: 0 };
+    }
+    const { g, inp } = md, s = g.state;
+    if (s.mode === 'select' || s.mode === 'returning') { s.choices = [{ id: 'atk', kind: 'boost', rarity: 'normal' }]; g.chooseSkill(0); }
+    md.t += 1 / 60;
+    s.player.inv = 0; s.hp = s.maxHp; s.hurtFlash = 0;   // 倒れないように（点滅もさせない）
+    // 指をゆっくり8の字に動かす（どの操作方法でも動くよう、位置と動いた分の両方を渡す）。2.4秒描いて離し、分身を作る
+    const c = md.t % 2.6, held = c < 2.4, a = md.t * 1.4, p = s.player;
+    const vx = Math.cos(a) * 150, vy = Math.sin(a * 2) * 110;
+    const pt = { x: Math.min(330, Math.max(30, p.x + vx * 0.25)), y: Math.min(470, Math.max(60, p.y + vy * 0.25)) };
+    g.step({ held, pointer: held ? pt : null, isTouch: false, dx: held ? vx / 60 : 0, dy: held ? vy / 60 : 0, keyX: 0, keyY: 0 });
+    s.sfx.length = 0; s.banner.t = 0;
+    // 見た目だけを切り替える：動くモードでは描いている線を出さない
+    s.player.drawMode = drawing;
+    s.drawEdge = drawing ? 1 : 0;
+    return drawing ? s : { ...s, record: { ...s.record, path: [] } };
+  }
   let active = false;
   let cat = 'enemy';
   let tab = 'enemies';
@@ -855,7 +881,7 @@ export function createPreview(hud) {
     // ガチャの演出：昇格は必ず見せる。10回引きは SR だけ昇格して見せる
     if (GACHA_SAMPLES[id]) { hud.hideSample(); gfx.play(GACHA_SAMPLES[id](), { replay: true, forceUp: id === 'fx_gup' ? true : id === 'fx_g10' ? [3] : [] }); return; }
     gfx.stop();
-    if (id === 'battle' || SCENES[id] || id.startsWith('og_')) hud.hideSample();
+    if (id === 'battle' || SCENES[id] || id.startsWith('og_') || id.startsWith('md_')) hud.hideSample();
     else if (id === 'ghostroad' || id === 'swarmroad' || id === 'turretroad' || id === 'guardroad' || id === 'bodyroad' || id === 'ghostforms' || FORM_SCENES[id]) hud.hideSample();
     else if (id === 'ghostcards') hud.showSample(CARD_SETS.ghostroad.title, CARD_SETS.ghostroad.sub, CARD_SETS.ghostroad.cards);
     else if (id === 'owned') { hud.hideSample(); hud.showOwnedSample(OWNED); }
@@ -888,6 +914,7 @@ export function createPreview(hud) {
 
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
   function view(base) {
+    if (tab === 'md_move' || tab === 'md_draw') return { ...stepMode(tab === 'md_draw'), labels: [], mode: 'play', over: false };
     if (tab.startsWith('og_')) {
       if (!og || 'og_' + og.o.id !== tab) startOugi(tab);
       const s = stepOugi();

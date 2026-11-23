@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123124635';
-import { makeForms } from './forms.js?v=20261123124635';
-import { CONFIG } from './config.js?v=20261123124635';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123132750';
+import { makeForms } from './forms.js?v=20261123132750';
+import { CONFIG } from './config.js?v=20261123132750';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1827,6 +1827,8 @@ export function createRenderer(canvas, view) {
   function drawOnePlayer(p, t, main) {
     drawPlayerBack(p, t, main);
     if (p.inv > 0 && Math.floor(t * 14) % 2 === 0) return; // 無敵中は点滅
+    // 描くモード：本体が筆先（ペン先）の形になる
+    if (p.drawMode) { drawPenTip(p, t); drawPlayerExtras(p, t); return; }
     if (p.auraKw || evoOf(p.look) || evoOf(p.olook) || evoOf(p.hlook)) rainbowPaint(p, t, p.r * 8, () => drawPlayerShapes(p, t));
     else drawPlayerShapes(p, t);
     drawPlayerExtras(p, t);
@@ -1933,6 +1935,45 @@ export function createRenderer(canvas, view) {
     ctx.fillStyle = THEME.playerLight;
     starPath(p.x, p.y, r * 0.5, r * 0.22, -rot * 1.6 + Math.PI / 4);
     ctx.fill();
+  }
+
+  // 描くモードの本体：筆先（ペン先）。進む向きを向き、先が尖る。切り込みと小さな穴は白
+  function drawPenTip(p, t) {
+    const r = p.r * 1.25, a = p.dir == null ? -Math.PI / 2 : p.dir;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(a);
+    // 後ろの光
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.7);
+    halo.addColorStop(0, `rgba(${THEME.playerRgb}, 0.45)`);
+    halo.addColorStop(1, `rgba(${THEME.playerRgb}, 0)`);
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.7, 0, Math.PI * 2); ctx.fill();
+    // 筆先の形（先＝進む向き）
+    const tip = r * 1.55, back = r * 0.95, w = r * 0.8;
+    ctx.beginPath();
+    ctx.moveTo(tip, 0);
+    ctx.quadraticCurveTo(r * 0.35, w * 0.55, -back * 0.35, w);
+    ctx.lineTo(-back, w * 0.62);
+    ctx.lineTo(-back, -w * 0.62);
+    ctx.lineTo(-back * 0.35, -w);
+    ctx.quadraticCurveTo(r * 0.35, -w * 0.55, tip, 0);
+    ctx.closePath();
+    glow(THEME.playerGlow, 16);
+    ctx.fillStyle = THEME.playerGlow;
+    ctx.fill();
+    noGlow();
+    ctx.strokeStyle = THEME.playerEdge;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // 切り込みと穴
+    ctx.strokeStyle = THEME.playerLight;
+    ctx.lineWidth = Math.max(1, r * 0.09);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(tip * 0.92, 0); ctx.lineTo(-back * 0.05, 0); ctx.stroke();
+    ctx.fillStyle = THEME.playerLight;
+    ctx.beginPath(); ctx.arc(-back * 0.15, 0, r * 0.17, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
   // 体の上に重ねるもの（シールド・連打の輪・収穫の道・衛星の道）
@@ -2270,6 +2311,19 @@ export function createRenderer(canvas, view) {
     ctx.restore();
   }
 
+  // 描くモード：画面のふちが薄い水色に光る（ゆっくり息をするように明るさが揺れる）
+  function drawDrawEdge(state, t) {
+    const k = state.drawEdge || 0;
+    if (k <= 0) return;
+    const W = canvas.width, H = canvas.height;
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.42, W / 2, H / 2, Math.hypot(W, H) * 0.55);
+    g.addColorStop(0, 'rgba(127, 227, 255, 0)');
+    g.addColorStop(1, 'rgba(127, 227, 255, 0.32)');
+    ctx.globalAlpha = k * (0.85 + 0.15 * Math.sin(t * 2.4));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+  }
   function drawHurt(state) {
     if (state.hurtFlash <= 0) return;
     const W = canvas.width, H = canvas.height;
@@ -2387,6 +2441,7 @@ export function createRenderer(canvas, view) {
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (!state.noVignette) drawVignette();   // アイコン用の絵では、ふちを暗くしない
+    drawDrawEdge(state, t);
     drawHurt(state);
     drawBossFx(state, t);
   }
