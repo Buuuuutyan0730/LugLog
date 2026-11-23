@@ -312,7 +312,7 @@ export const CONFIG = {
     corrode: { per: 0.03, cap: 0.3, kiwamiCap: 0.6 },             // 腐食：毒1つごとの被ダメージ↑／上限／極の上限
     fog: { every: 0.25, life: 1.5, radius: 16, again: 0.5, kiwamiMult: 2, max: 200 }, // 毒霧：分身が霧を残す間隔／残る秒数／広さ／同じ敵に重ね直す間隔／極：時間の倍／霧の数の上限
     pandemic: { every: 12 },                                      // パンデミック：間隔
-    reaper: { chance: 0.03, per: 0.005, hellReach: 50 },        // 死神：即死の確率、1Lvで +0.5%（敵の大きさに関係なく同じ。ボス・中ボスには効かない）／冥府：道連れの距離
+    reaper: { chance: 0.03, per: 0.005, hellReach: 50, bossCut: 0.005 }, // 死神：即死の確率、1Lvで +0.5%（敵の大きさに関係なく同じ）／冥府：道連れの距離／ボス・中ボスは即死しない代わりに、最大体力のこの割合を削る（死の連鎖の段は上がらない）／冥府：道連れの距離
     execute: { per: [0.004, 0.005, 0.006, 0.008, 0.01], max: 10, kiwamiMax: 20, keep: 3, kiwamiKeep: 5 }, // 死の連鎖：即死が起きるたびに即死の確率が上がる（1段ごと、Lvごと）／段の上限／極の上限／途切れるまでの秒数／極
     doom: { every: 10, time: 5, kiwamiCount: 2 },                 // 死の宣告：間隔／倒れるまで／極：印の数
     soulreap: { mult: 2, kiwamiMult: 3 },                         // 魂の収穫：即死で倒した敵のかけらの倍

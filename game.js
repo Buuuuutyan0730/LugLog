@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123145320';
-import { spawnPop, stepParticle } from './pops.js?v=20261123145320';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123145320';
+import { CONFIG } from './config.js?v=20261123150718';
+import { spawnPop, stepParticle } from './pops.js?v=20261123150718';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123150718';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1204,13 +1204,25 @@ export function createGame() {
     return true;
   }
   function reapRoll(e) {
-    if (e.boss) return;
     const R2 = SK.reaper;
+    // ボス・中ボス：即死の代わりに、最大体力の一部を削る（死の連鎖の確率は乗らず、段も上がらない）
+    if (e.boss || e.elite) {
+      if (Math.random() < R2.chance + R2.per * (skLv('reaper') - 1)) reapCut(e);
+      return;
+    }
     // 確率は敵の大きさに関係なく同じ。死の連鎖：続けて即死が起きているほど上がる
     let chance = R2.chance + R2.per * (skLv('reaper') - 1);
     const xl = skLv('execute');
     if (xl) chance += (s.reapChain || 0) * SK.execute.per[xl - 1];
     if (Math.random() < chance) reapWith(e);
+  }
+  function reapCut(e) {
+    if (e.hp <= 0) return;
+    skSfx('reaper');
+    damageEnemy(e, e.maxHp * SK.reaper.bossCut, true, false, 'crit');
+    ring(e.x, e.y, e.r * 0.6, e.r * 1.6, 0.3, 'white', 0, 3);
+    sparks(e.x, e.y, 'white', 8, 200);
+    s.floats.push({ x: e.x, y: e.y - e.r, text: '刈り取り', t: 0.8, max: 0.8 });
   }
   // 即死させ、冥府なら近くの敵を1体道連れにする
   function reapWith(e) {
