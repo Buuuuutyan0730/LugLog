@@ -218,7 +218,8 @@ export const CONFIG = {
     shuhitsu: { name: '終筆', radius: 44, y: 0.28, moveSpeed: 70, moveTime: 1.5, stage2: 0.66, stage3: 0.33, shiftTime: 1.6,
                 strokeLen: 260, strokeTime: 1.2, inkMax: [3, 4, 4], inkHp: 0.6, inkR: 12, inkSpeed: 90, inkFireEvery: 2.2, inkShotSpeed: 130,
                 blotR: 70, blotDamage: 1.0, splashWays: 7, splashSpread: 1.0, splashSpeed: 160, ensoTime: 7, ensoR: 0.36, ensoDamage: 3 },
-    shade: { name: '影', radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
+    // hpMul：そのボスだけの体力の倍率（影は試したら35秒で倒せたので4倍）
+    shade: { name: '影', hpMul: 4, radius: 34, y: 0.3, delay: 2, speed: 200, every: 6, copy: 3, wait: 0.6, echoRadius: 11, echoHp: 0.5, rageEvery: 3, rageAt: 0.5,
              moveTime: 1.8, traceTime: 1.6, traceWidth: 7, traceOn: 0.5, traceDamage: 1.0, blinkDist: 110, blinkWays: 10, blinkSpeed: 120 },
     // 影：本体の何秒前の場所を追うか・追う速さの上限／影の分身：間隔・なぞる秒数・動き出すまでの秒数・大きさ・体力（1秒に出る敵の体力の何倍）
     //   怒り：分身の間隔（2体ずつ。2体目は、さらにその前の同じ秒数をなぞる）／怒るHPの割合

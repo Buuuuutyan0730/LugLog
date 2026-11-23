@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261124040224';
-import { makeForms } from './forms.js?v=20261124040224';
-import { CONFIG } from './config.js?v=20261124040224';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261124041248';
+import { makeForms } from './forms.js?v=20261124041248';
+import { CONFIG } from './config.js?v=20261124041248';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -953,9 +953,11 @@ export function createRenderer(canvas, view) {
     ctx.closePath();
   }
 
-  function drawEnemies(state, t) {
+  // only：'boss' ならボス（と蜃気楼の偽物）だけ、'rest' ならそれ以外だけを描く（ボスは本体のすぐ下＝前のほうに描くため）
+  function drawEnemies(state, t, only) {
     const VW = state.world.w, VH = state.world.h;
     (state.fakes && state.fakes.length ? state.enemies.concat(state.fakes) : state.enemies).forEach((e, i) => {   // 蜃気楼の偽物もいっしょに描く
+      if (only && (only === 'boss') !== !!e.boss) return;
       // 画面の外の敵は描かない（ボスの予告などは画面の外にも届くので、ボスは描く）
       const pad = e.r * 2 + 8;
       if (!e.boss && (e.x < -pad || e.x > VW + pad || e.y < -pad || e.y > VH + pad)) return;
@@ -1073,6 +1075,18 @@ export function createRenderer(canvas, view) {
         ctx.fill();
         noGlow();
         ctx.stroke();
+        // ボス：縁の外側を白く光らせて、敵や弾の中でも見分けやすくする
+        if (e.boss) {
+          ctx.save();
+          ctx.scale(1.07, 1.07);
+          enemyShape(e);
+          glow('#ffffff', 22);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 + 0.2 * Math.sin(t * 4)})`;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          noGlow();
+          ctx.restore();
+        }
         if (!(e.boss && e.kind !== 'core') && e.kind !== 'echo') {
           ctx.fillStyle = 'rgba(255,255,255,0.85)';
           ctx.beginPath();
@@ -2757,7 +2771,7 @@ export function createRenderer(canvas, view) {
     drawBossLinks(state, t);
     drawBossTrails(state, t);
     drawWarns(state, t);
-    drawEnemies(state, t);
+    drawEnemies(state, t, 'rest');
     drawGhosts(state, t);
     drawLasers(state);
     drawEnemyShots(state, t);
@@ -2766,6 +2780,7 @@ export function createRenderer(canvas, view) {
     drawDashCuts(state, t);
     drawRings(state);
     drawParticles(state);
+    drawEnemies(state, t, 'boss');   // ボスは、本体の次に前に描く（ダメージの数字だけは上に出す）
     drawDamageNums(state);
     drawFloats(state);
     drawBossDownWorld(state);

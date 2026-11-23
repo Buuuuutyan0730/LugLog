@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124040224';
-import { spawnPop, stepParticle } from './pops.js?v=20261124040224';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124040224';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124040224';
+import { CONFIG } from './config.js?v=20261124041248';
+import { spawnPop, stepParticle } from './pops.js?v=20261124041248';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124041248';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124041248';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3288,7 +3288,11 @@ export function createGame() {
     if (k <= L.length) return L[k - 1];
     return Math.round(L[L.length - 1] * (k - (L.length - 1)) ** BOSS.hpPow);
   }
-  function bossHp() { return bossHpOf(Math.round(s.phase / BOSS.every)); }
+  // ボスごとの体力の倍率（hpMul）もかける。中ボスの上限（bossHpOf）には入れない
+  function bossHp() {
+    const n = Math.round(s.phase / BOSS.every), kind = BOSS.order[(Math.max(1, n) - 1) % BOSS.order.length];
+    return Math.round(bossHpOf(n) * ((BOSS[kind] && BOSS[kind].hpMul) || 1));
+  }
   function updateBoss() {
     if (s.bossAppear > 0) { s.bossAppear -= DT; if (s.bossAppear <= 0) spawnBoss(s.bossPhase); }
     if (s.twin) updateTwins();
