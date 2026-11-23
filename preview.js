@@ -2,14 +2,15 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123194925';
-import { CONFIG } from './config.js?v=20261123194925';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123194925';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123194925';
-import { GACHA_POOL } from './skins.js?v=20261123194925';
-import { createGame } from './game.js?v=20261123194925';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123194925';
-import { createGachaFx } from './gachafx.js?v=20261123194925';
+import { BOOSTS, CURSES } from './talents.js?v=20261123203917';
+import { CONFIG } from './config.js?v=20261123203917';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123203917';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123203917';
+import { GACHA_POOL } from './skins.js?v=20261123203917';
+import { createGame } from './game.js?v=20261123203917';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123203917';
+import { createGachaFx } from './gachafx.js?v=20261123203917';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261123203917';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -826,6 +827,8 @@ export function createPreview(hud) {
   const FORM_SCENES = { bodyforms: buildBodyForms(), trapforms: buildTrapForms(), phenomforms: buildPhenomForms(), orbitforms: buildOrbitForms(), harvestforms: buildHarvestForms() };
   const screens = createScreens();   // 画面づくりの見本（形だけ）
   const gfx = createGachaFx(document.getElementById('stage'));   // ガチャの演出の見本
+  const efx = createEndingFx(document.getElementById('stage'));   // エンディングの見本
+  let efxTrails = null;
   const pool = (r) => GACHA_POOL.filter((x) => x.rarity === r);
   const GACHA_SAMPLES = {
     fx_g1: () => [{ it: pool('R')[1], isNew: true }],
@@ -911,6 +914,9 @@ export function createPreview(hud) {
     // カード選び（引き直し）：本物のカード選びの画面に、引き直すボタンを出して見せる
     if (id === 's_reroll') { screens.hide(); const set = CARD_SETS.rarity; hud.showSample(set.title, set.sub, set.cards); document.getElementById('skill').classList.add('with-reroll'); marks.attachDom(id); return; }
     document.getElementById('skill').classList.remove('with-reroll');
+    efx.stop();
+    // エンディング：見本の線（612本）で「軌跡の絵」を最後まで流し、くり返す
+    if (id === 's_ending') { gfx.stop(); hud.hideSample(); screens.hide(); efxTrails = efxTrails || sampleTrails(); efx.play({ trails: efxTrails, world: { w: 420, h: 720 }, phase: 100, time: 4380 }, { replay: true }); marks.attachDom(id); return; }
     if (id.startsWith('s_')) { gfx.stop(); hud.hideSample(); screens.show(id); marks.attachDom(id); return; }
     screens.hide();
     // ガチャの演出：昇格は必ず見せる。10回引きは SR だけ昇格して見せる
@@ -947,6 +953,7 @@ export function createPreview(hud) {
     marks.closeNote();
     screens.hide();
     gfx.stop();
+    efx.stop();
   }
 
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
