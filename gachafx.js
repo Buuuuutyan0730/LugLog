@@ -2,10 +2,10 @@
 //   光の線が画面を走って軌跡を描き、中央へ巻き取られて光の玉になる → 玉の色でレア度の予感
 //   → ときどき玉にひびが入り、上のレア度の色の光がもれ出して色が変わる（昇格）→ 玉が割れて品が出る
 //   10回引きは玉が10個並び、順に割れる（SR以上は少しためてから大きく割れる）。「まとめて開ける」で残りを一度に
-import { gachaCell } from './screens.js?v=20261123163412';
-import { snapIcons } from './icons.js?v=20261123163412';
-import { GACHA } from './skins.js?v=20261123163412';
-import { playSound } from './audio.js?v=20261123163412';
+import { gachaCell } from './screens.js?v=20261123164950';
+import { snapIcons } from './icons.js?v=20261123164950';
+import { GACHA } from './skins.js?v=20261123164950';
+import { playSound } from './audio.js?v=20261123164950';
 
 const TAU = Math.PI * 2;
 const RANK = ['N', 'R', 'SR', 'SSR'];

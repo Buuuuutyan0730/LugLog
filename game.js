@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123163412';
-import { spawnPop, stepParticle } from './pops.js?v=20261123163412';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123163412';
+import { CONFIG } from './config.js?v=20261123164950';
+import { spawnPop, stepParticle } from './pops.js?v=20261123164950';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123164950';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1885,7 +1885,11 @@ export function createGame() {
   }
 
   // 分身の1回の攻撃：ふつうの弾／レーザー／散弾
+  // 命中率（線のまっすぐさ）で、分身の弾の威力が変わる：0%で0.5倍、100%で1.2倍
+  //   （ぶれだけだと、外れた弾も近くのほかの敵に当たってしまい、差が出ないため）
+  const aimPower = (g) => { const st = g.straight == null ? 1 : g.straight; return DM.aimMin + (DM.aimMax - DM.aimMin) * st; };
   function ghostFire(g, target, power) {
+    power *= aimPower(g);
     sfx(skLv('laser') ? 'sk_laser' : skLv('shotgun') ? 'sk_shotgun' : turretOn() ? 'sk_turret' : 'shot', rand(0.92, 1.08));
     if (skLv('laser')) { fireLaser(g, target, power); return; }
     const lv = skLv('shotgun');
