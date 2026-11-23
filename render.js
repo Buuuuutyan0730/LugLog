@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123134401';
-import { makeForms } from './forms.js?v=20261123134401';
-import { CONFIG } from './config.js?v=20261123134401';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123135251';
+import { makeForms } from './forms.js?v=20261123135251';
+import { CONFIG } from './config.js?v=20261123135251';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -274,20 +274,6 @@ export function createRenderer(canvas, view) {
         glow('#7fe3ff', 16 * k);
         if (polyline(r0.path, 3)) ctx.stroke();
         noGlow();
-        ctx.restore();
-      }
-      // ペン先の横に、今の当たりやすさを小さく出す
-      if (r0.enough) {
-        const e = r0.path[r0.path.length - 1], pct = Math.round((r0.straight == null ? 1 : r0.straight) * 100);
-        ctx.save();
-        ctx.font = '9px "DotGothic16", sans-serif';
-        // 画面の右端に近いときは、ペン先の左側に出す（はみ出さないように）
-        const right = e.x > worldW - 70;
-        ctx.textAlign = right ? 'right' : 'left'; ctx.textBaseline = 'middle';
-        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8,10,24,0.85)';
-        ctx.fillStyle = k > 0.6 ? '#bff4ff' : 'rgba(220,230,255,0.75)';
-        const tx = e.x + (right ? -14 : 14), ty = Math.min(worldH - 10, e.y + 14);
-        ctx.strokeText(`命中 ${pct}%`, tx, ty); ctx.fillText(`命中 ${pct}%`, tx, ty);
         ctx.restore();
       }
     }
@@ -1123,18 +1109,29 @@ export function createRenderer(canvas, view) {
     }
   }
   // 雷の型：分身どうしの雷の線（毎回ぎざぎざが変わる）と、落ちる・飛び移る雷
-  function lightning(x0, y0, x1, y1, jag, w, col, alpha) {
+  // 稲妻のぎざぎざを、今の道（パス）に足す（線を引くのはまとめて1回。1本ずつ光らせると、線の数だけ重くなる）
+  function lightningPath(x0, y0, x1, y1, jag) {
     const n = Math.max(2, Math.round(Math.hypot(x1 - x0, y1 - y0) / 14));
     const nx = -(y1 - y0), ny = x1 - x0, L = Math.hypot(nx, ny) || 1;
-    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.globalAlpha = alpha;
-    ctx.beginPath(); ctx.moveTo(x0, y0);
+    ctx.moveTo(x0, y0);
     for (let i = 1; i < n; i++) { const k = i / n, o = (Math.random() - 0.5) * jag; ctx.lineTo(x0 + (x1 - x0) * k + nx / L * o, y0 + (y1 - y0) * k + ny / L * o); }
-    ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.lineTo(x1, y1);
+  }
+  function lightning(x0, y0, x1, y1, jag, w, col, alpha) {
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.globalAlpha = alpha;
+    ctx.beginPath(); lightningPath(x0, y0, x1, y1, jag); ctx.stroke();
   }
   function drawThunder(state, t) {
     ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     glow('#ffe14a', 12);
-    for (const [a, b] of state.links || []) { lightning(a.x, a.y, b.x, b.y, 12, 3.5, '#ffe14a', 0.55); lightning(a.x, a.y, b.x, b.y, 8, 1.4, '#ffffff', 0.95); }
+    // 雷の線：外側の黄色を全部まとめて1回、内側の白を全部まとめて1回で描く（見た目は同じで、描く回数がとても少ない）
+    const links = state.links || [];
+    if (links.length) {
+      ctx.strokeStyle = '#ffe14a'; ctx.lineWidth = 3.5; ctx.globalAlpha = 0.55;
+      ctx.beginPath(); for (const [a, b] of links) lightningPath(a.x, a.y, b.x, b.y, 12); ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.95;
+      ctx.beginPath(); for (const [a, b] of links) lightningPath(a.x, a.y, b.x, b.y, 8); ctx.stroke();
+    }
     for (const b of state.bolts || []) { const k = b.life / b.max; lightning(b.x0, b.y0, b.x1, b.y1, 18, 4, '#ffe14a', 0.7 * k); lightning(b.x0, b.y0, b.x1, b.y1, 10, 1.6, '#ffffff', k); }
     noGlow(); ctx.restore();
   }
@@ -1404,6 +1401,27 @@ export function createRenderer(canvas, view) {
   }
   // 双子をつなぐ赤い糸（片方が倒れると切れる）と、影が作った敵の分身の道筋
   // 浮かぶ文字（即死 など）：ぽんと大きく出て、上へ流れながら消える
+  // ダメージの数字：敵の上に、種類ごとの色で出る（会心は赤く大きく）
+  const DN_COLOR = { aim: '#bff4ff', hit: '#ffffff', crit: '#ff4d5e', poison: '#c77dff', burn: '#ff9f43', shock: '#ffe066', ice: '#7fe3ff' };
+  function drawDamageNums(state) {
+    const D = state.dnums;
+    if (!D || !D.length) return;
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8, 10, 24, 0.85)'; ctx.lineJoin = 'round';
+    let font = '';
+    for (const f of D) {
+      const k = f.t / f.max, crit = f.kind === 'crit';
+      const size = Math.round((crit ? 14 : f.kind === 'aim' ? 11 : 10) * (k > 0.85 ? 1 + (k - 0.85) * 2 : 1));
+      const want = `bold ${size}px 'DotGothic16', sans-serif`;
+      if (want !== font) { ctx.font = want; font = want; }
+      ctx.globalAlpha = Math.min(1, k / 0.35);
+      ctx.strokeText(f.text, f.x, f.y);
+      ctx.fillStyle = DN_COLOR[f.kind] || '#ffffff';
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.restore();
+  }
   function drawFloats(state) {
     const F = state.floats;
     if (!F || !F.length) return;
@@ -2497,6 +2515,7 @@ export function createRenderer(canvas, view) {
     drawDashCuts(state, t);
     drawRings(state);
     drawParticles(state);
+    drawDamageNums(state);
     drawFloats(state);
     drawBossDownWorld(state);
     drawTimeStop(state, t);

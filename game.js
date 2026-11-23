@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123134401';
-import { spawnPop, stepParticle } from './pops.js?v=20261123134401';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123134401';
+import { CONFIG } from './config.js?v=20261123135251';
+import { spawnPop, stepParticle } from './pops.js?v=20261123135251';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123135251';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -143,6 +143,7 @@ export function createGame() {
       pickups: [],           // かけら
       particles: [],
       floats: [],            // 浮かぶ文字（即死 など）
+      dnums: [],             // ダメージの数字
       rings: [],             // 広がる光の輪（演出）
       flashes: [],           // 一瞬の光（演出）
 
@@ -328,14 +329,15 @@ export function createGame() {
     // 変換：分身の攻撃力が一時的に上がっている
     if (owner === 'ghost' && s.convertT > 0) power *= 1 + (s.st.evo.convert ? SK.convert.kiwamiBuff : SK.convert.buff);
     // 会心の一撃：たまにダメージが2倍
-    if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) power *= BN.crit.mult;
+    let crit = false;
+    if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) { power *= BN.crit.mult; crit = true; }
     // 狂った引き金：分身の弾はでたらめな方向へ（狙った敵の予約もしない）
     if (owner === 'ghost' && s.st.curse.trigger) {
       const a = rand(0, Math.PI * 2);
       s.shots.push({
         x: from.x, y: from.y, vx: Math.cos(a) * CONFIG.shot.speed, vy: Math.sin(a) * CONFIG.shot.speed,
         life: 0.8 * s.zoom, owner, idx, power, size: radiusOf(power) * 0.3, target: null, reserved: 0, hit: new Set(), src: s.dmgSrc,
-        base: power, blast: opts.blast || 0, pierce: !!opts.pierce,
+        base: power, blast: opts.blast || 0, pierce: !!opts.pierce, crit,
       });
       return;
     }
@@ -358,6 +360,7 @@ export function createGame() {
       reserved: Math.abs(spread) > 0.05 ? 0 : Math.min(power, target.hp - (target.incoming || 0)),   // 大きくぶれた弾は、当たる前提で予約しない
       hit: new Set(),
       base: power,                             // 撃ったときの攻撃力（爆発の強さに使う）
+      crit,                                    // 会心の一撃（数字を赤くする）
       blast: opts.blast || 0,
       pierce: !!opts.pierce,
     };
@@ -382,8 +385,26 @@ export function createGame() {
   const skSfx = (id) => sfx('sk_' + id);
 
   // dot：毎フレーム少しずつ削るダメージ（毒・炎・雷の線など）。白く光らせない（光りっぱなしになるので）
-  function damageEnemy(e, amount, raw = false, dot = false) {
+  // まとめたダメージを、敵の上に数字として出す
+  const DN_WAIT = { hit: 0.1, crit: 0, poison: 0.5, burn: 0.5, shock: 0.4, ice: 0.5 };
+  const DN_MAX = 70;
+  function flushDamage(e, all) {
+    const d = e.dn;
+    if (!d) return;
+    for (const kind in d) {
+      const k = d[kind];
+      if (!all && s.time - k.t < (DN_WAIT[kind] ?? 0.1)) continue;
+      delete d[kind];
+      const n = Math.round(k.amt);
+      if (n < 1) continue;
+      if (s.dnums.length >= DN_MAX) s.dnums.shift();
+      s.dnums.push({ x: e.x + rand(-e.r * 0.4, e.r * 0.4), y: e.y - e.r - 4 * s.zoom, text: String(n), kind, t: 0.7, max: 0.7 });
+    }
+  }
+  // kind：ダメージの数字の色分け（hit ふつう／crit 会心／poison 毒／burn 炎／shock 雷／ice 氷／none 出さない）
+  function damageEnemy(e, amount, raw = false, dot = false, kind = 'hit') {
     if (e.vanish) return;   // 影が消えている間は当たらない
+    const hp0 = e.hp;
     e.lastSrc = s.dmgSrc || 'ghost';
     if (!raw) amount *= markMul(e) * lureMul(e);
     if (e.frostT > 0 && s.st.evo.frostpath) amount *= 1 + SK.frostpath.kiwamiDamage;   // 極霜の道
@@ -395,6 +416,9 @@ export function createGame() {
     if (e.vuln) amount *= BOSS.vulnMul;   // ボスのすき：受けるダメージ↑
     e.hp -= amount;
     if (!dot) e.flash = 0.07;
+    // ダメージの数字：同じ敵・同じ種類は少しの間まとめて1つの数字にする（数字が出すぎて重くならないように）
+    const dealt = Math.min(amount, Math.max(0, hp0));
+    if (kind !== 'none' && dealt > 0) { const d = e.dn || (e.dn = {}); const k = d[kind] || (d[kind] = { amt: 0, t: s.time }); k.amt += dealt; }
     // 死神の契約：当てるたびに、まれに即死。大きい敵ほど効きにくく、ボスには効かない
     if (s.st.curse.reaper && !e.boss && e.hp > 0 && Math.random() < CU.reaperChance * Math.min(1, CU.reaperRefHp / e.maxHp)) {
       e.hp = 0;
@@ -665,7 +689,7 @@ export function createGame() {
   const avgGhostPower = () => (s.ghosts.length ? s.ghosts.reduce((a, g) => a + g.power, 0) / s.ghosts.length : P.power * s.st.ghostAttack);
   function bolt(x0, y0, x1, y1, life = 0.18) { s.bolts.push({ x0, y0, x1, y1, life, max: life }); }
   function zap(e, dmg, dot = false) {
-    damageEnemy(e, dmg, false, dot);
+    damageEnemy(e, dmg, false, dot, 'shock');
     e.shockT = 0.25;
     // 帯電：痺れて一瞬止まる（同じ敵は少し間をあける）
     if (skLv('charged') && (e.chargeStopAt || -9) + SK.charged.again <= s.time) {
@@ -704,10 +728,16 @@ export function createGame() {
     const avg = avgGhostPower();
     const dps = avg * SK.thunder.power * (1 + SK.thunder.per * (skLv('thunder') - 1));
     const w = SK.thunder.width * s.zoom;
+    // 線ごとの囲む四角を先に出しておき、明らかに遠い敵は細かい計算をしない
+    const boxes = s.links.map(([a, b]) => [Math.min(a.x, b.x), Math.max(a.x, b.x), Math.min(a.y, b.y), Math.max(a.y, b.y)]);
     for (const e of s.enemies) {
       if (e.hp <= 0) continue;
-      for (const [a, b] of s.links) {
-        if (segDist(a.x, a.y, b.x, b.y, e.x, e.y) < e.r + w) { if ((e.zapSfx || 0) <= s.time) { e.zapSfx = s.time + 0.8; skSfx('thunder'); } zap(e, dps * DT, true); break; }
+      const m = e.r + w;
+      for (let li = 0; li < s.links.length; li++) {
+        const bx = boxes[li];
+        if (e.x < bx[0] - m || e.x > bx[1] + m || e.y < bx[2] - m || e.y > bx[3] + m) continue;
+        const [a, b] = s.links[li];
+        if (segDist(a.x, a.y, b.x, b.y, e.x, e.y) < m) { if ((e.zapSfx || 0) <= s.time) { e.zapSfx = s.time + 0.8; skSfx('thunder'); } zap(e, dps * DT, true); break; }
       }
     }
     // 落雷：雷の線の近くの敵へ
@@ -799,7 +829,7 @@ export function createGame() {
       for (const e of s.enemies) {
         if (!(e.iceAgeT > 0)) continue;
         e.iceAgeT -= DT;
-        if (e.hp > 0) damageEnemy(e, per * DT, false, true);
+        if (e.hp > 0) damageEnemy(e, per * DT, false, true, 'ice');
       }
     }
   }
@@ -1167,7 +1197,7 @@ export function createGame() {
     if (e.boss || e.elite || e.hp <= 0) return false;   // ボスと中ボスは即死しない
     e.reaped = true;
     skSfx(skLv('soulreap') ? 'soulreap' : 'reaper');
-    damageEnemy(e, e.hp + 1, true);
+    damageEnemy(e, e.hp + 1, true, false, 'none');
     e.hp = Math.min(e.hp, 0);
     ring(e.x, e.y, e.r, e.r * 3, 0.3, 'white', 0, 3);
     ring(e.x, e.y, e.r * 0.5, e.r * 4.5, 0.45, 'enemy', 0, 5);
@@ -1259,7 +1289,7 @@ export function createGame() {
       if (!(e.poisonN > 0)) { if (e.status && e.status.poison) e.status.poison = false; continue; }
       e.poisonT -= DT;
       if (e.poisonT <= 0) { e.poisonN = 0; if (e.status) e.status.poison = false; continue; }
-      if (e.hp > 0 && skLv('poison')) damageEnemy(e, per * e.poisonN * DT, false, true);
+      if (e.hp > 0 && skLv('poison')) damageEnemy(e, per * e.poisonN * DT, false, true, 'poison');
       (e.status || (e.status = {})).poison = true;
     }
     for (const f of s.fogs) f.life -= DT;
@@ -1415,7 +1445,7 @@ export function createGame() {
         if (f.kind === 'sea') touch = inPoly(f.poly, e.x, e.y);
         else for (const p of f.pts) { if (Math.hypot(p.x - e.x, p.y - e.y) < e.r + f.width) { touch = true; break; } }
         if (!touch) continue;
-        damageEnemy(e, f.dps * DT, false, true);
+        damageEnemy(e, f.dps * DT, false, true, 'burn');
         burn(e, f.dps);
         if ((e.fireFx || 0) <= s.time) { sparks(e.x, e.y, 'white', 2, 90); e.fireFx = s.time + 0.25; }
       }
@@ -1453,7 +1483,7 @@ export function createGame() {
     for (const e of s.enemies) {
       if (!(e.burnT > 0) || e.hp <= 0) { if (e.status && e.status.burn) e.status.burn = false; continue; }
       e.burnT -= DT;
-      damageEnemy(e, e.burnDps * DT, false, true);
+      damageEnemy(e, e.burnDps * DT, false, true, 'burn');
       (e.status || (e.status = {})).burn = e.burnT > 0;
       if (skLv('spread')) {
         const R = SK.spread.reach * s.zoom;
@@ -1834,7 +1864,8 @@ export function createGame() {
   // レーザー：画面の端まで届く光。並んだ敵すべてに当たる（盾持ちの正面は盾が受ける）
   function fireLaser(g, target, power) {
     s.stats.shots++;
-    if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) power *= BN.crit.mult;
+    let crit = false;
+    if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) { power *= BN.crit.mult; crit = true; }
     let a;
     if (s.st.curse.trigger) a = rand(0, Math.PI * 2);
     else { const aim = leadPoint(g, target); a = Math.atan2(aim.y - g.y, aim.x - g.x); }
@@ -1913,6 +1944,8 @@ export function createGame() {
       };
       s.ghosts.push(main);
       ghostSpawnFx(main);
+      // 生まれた分身の上に、命中率を出す
+      s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: Math.max(16, main.y - 14 * s.zoom), text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
       born = main;
       sfx('born');
       { let n = 0; for (const id of ['gigant', 'giant', 'awe', 'swarm', 'taunt']) { if (n < 2 && skLv(id) && !(id === 'giant' && skLv('gigant'))) { skSfx(id); n++; } } }
@@ -2329,7 +2362,7 @@ export function createGame() {
           const mul = (ghost ? focusMul(e) : 1) * markMul(e) * lureMul(e);
           // 敵の残り体力の分だけ攻撃力を使い、余れば貫通して次の敵へ（タイタンは減らさずに突き抜ける）
           const dealt = Math.min(sh.power * mul, e.hp);
-          damageEnemy(e, dealt, true);
+          damageEnemy(e, dealt, true, false, sh.crit ? 'crit' : 'hit');
           addCombo();
           if (ghost) hitByGhost(e);
           sfx('hit', rand(0.9, 1.1));
@@ -2941,6 +2974,7 @@ export function createGame() {
         }
       }
     }
+    for (const e of s.enemies) if (e.hp <= 0 && e.dn) flushDamage(e, true);
     s.enemies = s.enemies.filter((e) => e.hp > 0);
   }
 
@@ -3661,6 +3695,8 @@ export function createGame() {
 
   function updateEffects() {
     if (s.floats && s.floats.length) { for (const f of s.floats) { f.t -= DT; f.y -= 28 * s.zoom * DT; } s.floats = s.floats.filter((f) => f.t > 0); }
+    for (const e of s.enemies) if (e.dn) flushDamage(e, e.hp <= 0);
+    if (s.dnums.length) { for (const f of s.dnums) { f.t -= DT; f.y -= 30 * s.zoom * DT; } s.dnums = s.dnums.filter((f) => f.t > 0); }
     for (const pt of s.particles) stepParticle(pt, DT);
     s.particles = s.particles.filter((pt) => pt.life > 0);
     for (const r of s.rings) r.life -= DT;
