@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261123203917';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123203917';
-import { CONFIG } from './config.js?v=20261123203917';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123203917';
-import { POP_STYLES } from './pops.js?v=20261123203917';
-import { TITLES, titleChip } from './titles.js?v=20261123203917';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123203917';
-import { titleOf } from './titles.js?v=20261123203917';
+import { iconSvg, snapIcons } from './icons.js?v=20261124000512';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261124000512';
+import { CONFIG } from './config.js?v=20261124000512';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261124000512';
+import { POP_STYLES } from './pops.js?v=20261124000512';
+import { TITLES, titleChip } from './titles.js?v=20261124000512';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261124000512';
+import { titleOf } from './titles.js?v=20261124000512';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123203917';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261124000512';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123203917';
-import { iconArtSvg } from './iconart.js?v=20261123203917';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123203917';
-import { SONG_LIST, playBgm, stopBgm, bgmNow, setFinalLevel, finalLevelNow } from './bgm.js?v=20261123203917';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261124000512';
+import { iconArtSvg } from './iconart.js?v=20261124000512';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261124000512';
+import { SONG_LIST, playBgm, stopBgm, bgmNow, setFinalLevel, finalLevelNow } from './bgm.js?v=20261124000512';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -165,7 +165,7 @@ export const MOCK = {
 
 // ---------- それぞれの画面（st：その画面の中の状態、d：記録や設定） ----------
 // ロゴ：文字の下を、指でなぞった軌跡が走り抜け、右上で本体（金の光）に行き着く。文字の左に残像が薄く尾を引く
-const LOGO_TRAIL = '<svg class="logo-trail" viewBox="0 0 300 120" aria-hidden="true"><defs><linearGradient id="lgTrail" x1="0" x2="1"><stop offset="0" stop-color="#3fe0ff" stop-opacity="0"/><stop offset="0.55" stop-color="#3fe0ff" stop-opacity="0.75"/><stop offset="1" stop-color="#ffd84a"/></linearGradient></defs>'
+export const LOGO_TRAIL = '<svg class="logo-trail" viewBox="0 0 300 120" aria-hidden="true"><defs><linearGradient id="lgTrail" x1="0" x2="1"><stop offset="0" stop-color="#3fe0ff" stop-opacity="0"/><stop offset="0.55" stop-color="#3fe0ff" stop-opacity="0.75"/><stop offset="1" stop-color="#ffd84a"/></linearGradient></defs>'
   + '<path class="lt-path" d="M6 108 C 70 122, 140 118, 196 98 S 258 52, 276 22" fill="none" stroke="url(#lgTrail)" stroke-width="3.2" stroke-linecap="round"/>'
   + '<path class="lt-dash" d="M6 108 C 70 122, 140 118, 196 98 S 258 52, 276 22" fill="none" stroke="#bff4ff" stroke-width="1" stroke-linecap="round" stroke-dasharray="2 7" opacity="0.5"/>'
   + '<circle class="lt-dot" cx="276" cy="22" r="5.5" fill="#ffd84a"/><circle cx="276" cy="22" r="2.4" fill="#fff"/></svg>';

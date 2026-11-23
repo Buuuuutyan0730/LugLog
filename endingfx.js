@@ -2,7 +2,11 @@
 //   画面が暗くなる → そのプレイで描いた線（分身の通り道）を、描いた順に光る線で描き直していく（だんだん速く）
 //   → 何百本も重なって1枚の絵になる → 絵が少し引いて、題名と記録が出る → クレジットが1つずつ出る → 続けるボタン
 //   data = { trails: [[x, y, x, y, ...], ...]（ステージの座標）, world: { w, h }, ghosts, phase, time, score }
-import { ghostColor } from './theme.js?v=20261123203917';
+import { ghostColor } from './theme.js?v=20261124000512';
+import { LOGO_TRAIL } from './screens.js?v=20261124000512';
+
+// 題字：ホームと同じロゴ（光の軌跡つき）。出す瞬間に入れて、軌跡が描かれる動きをそこから始める
+const LOGO = `<div class="logo-wrap">${LOGO_TRAIL}<div class="logo-main" data-t="LugLog"><span>Lug</span><span class="lg2">Log</span></div></div>`;
 
 const TAU = Math.PI * 2;
 const clamp = (v) => Math.max(0, Math.min(1, v));
@@ -19,7 +23,7 @@ export function createEndingFx(stage) {
   root.className = 'efx';
   root.innerHTML = `<canvas></canvas>
     <div class="efx-foot">
-      <div class="efx-title"><div class="efx-logo"><span>Lug</span><span class="lg2">Log</span></div><div class="efx-count"></div><div class="efx-stat"></div></div>
+      <div class="efx-title"><div class="efx-logo ms-logo"></div><div class="efx-count"></div><div class="efx-stat"></div></div>
       <div class="efx-slot"><div class="efx-credit"></div><div class="efx-thanks">遊んでくれて、ありがとう</div></div>
       <button class="btn wide efx-go"><span>この先も、描き続ける</span></button>
     </div>`;
@@ -60,7 +64,7 @@ export function createEndingFx(stage) {
     run = { data, opts, trails, art, ax, W, H, u, alpha, view, vx: view.getContext('2d'), rx, ry, t0: performance.now(), t: 0, step: 0 };
     root.querySelector('.efx-count').innerHTML = `描いた軌跡 <b>${n.toLocaleString()}</b> 本`;
     root.querySelector('.efx-stat').textContent = `フェーズ ${data.phase}・${fmtTime(data.time || 0)}`;
-    titleEl.classList.remove('on'); thanksEl.classList.remove('on'); goEl.classList.remove('on'); creditEl.className = 'efx-credit'; creditEl.innerHTML = '';
+    titleEl.classList.remove('on'); root.querySelector('.efx-logo').innerHTML = ''; thanksEl.classList.remove('on'); goEl.classList.remove('on'); creditEl.className = 'efx-credit'; creditEl.innerHTML = '';
     goEl.onclick = () => { if (run && run.t >= T.go) { const cb = opts.onDone; stop(); if (cb) cb(); } };
     raf = requestAnimationFrame(frame);
   }
@@ -116,7 +120,7 @@ export function createEndingFx(stage) {
     ctx.drawImage(R.view, 0, 0);
     ctx.restore();
     // 文字（題名 → クレジットを1つずつ → ありがとう → ボタン）
-    if (t >= T.title) titleEl.classList.add('on');
+    if (t >= T.title && !titleEl.classList.contains('on')) { root.querySelector('.efx-logo').innerHTML = LOGO; titleEl.classList.add('on'); }
     const ci = Math.floor((t - T.credits) / T.credit);
     if (ci >= 0 && ci < CREDITS.length && R.step !== ci + 1) {
       R.step = ci + 1;

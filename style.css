@@ -2097,9 +2097,9 @@ body.previewing .efx { z-index: 8; bottom: 26%; }
 .efx-title { text-align: center; opacity: 0; transform: translateY(2cqw); transition: opacity 1.4s ease, transform 1.4s ease; }
 .efx-title.on { opacity: 1; transform: none; }
 .efx-slot { position: relative; width: 100%; height: 13cqw; }
-.efx-logo { font-size: 13cqw; line-height: 1.05; letter-spacing: 0.4cqw; background: linear-gradient(180deg, #ffffff 0%, #ffffff 45%, #a8f2ff 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0.7cqw 0 #05070f) drop-shadow(0 0 2.4cqw rgba(63, 224, 255, 0.4)); }
-.efx-logo .lg2 { background: linear-gradient(180deg, #e9fdff 0%, #7fe9ff 100%); -webkit-background-clip: text; background-clip: text; }
+.efx { font-family: 'DotGothic16', sans-serif; }
+.efx-logo { margin-bottom: 5cqw; }
+.efx-logo .logo-main { font-size: 15cqw; }
 .efx-count { margin-top: 2.4cqw; font-size: 3.8cqw; color: #c9d4ff; }
 .efx-count b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 4cqw; color: #fff; margin: 0 0.6cqw; }
 .efx-stat { margin-top: 1.2cqw; font-size: 3cqw; color: #8b97c4; }
