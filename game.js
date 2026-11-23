@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123175938';
-import { spawnPop, stepParticle } from './pops.js?v=20261123175938';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123175938';
+import { CONFIG } from './config.js?v=20261123180057';
+import { spawnPop, stepParticle } from './pops.js?v=20261123180057';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123180057';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
