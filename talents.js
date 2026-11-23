@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261123161006';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261123161006';
+import { CONFIG } from './config.js?v=20261123163412';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261123163412';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -86,9 +86,10 @@ export function completionsOf(s, id) {
 const RARITIES = ['normal', 'rare', 'super', 'mythic'];
 const GAIN = { normal: 1, rare: 2, super: 3 };
 
-function rollRarity(s, floor) {
+// top：出してよいいちばん上のレア度（遊び始めの1枚はMRを出さない：引き直しの繰り返しで最初からMRを狙えないように）
+function rollRarity(s, floor, top = 'mythic') {
   const table = s.curses.includes('abyss') ? CONFIG.talent.rarityAbyss : CONFIG.talent.rarity;
-  const w = RARITIES.map((r, i) => (i < RARITIES.indexOf(floor) ? 0 : table[r]));
+  const w = RARITIES.map((r, i) => (i < RARITIES.indexOf(floor) || i > RARITIES.indexOf(top) ? 0 : table[r]));
   let roll = Math.random() * w.reduce((a, b) => a + b, 0);
   for (let i = 0; i < RARITIES.length; i++) {
     roll -= w[i];
@@ -190,7 +191,7 @@ export function rollChoices(s, { afterBoss = false, first = false } = {}) {
   const out = [];
   let curseShown = false;
   for (let tries = 0; out.length < n && tries < n * 4; tries++) {
-    const rarity = rollRarity(s, floor);
+    const rarity = rollRarity(s, floor, first ? 'super' : 'mythic');
     const skills = skillPool(s, rarity).filter((k) => !used.has(k.id));
     const left = boosts.filter((b) => !used.has(b.id));
     if (!skills.length && !left.length && (curseShown || !curses.length)) break;

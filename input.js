@@ -31,15 +31,13 @@ export function createInput(target, extra = []) {
   // iPhone などが途中で指を横取りした（pointercancel）ときは、すぐ「離した」にせず少し待つ。
   //   その間にまた触れたら、同じ指の続きとして扱う（本体が止まらず、描いている線も切れない）
   const CANCEL_WAIT = 250;   // ミリ秒
-  // 画面の端：指が端からこの幅の中に入ると、その向きへ進み続ける（触れ始めた場所がもう端なら、その向きは使わない）
-  const EDGE = 96;   // 画面上のピクセル（40→64→96：端に着く前から早めに受け付ける）
-  let startX = 0, startY = 0;
-  const edgeOf = (v, size, start) => {
-    const lo = v < EDGE && start >= EDGE ? -(EDGE - v) / EDGE : 0;
-    const hi = v > size - EDGE && start <= size - EDGE ? (v - (size - EDGE)) / EDGE : 0;
-    const k = lo || hi;
-    return k ? Math.sign(k) : 0;   // 入ったらすぐ最高速度
-  };
+  // 押さえ続けて進む：指を動かしたあと、そのまま止めて押さえていると、動かしていた向きへ進み続ける
+  //   指のうしろに、ひもでつながった点（アンカー）がついてくる。指がアンカーからひもの長さだけ離れたまま止まると、
+  //   アンカー→指の向きへ進み続ける。指を少し戻す（ひもがゆるむ）か、離すと止まる。少し動かして止めただけでは進まない
+  const LEASH = 28;      // ひもの長さ（画面上のピクセル）
+  const STILL_MS = 70;   // この時間、指がほとんど動かなければ「止めた」とみなす（ミリ秒）
+  const STILL_PX = 3;    // 「ほとんど動かない」の幅（画面上のピクセル。指のぶれ）
+  let anchorX = 0, anchorY = 0, stillX = 0, stillY = 0, stillAt = 0;
   let cancelAt = 0;
 
   const onDown = (e) => {
@@ -51,7 +49,8 @@ export function createInput(target, extra = []) {
     lastX = curX = e.clientX;
     lastY = curY = e.clientY;
     stickOX = curX; stickOY = curY;
-    if (!resumed) { downAt = performance.now(); moved = 0; startX = curX; startY = curY; } else moved = TAP_MOVE;   // 続きのときはタップにしない
+    if (!resumed) { downAt = performance.now(); moved = 0; anchorX = curX; anchorY = curY; } else moved = TAP_MOVE;   // 続きのときはタップにしない
+    stillX = curX; stillY = curY; stillAt = performance.now();
     try { target.setPointerCapture(e.pointerId); } catch (_) { /* 何もしない */ }
     listeners.forEach((fn) => fn());
     e.preventDefault();
@@ -69,6 +68,10 @@ export function createInput(target, extra = []) {
     dragX += curX - lastX;
     dragY += curY - lastY;
     moved = Math.max(moved, Math.hypot(curX - stickOX, curY - stickOY));
+    // ひもを引っぱる：指がアンカーから離れすぎたら、アンカーを指のほうへ引き寄せる
+    const ax = curX - anchorX, ay = curY - anchorY, al = Math.hypot(ax, ay);
+    if (al > LEASH) { anchorX = curX - ax / al * LEASH; anchorY = curY - ay / al * LEASH; }
+    if (Math.hypot(curX - stillX, curY - stillY) > STILL_PX) { stillX = curX; stillY = curY; stillAt = performance.now(); }
     lastX = curX;
     lastY = curY;
     e.preventDefault();
@@ -115,15 +118,15 @@ export function createInput(target, extra = []) {
         const R = stickTravel(), vx = (curX - stickOX) / R, vy = (curY - stickOY) / R, m = Math.hypot(vx, vy);
         if (m > DEAD) { const k = Math.min(1, (m - DEAD) / (1 - DEAD)) / m; sx = vx * k; sy = vy * k; }   // 輪の外は最高速度のまま
       }
-      // 画面の端（ドラッグのとき）：横・縦それぞれ -1〜1
-      let ex = 0, ey = 0;
-      if (touching && pointerType !== 'mouse') {
-        ex = edgeOf(curX, window.innerWidth, startX);
-        ey = edgeOf(curY, window.innerHeight, startY);
+      // 押さえ続けて進む向き（ドラッグのとき）：指を止めていて、ひもが張っていれば、その向き（長さ1）
+      let hx = 0, hy = 0;
+      if (touching && performance.now() - stillAt > STILL_MS) {
+        const ax = curX - anchorX, ay = curY - anchorY, al = Math.hypot(ax, ay);
+        if (al >= LEASH * 0.9) { hx = ax / al; hy = ay / al; }
       }
       const out = {
-        edgeX: ex,
-        edgeY: ey,
+        holdX: hx,
+        holdY: hy,
         stickX: sx,
         stickY: sy,
         dx: dragX * scale,

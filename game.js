@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123161006';
-import { spawnPop, stepParticle } from './pops.js?v=20261123161006';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123161006';
+import { CONFIG } from './config.js?v=20261123163412';
+import { spawnPop, stepParticle } from './pops.js?v=20261123163412';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123163412';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -494,12 +494,12 @@ export function createGame() {
       //   前は最高速を超えた分を捨てていたため、指を速く動かすほど指との位置がずれていった
       p.tx += input.dx * T.sensitivity.value;
       p.ty += input.dy * T.sensitivity.value;
-      // 画面の端：指が端に着いたあとも押さえていれば、その向きへ進み続ける（親指の下の余白が少なくても、下まで行ける）
-      if (input.edgeX || input.edgeY) {
+      // 押さえ続けて進む：指を動かしてから止めて押さえていると、その向きへ最高速度で進み続ける（input.js）
+      if (input.holdX || input.holdY) {
         const max = T.moveSpeed.value * s.zoom * Math.min(s.st.curse.chain ? 0.5 : 1, p.drawMode ? DM.speed : 1);
         // 行き先が本体より先に行きすぎないように（離したときに飛んでいかない）
         const ahead = Math.hypot(p.tx - p.x, p.ty - p.y);
-        if (ahead < max * 0.1) { p.tx += input.edgeX * max * DT; p.ty += input.edgeY * max * DT; }
+        if (ahead < max * 0.1) { p.tx += input.holdX * max * DT; p.ty += input.holdY * max * DT; }
       }
     }
     const m = p.r + 2;
