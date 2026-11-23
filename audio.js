@@ -4,7 +4,8 @@
 
 let ctx = null, master = null, seBus = null, bgmBus = null, noiseBuf = null;
 const prefs = { se: true, seVol: 1, bgm: true, bgmVol: 1 };
-const BGM_BOOST = 1.2;   // BGM は効果音より少し大きめに鳴らす（設定の音量に掛ける）
+const BGM_BOOST = 1.6;   // BGM は大きめ、効果音は小さめに鳴らす（設定の音量に掛ける）
+const SE_SCALE = 0.7;
 const lastAt = new Map();   // 音ごとの、最後に鳴らした時刻
 let live = 0;               // 今鳴っている声の数
 const MAX_LIVE = 40;
@@ -14,7 +15,9 @@ function ensure() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
   ctx = new AC();
-  master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+  // 最後に音割れ止め（大きい音が重なったときだけ、少し押さえる）
+  const limit = ctx.createDynamicsCompressor(); limit.threshold.value = -6; limit.knee.value = 6; limit.ratio.value = 8; limit.attack.value = 0.003; limit.release.value = 0.15; limit.connect(ctx.destination);
+  master = ctx.createGain(); master.gain.value = 0.55; master.connect(limit);
   seBus = ctx.createGain(); seBus.connect(master);
   bgmBus = ctx.createGain(); bgmBus.connect(master);
   applyVol();
@@ -26,7 +29,7 @@ function ensure() {
 }
 function applyVol() {
   if (!ctx) return;
-  seBus.gain.value = prefs.se ? prefs.seVol : 0;
+  seBus.gain.value = prefs.se ? prefs.seVol * SE_SCALE : 0;
   bgmBus.gain.value = prefs.bgm ? prefs.bgmVol * BGM_BOOST : 0;
 }
 
