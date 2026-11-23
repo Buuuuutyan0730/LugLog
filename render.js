@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123193302';
-import { makeForms } from './forms.js?v=20261123193302';
-import { CONFIG } from './config.js?v=20261123193302';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123194320';
+import { makeForms } from './forms.js?v=20261123194320';
+import { CONFIG } from './config.js?v=20261123194320';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -2579,11 +2579,16 @@ export function createRenderer(canvas, view) {
     }
     const B = state.bossIntro;
     if (!B) return;
-    if (B.kind === 'shuhitsu') { drawFinalIntro(B, t, W, H, u); return; }
+    // ラスボス（終筆）も ふつうのボスと同じ形。色だけ金にして、画面を少し暗くし、名前を少し大きくする
+    const fin = B.kind === 'shuhitsu';
+    const C = fin
+      ? { band: 'rgba(70,46,0,0.82)', stripe: 'rgba(255,210,80,0.3)', word: '#fff1c4', line: '#ffd84a', tag: '#ffd84a', glow: 'rgba(255,180,40,0.55)', size: 36 }
+      : { band: 'rgba(120,10,30,0.75)', stripe: 'rgba(255,70,100,0.35)', word: '#ffd6de', line: '#ff3b5c', tag: '#ff8fa3', glow: 'rgba(255,40,80,0.9)', size: 30 };
     const k = B.t;
     const a = Math.min(1, k / 0.1, (1 - k) / 0.18);
     if (a <= 0) return;
     ctx.save();
+    if (fin) { ctx.globalAlpha = a * 0.45; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
     // 上下の警告の帯：斜めのしま模様と「WARNING」の文字が流れる
     const bh = 22 * u, shift = (t * 60 * u) % (24 * u);
     for (const [y0, dir] of [[H * 0.16, 1], [H * 0.84 - bh, -1]]) {
@@ -2591,18 +2596,18 @@ export function createRenderer(canvas, view) {
       ctx.save();
       ctx.translate(slide, 0);
       ctx.globalAlpha = a * 0.85;
-      ctx.fillStyle = 'rgba(120,10,30,0.75)';
+      ctx.fillStyle = C.band;
       ctx.fillRect(0, y0, W, bh);
       ctx.beginPath(); ctx.rect(0, y0, W, bh); ctx.clip();
-      ctx.strokeStyle = 'rgba(255,70,100,0.35)'; ctx.lineWidth = 6 * u;
+      ctx.strokeStyle = C.stripe; ctx.lineWidth = 6 * u;
       for (let x = -bh + shift * dir; x < W + bh; x += 24 * u) { ctx.beginPath(); ctx.moveTo(x, y0 + bh); ctx.lineTo(x + bh, y0); ctx.stroke(); }
-      ctx.fillStyle = '#ffd6de';
+      ctx.fillStyle = C.word;
       ctx.font = `${Math.round(9 * u)}px "Press Start 2P", monospace`;
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
       const step = 110 * u, off = ((t * 50 * u * dir) % step + step) % step;
       for (let x = -step + off; x < W; x += step) ctx.fillText('WARNING', x, y0 + bh / 2 + u);
       ctx.restore();
-      ctx.globalAlpha = a; ctx.fillStyle = '#ff3b5c';
+      ctx.globalAlpha = a; ctx.fillStyle = C.line;
       ctx.fillRect(slide, y0 - u, W, u); ctx.fillRect(slide, y0 + bh, W, u);
     }
     // 名前：少し大きい所から縮んで止まり、最後にふっと消える
@@ -2613,58 +2618,19 @@ export function createRenderer(canvas, view) {
       ctx.translate(W / 2, H * 0.44);
       ctx.scale(sc, sc);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ff8fa3';
+      ctx.fillStyle = C.tag;
       ctx.font = `${Math.round(8 * u)}px "Press Start 2P", monospace`;
-      ctx.fillText('BOSS', 0, -24 * u);
-      ctx.shadowColor = 'rgba(255,40,80,0.9)'; ctx.shadowBlur = 16 * u * PREFS.glow;
-      ctx.fillStyle = '#fff';
-      ctx.font = `${Math.round(30 * u)}px "DotGothic16", sans-serif`;
+      ctx.fillText('BOSS', 0, -24 * u - (C.size - 30) * 0.5 * u);
+      ctx.font = `${Math.round(C.size * u)}px "DotGothic16", sans-serif`;
+      // 光は弱めにして、ふちを暗く縁取り、文字そのものを読みやすくする
+      ctx.lineJoin = 'round'; ctx.lineWidth = 4 * u; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.strokeText(B.name, 0, 4 * u);
+      ctx.shadowColor = C.glow; ctx.shadowBlur = (fin ? 8 : 16) * u * PREFS.glow;
+      ctx.fillStyle = fin ? '#fff6d8' : '#fff';
       ctx.fillText(B.name, 0, 4 * u);
       ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ff3b5c';
+      ctx.fillStyle = C.line;
       const lw = 70 * u * nk;
-      ctx.fillRect(-lw, 24 * u, lw * 2, Math.max(1, 1.5 * u));
-    }
-    ctx.restore();
-  }
-
-  // ラスボス「終筆」の登場：墨が画面に広がり、金の線が走って、名前が筆で上から書かれる（文字の見出しは出さない）
-  function drawFinalIntro(B, t, W, H, u) {
-    const k = B.t, cx = W / 2, cy = H * 0.46, R = Math.hypot(W, H) * 0.6;
-    const out = Math.max(0, (k - 0.82) / 0.18);   // 最後に引いていく
-    ctx.save();
-    // 墨：にじむように広がる（ふちが波打つ）
-    const grow = Math.min(1, k / 0.22), rr = R * (1 - (1 - grow) ** 3);
-    ctx.globalAlpha = 0.92 * (1 - out);
-    ctx.fillStyle = '#07050a';
-    ctx.beginPath();
-    for (let n = 0; n <= 64; n++) { const a = (n / 64) * TAU, w = 1 + 0.06 * Math.sin(a * 7 + t * 2) + 0.04 * Math.sin(a * 13 - t * 3); const x = cx + Math.cos(a) * rr * w, y = cy + Math.sin(a) * rr * w; n ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
-    ctx.fill();
-    // 金の線：真ん中から左右へ走る（上下に1本ずつ）
-    const lk = Math.min(1, Math.max(0, (k - 0.14) / 0.2));
-    if (lk > 0) {
-      ctx.globalAlpha = (1 - out);
-      ctx.fillStyle = '#ffd84a'; ctx.shadowColor = '#ffd84a'; ctx.shadowBlur = 12 * u * PREFS.glow;
-      for (const y of [H * 0.3, H * 0.62]) { const half = W * 0.42 * (1 - (1 - lk) ** 3); ctx.fillRect(cx - half, y, half * 2, Math.max(1, 1.4 * u)); }
-      ctx.shadowBlur = 0;
-    }
-    // 名前：筆で上から下へ書かれていく
-    const wk = Math.min(1, Math.max(0, (k - 0.3) / 0.32));
-    if (wk > 0) {
-      const fs = Math.round(76 * u);
-      ctx.font = `900 ${fs}px 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const top = cy - fs * 0.62, hgt = fs * 1.24;
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, top, W, hgt * (1 - (1 - wk) ** 2)); ctx.clip();
-      ctx.globalAlpha = 1 - out;
-      ctx.lineWidth = 6 * u; ctx.strokeStyle = '#000'; ctx.strokeText(B.name, cx, cy);
-      const g = ctx.createLinearGradient(0, top, 0, top + hgt); g.addColorStop(0, '#fff3c0'); g.addColorStop(0.5, '#ffd84a'); g.addColorStop(1, '#b88a12');
-      ctx.fillStyle = g; ctx.shadowColor = 'rgba(255,200,60,0.8)'; ctx.shadowBlur = 18 * u * PREFS.glow;
-      ctx.fillText(B.name, cx, cy);
-      ctx.restore();
-      // 筆先の墨しぶき（書いている所に飛び散る）
-      if (wk < 1) { const y = top + hgt * (1 - (1 - wk) ** 2); ctx.fillStyle = '#ffd84a'; for (let n = 0; n < 6; n++) { const a = n * 2.1 + t * 9; ctx.globalAlpha = 0.7 * (1 - out); ctx.beginPath(); ctx.arc(cx + Math.cos(a) * fs * 0.7, y + Math.sin(a) * 6 * u, 2 * u, 0, TAU); ctx.fill(); } }
+      ctx.fillRect(-lw, 24 * u + (C.size - 30) * 0.5 * u, lw * 2, Math.max(1, 1.5 * u));
     }
     ctx.restore();
   }

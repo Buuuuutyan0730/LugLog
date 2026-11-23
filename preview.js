@@ -2,14 +2,14 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123193302';
-import { CONFIG } from './config.js?v=20261123193302';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123193302';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123193302';
-import { GACHA_POOL } from './skins.js?v=20261123193302';
-import { createGame } from './game.js?v=20261123193302';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123193302';
-import { createGachaFx } from './gachafx.js?v=20261123193302';
+import { BOOSTS, CURSES } from './talents.js?v=20261123194320';
+import { CONFIG } from './config.js?v=20261123194320';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123194320';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123194320';
+import { GACHA_POOL } from './skins.js?v=20261123194320';
+import { createGame } from './game.js?v=20261123194320';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123194320';
+import { createGachaFx } from './gachafx.js?v=20261123194320';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -967,7 +967,7 @@ export function createPreview(hud) {
     const fx = {};
     const now = performance.now() / 1000;
     if (tab === 'fx_bossin') { const k = (now % 2.6) / 1.5; if (k < 1) fx.bossIntro = { t: k, name: 'コア' }; fx.enemies = (sc.enemies || []).filter((e) => !e.boss || k > 0.6); }
-    if (tab === 'fx_finalin') { const k = (now % 5) / 3.6; if (k < 1) fx.bossIntro = { t: k, name: '終筆', kind: 'shuhitsu' }; fx.enemies = (sc.enemies || []).filter((e) => e.boss && k > 0.85); fx.bossTrails = []; fx.labels = []; }
+    if (tab === 'fx_finalin') { const k = (now % 3.2) / 2; if (k < 1) fx.bossIntro = { t: k, name: '終筆', kind: 'shuhitsu' }; fx.enemies = (sc.enemies || []).filter((e) => !e.boss || k > 0.6); }
     if (tab === 'fx_bossdown') {
       const k = now % 2.4, core = (sc.enemies || []).find((e) => e.boss);
       fx.enemies = (sc.enemies || []).filter((e) => !e.boss || k < 0.7);
