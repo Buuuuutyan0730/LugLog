@@ -275,7 +275,7 @@ export const CONFIG = {
     demon: { every: 20, time: 2, power: 3, again: 0.3, reach: 1.9 }, // 鬼神
     // ---- 罠の道（罠は踏まれるまでその場に残る。数は max まで、超えたら古いものから消える） ----
     trap: { life: 8, max: 200, reach: 5, slow: 0.5, slowTime: 0.5 }, // 罠が残る秒数／罠の数の上限／踏んだとみなす距離（敵のふちから）／スロウフィールド：遅くする倍率と秒数
-    keepsake: { power: 1, per: 0.25, blast: 45, blastPower: 1 },     // 置き土産：踏んだ敵へ（押し出された分身の攻撃力×倍）、1Lvで +25%／極の爆発の広さと強さ
+    keepsake: { power: 2, per: 0.25, blast: 45, blastPower: 1 },     // 置き土産：時間で消えない。踏んだ敵へ（押し出された分身の攻撃力×倍）、1Lvで +25%／極の爆発の広さと強さ
     caltrop: { gap: 30, power: 0.3, per: 0.15, burst: 30 },         // マキビシ：軌跡の上の間隔／1個の強さ（分身の攻撃力×割合）、1Lvで +15%／千本針：飛び散る広さ
     barb: { hits: 3, grow: [0.3, 0.4, 0.5, 0.6, 0.7], growMax: 10, again: 0.5 }, // 返し針：刺さる回数／刺さるたびに上がる威力（Lvごと、1回ごとに足す）／極で上がり続ける回数の上限／同じ敵に刺さり直す間隔
     snare: { stop: [0.5, 0.6, 0.7, 0.8, 0.9], kiwamiMult: 2 },      // 足止め：止まる秒数（Lvごと）／極の倍
@@ -284,7 +284,7 @@ export const CONFIG = {
     mine: { power: 1.5, per: 0.15, radius: 45, chainDelay: 0.12 },  // 地雷：爆発の強さ（分身の攻撃力×倍）、1Lvで +15%／広さ／連鎖爆雷：誘爆までの間
     timebomb: { time: 3, radiusMul: 1.5, kiwamiMult: 2 },           // 時限爆弾：置いてから爆発するまで／広さの倍／極：威力の倍
     sticky: { delay: 1, kiwamiRadius: 1.5 },                        // 吸着地雷：くっついてから爆発するまで／極：広さの倍
-    rig: { power: 2, kiwamiMult: 2 },                               // 仕込み：押し出された分身の地雷の強さ（分身の攻撃力×倍）／極：さらに倍
+    rig: { power: 4, kiwamiMult: 2 },                               // 仕込み：時間で消えない。押し出された分身の地雷の強さ（分身の攻撃力×倍）／極：さらに倍
     misfire: { every: 2 },                                          // 暴発：勝手に爆発する間隔
     flamepath: { life: 3, width: 8, power: 0.5, per: 0.1, gap: 8, hellMult: 2 }, // 炎の道：燃える秒数／炎の太さ（中心から）／毎秒（分身の攻撃力×割合）、1Lvで +10%／炎の点の間隔／業火：太さと時間の倍
     spread: { time: 2, reach: 30, power: 0.5, kiwamiMult: 2 },     // 延焼：燃え続ける秒数／燃え移る距離／燃えている間の毎秒（炎の強さに対する割合）／極：時間の倍

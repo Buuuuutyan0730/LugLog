@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123151703';
-import { spawnPop, stepParticle } from './pops.js?v=20261123151703';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123151703';
+import { CONFIG } from './config.js?v=20261123152036';
+import { spawnPop, stepParticle } from './pops.js?v=20261123152036';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123152036';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -604,9 +604,10 @@ export function createGame() {
   // ---------- 罠の道 ----------
   const spikePower = (g) => g.power * SK.caltrop.power * (1 + SK.caltrop.per * (skLv('caltrop') - 1));
   // size：光の罠（置き土産）の大きさ。押し出された分身の大きさに合わせる
-  function placeTrap(x, y, kind, dmg, idx = 0, size = 0) {
+  // forever：時間で消えない（踏まれるか、フェーズが終わるまで残る）
+  function placeTrap(x, y, kind, dmg, idx = 0, size = 0, forever = false) {
     s.traps = s.traps || [];
-    const life = SK.trap.life * s.st.dur;
+    const life = forever ? 1e6 : SK.trap.life * s.st.dur;
     const hits = kind === 'spike' && skLv('barb') ? (s.st.evo.barb ? Infinity : SK.barb.hits) : 1;
     const tr = { x, y, kind, dmg, idx, life, max: life, hits, stab: 0, rot: Math.random() * Math.PI, size };
     if (kind === 'mine' && skLv('timebomb')) tr.fuse = SK.timebomb.time;   // 時限爆弾：置いてから時間で爆発
@@ -1760,10 +1761,10 @@ export function createGame() {
   function evictOldest(fx = true) {
     const old = s.ghosts.shift();
     // 置き土産：押し出された分身の場所に、光の罠が残る
-    if (skLv('keepsake')) placeTrap(old.x, old.y, 'light', old.power * SK.keepsake.power * (1 + SK.keepsake.per * (skLv('keepsake') - 1)), old.idx, old.r);
+    if (skLv('keepsake')) placeTrap(old.x, old.y, 'light', old.power * SK.keepsake.power * (1 + SK.keepsake.per * (skLv('keepsake') - 1)), old.idx, old.r, true);
     // 仕込み：押し出された分身の場所に、強い地雷
     if (skLv('mine') && skLv('rig')) skSfx('rig');
-    if (skLv('mine') && skLv('rig')) placeTrap(old.x, old.y, 'mine', old.power * SK.rig.power * (s.st.evo.rig ? SK.rig.kiwamiMult : 1), old.idx);
+    if (skLv('mine') && skLv('rig')) placeTrap(old.x, old.y, 'mine', old.power * SK.rig.power * (s.st.evo.rig ? SK.rig.kiwamiMult : 1), old.idx, 0, true);
     // 千の影：写しも一緒に押し出す
     const echoes = s.ghosts.filter((g) => g.echoOf === old);
     if (echoes.length) s.ghosts = s.ghosts.filter((g) => g.echoOf !== old);
@@ -1932,11 +1933,17 @@ export function createGame() {
 
   // 一斉射撃：全分身が、近い敵から順に狙って撃つ（Lvで1体あたりの弾数が増える）
   //   撃ったら待ち時間（Lvで短くなる）の間は撃てない（描きまくって連射できないように）
+  // 一斉射撃：決まった間隔で、全分身が一斉に撃つ（近くに敵がいるときだけ。撃ったら待ち時間）
   function volley() {
     const lv = skLv('volley');
     if (!lv || s.volleyCd > 0) return;
+    if (!s.ghosts.length || !s.enemies.some((e) => e.hp > 0)) return;
     s.volleyWait = SK.volley.wait[lv - 1];
     s.volleyCd = s.volleyWait;
+    volleyFire();
+  }
+  function volleyFire() {
+    const lv = skLv('volley');
     skSfx('volley');
     const n = SK.volley.shots[lv - 1];
     for (const g of s.ghosts) {
@@ -2002,7 +2009,7 @@ export function createGame() {
     if (r.length >= CONFIG.record.minStroke && r.path.length > 1) {
       pickBig();
       for (const g of s.ghosts) ghostPower(g);   // 生まれたばかりの分身の攻撃力を先に決める
-      volley();
+      if (s.st.evo.volley) volleyFire();   // 極一斉射撃：描き終えた瞬間にも撃つ（待ち時間とは別）
       // マキビシ（線の上に一定の間隔）・地雷（始めと終わり）・炎の道（線の全体）
       if (born) layTrail(born);
     }
@@ -2037,7 +2044,6 @@ export function createGame() {
       sfx('draw');
       r.path = [{ x: p.x, y: p.y }];
       r.length = 0;
-      if (s.st.evo.volley) volley();   // 極一斉射撃：描き始めにも撃つ
     } else if (r.active) {
       const prev = r.path[r.path.length - 1];
       r.length += Math.hypot(p.x - prev.x, p.y - prev.y);
@@ -3811,6 +3817,7 @@ export function createGame() {
     if (s.timeStop > 0) s.timeStop -= DT;
     else {
       if (s.volleyCd > 0) s.volleyCd -= DT;
+      volley();
       updateGhosts();
       by('ghost', updateAttacks);
       by('body', updateBody);
