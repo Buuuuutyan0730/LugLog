@@ -1988,3 +1988,20 @@ body.previewing .gfx { z-index: 8; bottom: 26%; }
 .hud-top .hud-right { margin-left: auto; }
 .ms-wipe { display: block; width: 100%; margin: 5cqw 0 2cqw; padding: 3cqw; font-size: 3.6cqw; }
 .ms-glyph { width: 62%; height: 62%; }
+.ms-tutobtn { margin-top: 3cqw; }
+
+/* チュートリアルの案内：画面の上の方に、今やることを大きく出す */
+.tuto { position: absolute; left: 0; right: 0; top: 17cqw; display: none; flex-direction: column; align-items: center; pointer-events: none; z-index: 6; }
+.tuto.show { display: flex; visibility: visible; }   /* 見本でまわりが隠れていても見えるように */
+.tuto-box { width: 84cqw; padding: 3.2cqw 4cqw 3cqw; border-radius: 3cqw; background: rgba(10, 14, 40, 0.86); border: 0.6cqw solid #7fe3ff; box-shadow: 0 0 4cqw rgba(127, 227, 255, 0.25); text-align: center; animation: tutoIn 0.35s ease-out; }
+.tuto-step { font-size: 3cqw; color: #7fe3ff; letter-spacing: 0.3cqw; }
+.tuto-text { margin-top: 1.4cqw; font-size: 5.4cqw; color: #f3f5ff; line-height: 1.3; }
+.tuto-sub { margin-top: 1.2cqw; font-size: 3.4cqw; color: #b9c3f0; line-height: 1.4; }
+.tuto-sub:empty { display: none; }
+.tuto-dots { display: flex; justify-content: center; gap: 1.4cqw; margin-top: 2.2cqw; }
+.tuto-dots i { width: 2cqw; height: 2cqw; border-radius: 50%; background: #2e3670; }
+.tuto-dots i.done { background: #7fe3ff; }
+.tuto-dots i.now { background: #f3f5ff; box-shadow: 0 0 2cqw #7fe3ff; }
+.tuto-skip { align-self: flex-end; margin: 2cqw 8cqw 0 0; pointer-events: auto; }   /* 案内の下の右（右上の一時停止ボタンと重ならないように） */
+.tuto.ok .tuto-box { border-color: #6dff9a; box-shadow: 0 0 5cqw rgba(109, 255, 154, 0.45); }
+@keyframes tutoIn { from { transform: translateY(-3cqw); opacity: 0; } to { transform: none; opacity: 1; } }

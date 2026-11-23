@@ -2,13 +2,14 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123142809';
-import { CONFIG } from './config.js?v=20261123142809';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123142809';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123142809';
-import { GACHA_POOL } from './skins.js?v=20261123142809';
-import { createGame } from './game.js?v=20261123142809';
-import { createGachaFx } from './gachafx.js?v=20261123142809';
+import { BOOSTS, CURSES } from './talents.js?v=20261123143614';
+import { CONFIG } from './config.js?v=20261123143614';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123143614';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123143614';
+import { GACHA_POOL } from './skins.js?v=20261123143614';
+import { createGame } from './game.js?v=20261123143614';
+import { TUTO_STEPS } from './tutorial.js?v=20261123143614';
+import { createGachaFx } from './gachafx.js?v=20261123143614';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -772,6 +773,7 @@ const CATS = [
   { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_bossdown', 'ボス撃破']] },
   { id: 'ougi', label: '奥義', tabs: OUGI_FX.map((o) => ['og_' + o.id, o.name]) },
   { id: 'mode', label: '描く／動く', tabs: [['md_move', '動くモード'], ['md_draw', '描くモード']] },
+  { id: 'tuto', label: 'チュートリアル', tabs: TUTO_STEPS.map((_, i) => ['tu_' + (i + 1), `手順${i + 1}`]).concat([['tu_ok', 'できた']]) },
 ];
 const TAB_LABEL = Object.fromEntries(CATS.flatMap((c) => c.tabs.map(([id, label]) => [id, `${c.label}／${label}`])));
 
@@ -881,7 +883,8 @@ export function createPreview(hud) {
     // ガチャの演出：昇格は必ず見せる。10回引きは SR だけ昇格して見せる
     if (GACHA_SAMPLES[id]) { hud.hideSample(); gfx.play(GACHA_SAMPLES[id](), { replay: true, forceUp: id === 'fx_gup' ? true : id === 'fx_g10' ? [3] : [] }); return; }
     gfx.stop();
-    if (id === 'battle' || SCENES[id] || id.startsWith('og_') || id.startsWith('md_')) hud.hideSample();
+    if (!id.startsWith('tu_')) hud.hideTutorial();
+    if (id === 'battle' || SCENES[id] || id.startsWith('og_') || id.startsWith('md_') || id.startsWith('tu_')) hud.hideSample();
     else if (id === 'ghostroad' || id === 'swarmroad' || id === 'turretroad' || id === 'guardroad' || id === 'bodyroad' || id === 'ghostforms' || FORM_SCENES[id]) hud.hideSample();
     else if (id === 'ghostcards') hud.showSample(CARD_SETS.ghostroad.title, CARD_SETS.ghostroad.sub, CARD_SETS.ghostroad.cards);
     else if (id === 'owned') { hud.hideSample(); hud.showOwnedSample(OWNED); }
@@ -902,6 +905,7 @@ export function createPreview(hud) {
 
   function close() {
     active = false;
+    hud.hideTutorial();
     bar.classList.remove('show');
     bar.setAttribute('aria-hidden', 'true');
     hud.hideSample();
@@ -914,6 +918,11 @@ export function createPreview(hud) {
 
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
   function view(base) {
+    if (tab.startsWith('tu_')) {
+      const ok = tab === 'tu_ok', n = ok ? 3 : +tab.slice(3), S = TUTO_STEPS[n - 1];
+      hud.showTutorial({ step: n, total: TUTO_STEPS.length, text: ok ? 'できた！' : S.text, sub: ok ? 'まっすぐな仲間ができた' : S.sub, ok });
+      return { ...stepMode(n !== 4 && n !== 5), labels: [], mode: 'play', over: false };
+    }
     if (tab === 'md_move' || tab === 'md_draw') return { ...stepMode(tab === 'md_draw'), labels: [], mode: 'play', over: false };
     if (tab.startsWith('og_')) {
       if (!og || 'og_' + og.o.id !== tab) startOugi(tab);

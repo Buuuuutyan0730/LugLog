@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261123142809';
-import { choiceView, ownedViews } from './talents.js?v=20261123142809';
-import { iconSvg, snapIcons } from './icons.js?v=20261123142809';
+import { ghostColor } from './theme.js?v=20261123143614';
+import { choiceView, ownedViews } from './talents.js?v=20261123143614';
+import { iconSvg, snapIcons } from './icons.js?v=20261123143614';
 
 const $ = (id) => document.getElementById(id);
 
@@ -323,6 +323,19 @@ export function createHud() {
     snapIcons(el.ownedBody);
   }
 
+  // チュートリアルの案内。step：今の手順（1から）、total：手順の数、ok：できた（緑に光る）
+  function showTutorial({ step, total, text, sub = '', ok = false }) {
+    const box = document.getElementById('tuto');
+    if (!box) return;
+    box.classList.add('show');
+    box.classList.toggle('ok', ok);
+    document.getElementById('tuto-step').textContent = `チュートリアル ${step}/${total}`;
+    const tx = document.getElementById('tuto-text');
+    if (tx.textContent !== text) { tx.textContent = text; const b2 = box.querySelector('.tuto-box'); b2.style.animation = 'none'; void b2.offsetWidth; b2.style.animation = ''; }
+    document.getElementById('tuto-sub').textContent = sub;
+    document.getElementById('tuto-dots').innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i + 1 < step || (i + 1 === step && ok) ? 'done' : i + 1 === step ? 'now' : ''}"></i>`).join('');
+  }
+  function hideTutorial() { const box = document.getElementById('tuto'); if (box) box.classList.remove('show'); }
   function hideSample() {
     el.skill.classList.remove('show', 'sample');
     el.skill.querySelector('.skill-sub').textContent = '才能を1つ選ぼう';
@@ -405,5 +418,5 @@ export function createHud() {
     el.result.setAttribute('aria-hidden', 'true');
   }
 
-  return { update, showOwned, hideOwned, showResult, hideResult, showSkills, hideSkills, showSample, hideSample, showOwnedSample, showIconSample };
+  return { update, showOwned, hideOwned, showResult, hideResult, showSkills, hideSkills, showSample, hideSample, showOwnedSample, showIconSample, showTutorial, hideTutorial };
 }

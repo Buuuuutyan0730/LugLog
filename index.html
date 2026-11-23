@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261123142809">
+  <link rel="stylesheet" href="style.css?v=20261123143614">
 </head>
 <body>
   <div id="app">
@@ -61,6 +61,16 @@
         </div>
 
         <div class="hint" id="hint"><span>ドラッグしてスタート</span></div>
+        <!-- チュートリアルの案内（今の手順・やること・進み具合。右上の「とばす」で本番へ） -->
+        <div class="tuto" id="tuto">
+          <div class="tuto-box">
+            <div class="tuto-step" id="tuto-step">チュートリアル 1/6</div>
+            <div class="tuto-text" id="tuto-text">ドラッグして線を描こう</div>
+            <div class="tuto-sub" id="tuto-sub"></div>
+            <div class="tuto-dots" id="tuto-dots"></div>
+          </div>
+          <button class="btn btn-small btn-sub tuto-skip" id="tuto-skip" type="button">とばす</button>
+        </div>
 
       </div>
       </div>
@@ -176,6 +186,6 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=20261123142809"></script>
+  <script type="module" src="main.js?v=20261123143614"></script>
 </body>
 </html>
