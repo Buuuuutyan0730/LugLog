@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261123143614';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123143614';
-import { CONFIG } from './config.js?v=20261123143614';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123143614';
-import { POP_STYLES } from './pops.js?v=20261123143614';
-import { TITLES, titleChip } from './titles.js?v=20261123143614';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123143614';
-import { titleOf } from './titles.js?v=20261123143614';
+import { iconSvg, snapIcons } from './icons.js?v=20261123144016';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261123144016';
+import { CONFIG } from './config.js?v=20261123144016';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261123144016';
+import { POP_STYLES } from './pops.js?v=20261123144016';
+import { TITLES, titleChip } from './titles.js?v=20261123144016';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261123144016';
+import { titleOf } from './titles.js?v=20261123144016';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123143614';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261123144016';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,10 +26,10 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123143614';
-import { iconArtSvg } from './iconart.js?v=20261123143614';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123143614';
-import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123143614';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261123144016';
+import { iconArtSvg } from './iconart.js?v=20261123144016';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261123144016';
+import { SONG_LIST, playBgm, stopBgm, bgmNow } from './bgm.js?v=20261123144016';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
@@ -114,6 +114,7 @@ export const ENEMY_ICONS = {
 
 // 遊び方の4枚
 const HOWTO = [
+  ['描いた軌跡が、仲間になる', 'あなたが描いた線から生まれる仲間と一緒に、押し寄せる敵を倒していくゲーム。かけらを集めてフェーズを進み、どこまで行けるかを競う。', '<path class="hw-trail ghost" d="M30 50 L160 50"/><path class="hw-trail ghost" d="M30 120 C70 80 120 150 160 110"/><circle cx="80" cy="50" r="10" fill="#3fe0ff"/><circle cx="80" cy="50" r="4" fill="#fff"/><circle cx="125" cy="128" r="10" fill="#7a8cff"/><circle cx="125" cy="128" r="4" fill="#fff"/><g transform="translate(95 88) scale(1.4)"><path d="M0-9 2-2 9 0 2 2 0 9-2 2-9 0-2-2z" fill="#ffd84a"/></g><path d="M0-8 8 6-8 6z" fill="#ff3b5c" transform="translate(30 88)"/><path d="M0-8 8 6-8 6z" fill="#ff3b5c" transform="translate(165 85) rotate(180)"/><circle cx="150" cy="150" r="7" fill="#ff3b5c"/>'],
   ['描くモードで、軌跡を描く', '描くモードの間は、本体がペンになる。ドラッグすると、通った跡が軌跡になる。', '<path class="hw-trail" d="M25 125 C60 40 120 150 150 80"/><g transform="translate(150 80) rotate(-45)"><rect x="4" y="-5" width="34" height="10" rx="5" fill="#ffd84a" stroke="#0a0a14" stroke-width="2"/><rect x="0" y="-4.5" width="6" height="9" fill="#8a6a20"/><path d="M0 -4.5 L-12 0 L0 4.5z" fill="#dfe8f5" stroke="#5a6478" stroke-width="1.2"/></g><rect x="6" y="6" width="178" height="158" rx="8" fill="none" stroke="#7fe3ff" stroke-width="3"/>'],
   ['指を離すと、軌跡が仲間になる', '描いた軌跡をなぞって往復する分身が、自動で敵を撃つ。まっすぐな線ほど、弾がよく当たる。', '<path class="hw-trail ghost" d="M25 125 L165 45"/><circle cx="95" cy="85" r="12" fill="#3fe0ff" opacity="0.9"/><circle cx="95" cy="85" r="5" fill="#fff"/><circle cx="95" cy="85" r="18" fill="none" stroke="#bff4ff" stroke-width="1.5" stroke-dasharray="3 4"/><text x="95" y="58" text-anchor="middle" font-size="12" fill="#bff4ff" font-family="DotGothic16, sans-serif">命中 95%</text>'],
   ['タップで、描く／動くを切り替える', '描くモードは遅く、敵の攻撃も痛い。動くモードは速く動けるが、線は描けない。', '<g transform="translate(52 88)"><g transform="rotate(-45)"><rect x="4" y="-5" width="34" height="10" rx="5" fill="#ffd84a" stroke="#0a0a14" stroke-width="2"/><rect x="0" y="-4.5" width="6" height="9" fill="#8a6a20"/><path d="M0 -4.5 L-12 0 L0 4.5z" fill="#dfe8f5" stroke="#5a6478" stroke-width="1.2"/></g></g><text x="52" y="140" text-anchor="middle" font-size="12" fill="#7fe3ff" font-family="DotGothic16, sans-serif">描く</text><path d="M80 82 h30 l-7 -6 M110 82 l-7 6" stroke="#f3f5ff" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M110 98 h-30 l7 -6 M80 98 l7 6" stroke="#f3f5ff" stroke-width="3" fill="none" stroke-linecap="round"/><g transform="translate(140 90) scale(1.6)"><path d="M0-9 2-2 9 0 2 2 0 9-2 2-9 0-2-2z" fill="#ffd84a"/></g><text x="140" y="140" text-anchor="middle" font-size="12" fill="#ffd84a" font-family="DotGothic16, sans-serif">動く</text><text x="95" y="40" text-anchor="middle" font-size="13" fill="#f3f5ff" font-family="DotGothic16, sans-serif">タップ</text>'],

@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261123143614';
-import { choiceView, ownedViews } from './talents.js?v=20261123143614';
-import { iconSvg, snapIcons } from './icons.js?v=20261123143614';
+import { ghostColor } from './theme.js?v=20261123144016';
+import { choiceView, ownedViews } from './talents.js?v=20261123144016';
+import { iconSvg, snapIcons } from './icons.js?v=20261123144016';
 
 const $ = (id) => document.getElementById(id);
 
@@ -324,16 +324,18 @@ export function createHud() {
   }
 
   // チュートリアルの案内。step：今の手順（1から）、total：手順の数、ok：できた（緑に光る）
-  function showTutorial({ step, total, text, sub = '', ok = false }) {
+  // intro：最初の説明（手順の番号は出さず、「タップではじめる」を出す）
+  function showTutorial({ step, total, text, sub = '', ok = false, intro = false }) {
     const box = document.getElementById('tuto');
     if (!box) return;
     box.classList.add('show');
     box.classList.toggle('ok', ok);
-    document.getElementById('tuto-step').textContent = `チュートリアル ${step}/${total}`;
+    box.classList.toggle('intro', intro);
+    document.getElementById('tuto-step').textContent = intro ? 'LugLog とは' : `チュートリアル ${step}/${total}`;
     const tx = document.getElementById('tuto-text');
     if (tx.textContent !== text) { tx.textContent = text; const b2 = box.querySelector('.tuto-box'); b2.style.animation = 'none'; void b2.offsetWidth; b2.style.animation = ''; }
     document.getElementById('tuto-sub').textContent = sub;
-    document.getElementById('tuto-dots').innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i + 1 < step || (i + 1 === step && ok) ? 'done' : i + 1 === step ? 'now' : ''}"></i>`).join('');
+    document.getElementById('tuto-dots').innerHTML = intro ? '<span class="tuto-go">タップではじめる</span>' : Array.from({ length: total }, (_, i) => `<i class="${i + 1 < step || (i + 1 === step && ok) ? 'done' : i + 1 === step ? 'now' : ''}"></i>`).join('');
   }
   function hideTutorial() { const box = document.getElementById('tuto'); if (box) box.classList.remove('show'); }
   function hideSample() {

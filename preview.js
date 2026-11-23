@@ -2,14 +2,14 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123143614';
-import { CONFIG } from './config.js?v=20261123143614';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123143614';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123143614';
-import { GACHA_POOL } from './skins.js?v=20261123143614';
-import { createGame } from './game.js?v=20261123143614';
-import { TUTO_STEPS } from './tutorial.js?v=20261123143614';
-import { createGachaFx } from './gachafx.js?v=20261123143614';
+import { BOOSTS, CURSES } from './talents.js?v=20261123144016';
+import { CONFIG } from './config.js?v=20261123144016';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123144016';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123144016';
+import { GACHA_POOL } from './skins.js?v=20261123144016';
+import { createGame } from './game.js?v=20261123144016';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261123144016';
+import { createGachaFx } from './gachafx.js?v=20261123144016';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -773,7 +773,7 @@ const CATS = [
   { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_bossdown', 'ボス撃破']] },
   { id: 'ougi', label: '奥義', tabs: OUGI_FX.map((o) => ['og_' + o.id, o.name]) },
   { id: 'mode', label: '描く／動く', tabs: [['md_move', '動くモード'], ['md_draw', '描くモード']] },
-  { id: 'tuto', label: 'チュートリアル', tabs: TUTO_STEPS.map((_, i) => ['tu_' + (i + 1), `手順${i + 1}`]).concat([['tu_ok', 'できた']]) },
+  { id: 'tuto', label: 'チュートリアル', tabs: [['tu_0', 'はじめに']].concat(TUTO_STEPS.map((_, i) => ['tu_' + (i + 1), `手順${i + 1}`]), [['tu_ok', 'できた']]) },
 ];
 const TAB_LABEL = Object.fromEntries(CATS.flatMap((c) => c.tabs.map(([id, label]) => [id, `${c.label}／${label}`])));
 
@@ -919,8 +919,8 @@ export function createPreview(hud) {
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
   function view(base) {
     if (tab.startsWith('tu_')) {
-      const ok = tab === 'tu_ok', n = ok ? 3 : +tab.slice(3), S = TUTO_STEPS[n - 1];
-      hud.showTutorial({ step: n, total: TUTO_STEPS.length, text: ok ? 'できた！' : S.text, sub: ok ? 'まっすぐな仲間ができた' : S.sub, ok });
+      const ok = tab === 'tu_ok', n = ok ? 3 : +tab.slice(3), S = n ? TUTO_STEPS[n - 1] : TUTO_INTRO;
+      hud.showTutorial({ step: n, total: TUTO_STEPS.length, text: ok ? 'できた！' : S.text, sub: ok ? 'まっすぐな仲間ができた' : S.sub, ok, intro: n === 0 });
       return { ...stepMode(n !== 4 && n !== 5), labels: [], mode: 'play', over: false };
     }
     if (tab === 'md_move' || tab === 'md_draw') return { ...stepMode(tab === 'md_draw'), labels: [], mode: 'play', over: false };
