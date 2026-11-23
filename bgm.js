@@ -2,7 +2,7 @@
 //   どの曲も、目立たず、落ち着いていて、でも体が揺れる感じ。盛り上げない（フェーズが進んでも変えない）。
 //   4曲は、楽器・リズム・拍子・調をそれぞれ別に作る（同じ曲の手直しにしない）。
 //   曲を切りかえるときは、前の曲を少しずつ小さく、次の曲を少しずつ大きくする。
-import { audioParts, onAudioReset } from './audio.js?v=20261123190008';
+import { audioParts, onAudioReset } from './audio.js?v=20261123190937';
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const vary = (v) => v * (0.88 + Math.random() * 0.24);
@@ -43,6 +43,37 @@ function hitNoise(song, t, v, d, out, a = 0.003) {
   src.start(t, Math.random() * 0.5); src.stop(t + d + 0.05);
   song.track(src, t + d + 0.05);
 }
+// 三味線の1音を、弦をはじいた音として計算で作る（はじいた弦の考え方：ずれた音を少しずつ平らにしながら くり返す）
+const shamiCache = new Map();
+function shamiBuf(ctx, m) {
+  const key = `${ctx.sampleRate}|${m}`;
+  if (shamiCache.has(key)) return shamiCache.get(key);
+  const sr = ctx.sampleRate, f = mtof(m), len = Math.floor(sr * 0.65);
+  const N = Math.max(2, Math.round(sr / f));
+  const buf = ctx.createBuffer(1, len, sr), d = buf.getChannelData(0);
+  const ring = new Float32Array(N);
+  // 撥は細く硬いので、はじめは明るい音（雑音にとがった形を混ぜる）
+  for (let i = 0; i < N; i++) ring[i] = (Math.random() * 2 - 1) * 0.7 + (i < N * 0.15 ? 0.6 : -0.1);
+  let idx = 0, prev = 0, peak = 0;
+  const damp = 0.9965 - Math.min(0.004, f / 400000);   // 高い音ほど少し早く消える
+  for (let n = 0; n < len; n++) {
+    const cur = ring[idx];
+    // 平らにする量を少なめにして、明るさを長く残す（三味線の、きらっとした音）
+    const y = (cur * 0.62 + prev * 0.38) * damp;
+    prev = cur; ring[idx] = y; idx = (idx + 1) % N;
+    // さわり：弦が棹に触れてビリつく（片側だけ少しつぶす）
+    const z = y > 0.25 ? 0.25 + (y - 0.25) * 0.45 : y;
+    d[n] = z + 0.18 * z * Math.abs(z);
+    peak = Math.max(peak, Math.abs(d[n]));
+  }
+  for (let n = 0; n < len; n++) d[n] /= peak || 1;
+  // 終わりはなめらかに消す
+  const fade = Math.floor(sr * 0.05);
+  for (let n = 0; n < fade; n++) d[len - 1 - n] *= n / fade;
+  shamiCache.set(key, buf);
+  return buf;
+}
+
 // ラスボスの曲の激しさ（1〜3）。終筆の段階に合わせて、外から変える
 let finalLevel = 1;
 export function setFinalLevel(n) { finalLevel = Math.max(1, Math.min(3, n | 0)); }
@@ -113,15 +144,17 @@ const I = {
   },
   // ウッドベース（はじいてすぐ減る）
   upright(song, m, t, d, v, out) { const len = Math.min(0.9, d + 0.2); osc(song, 'triangle', mtof(m), t, len, env(song, t, 0.008, v, len, out, 0.45)); osc(song, 'sine', mtof(m), t, len, env(song, t, 0.008, v * 0.6, len, out, 0.45)); },
-  // 三味線：撥（ばち）で弾いた、鼻にかかったような明るい音。弾いた瞬間に高さが少しすべり、すぐ減る
+  // 三味線：本物の弦のように、はじいた音を計算で作って鳴らす（音ごとに1回だけ作って使い回す）
+  //   はじいた瞬間の明るい音 → すぐ丸くなって減る。弦が棹に触れる「さわり」のビリつきと、撥が皮を打つ「パチッ」を足す
   shami(song, m, t, v, out) {
-    const f = mtof(m), len = 0.24;
-    const g = env(song, t, 0.0015, v, len, out, 0.22);
-    const o1 = osc(song, 'sawtooth', f, t, len, g, (Math.random() - 0.5) * 6);
-    const o2 = osc(song, 'square', f * 2, t, len * 0.6, g);
-    o1.frequency.setValueAtTime(f * 1.025, t); o1.frequency.exponentialRampToValueAtTime(f, t + 0.025);
-    o2.frequency.setValueAtTime(f * 2.05, t); o2.frequency.exponentialRampToValueAtTime(f * 2, t + 0.025);
-    hitNoise(song, t, v * 0.55, 0.012, out);   // 撥が当たる音
+    const src = song.ctx.createBufferSource(); src.buffer = shamiBuf(song.ctx, m);
+    // 撥で弾いた瞬間、高さが少し上がってから戻る
+    src.playbackRate.setValueAtTime(1.012, t); src.playbackRate.exponentialRampToValueAtTime(1, t + 0.04);
+    const g = song.ctx.createGain(); g.gain.value = v * 2.2; src.connect(g); g.connect(out);
+    src.start(t); src.stop(t + 0.7); song.track(src, t + 0.7);
+    // 撥が皮を打つ音（低いパチッ＋短い雑音）
+    osc(song, 'sine', 190, t, 0.03, env(song, t, 0.001, v * 0.9, 0.03, out));
+    hitNoise(song, t, v * 0.7, 0.008, out);
   },
   // 太鼓：低く長く響く ドン
   taiko(song, t, v, out) {
@@ -408,7 +441,7 @@ export const SONGS = {
       const rk = sec === 'solo' ? (p === 31 ? 'r4' : 'solo') : S.order[p % 8];
       const R = S.riffs[rk], root = S.roots[rk];
       const duck = song.duck, drums = song.drums;
-      const shOut = song.f('shami', 'bandpass', 1500, 0.8, duck), bassOut = song.f('bass', 'lowpass', 700, 0, duck);
+      const shOut = song.f('shami', 'highpass', 160, 0.5, duck), bassOut = song.f('bass', 'lowpass', 700, 0, duck);
       const flOut = song.f('flute', 'lowpass', 6000, 0, song.out), chopOut = song.f('chop', 'lowpass', 2200, 1.5, duck);
       const hhOut = song.f('hh', 'highpass', 8000, 0.6, drums), snOut = song.f('sn', 'bandpass', 1700, 0.8, drums), crOut = song.f('cr', 'highpass', 4500, 0.4, drums);
       // ---- 三味線のリフ（ずっと）。Cでは同じ音を2回ずつ細かく弾く ----
