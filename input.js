@@ -23,6 +23,9 @@ export function createInput(target, extra = []) {
   const stickR = () => Math.max(30, (widthCache || (widthCache = target.getBoundingClientRect().width)) * 0.14);
   const stickTravel = () => stickR() * (1 - KNOB);
   const listeners = [];
+  // タップ（短く触れて、ほとんど動かさずに離す）：描く／動くモードの切り替えに使う
+  const TAP_TIME = 220, TAP_MOVE = 12;   // ミリ秒／画面上のピクセル
+  let downAt = 0, moved = 0, tapPending = false;
 
   const release = () => { pointerId = null; };
 
@@ -33,6 +36,7 @@ export function createInput(target, extra = []) {
     lastX = curX = e.clientX;
     lastY = curY = e.clientY;
     stickOX = curX; stickOY = curY;
+    downAt = performance.now(); moved = 0;
     try { target.setPointerCapture(e.pointerId); } catch (_) { /* 何もしない */ }
     listeners.forEach((fn) => fn());
     e.preventDefault();
@@ -47,12 +51,17 @@ export function createInput(target, extra = []) {
     curY = e.clientY;
     dragX += curX - lastX;
     dragY += curY - lastY;
+    moved = Math.max(moved, Math.hypot(curX - stickOX, curY - stickOY));
     lastX = curX;
     lastY = curY;
     e.preventDefault();
   });
 
-  const end = (e) => { if (e.pointerId === pointerId) release(); };
+  const end = (e) => {
+    if (e.pointerId !== pointerId) return;
+    if (e.type === 'pointerup' && performance.now() - downAt < TAP_TIME && moved < TAP_MOVE) tapPending = true;
+    release();
+  };
   target.addEventListener('pointerup', end);
   target.addEventListener('pointercancel', end);
   target.addEventListener('lostpointercapture', end);
@@ -64,6 +73,8 @@ export function createInput(target, extra = []) {
     ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'r', KeyD: 'r',
   };
   window.addEventListener('keydown', (e) => {
+    // スペースキー：描く／動くモードの切り替え（パソコン用）
+    if (e.code === 'Space' && !e.repeat) { tapPending = true; listeners.forEach((fn) => fn()); e.preventDefault(); return; }
     if (KEYMAP[e.code]) { keys.add(KEYMAP[e.code]); listeners.forEach((fn) => fn()); e.preventDefault(); }
   });
   window.addEventListener('keyup', (e) => { if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]); });
@@ -96,8 +107,9 @@ export function createInput(target, extra = []) {
         isTouch: pointerType === 'touch' || pointerType === 'pen',
         // held：指が触れている、またはキーが押されている（＝軌跡を描いている）
         held: touching || keys.size > 0,
+        tap: tapPending,   // この刻みでタップがあった（描く／動くの切り替え）
       };
-      dragX = 0; dragY = 0;
+      dragX = 0; dragY = 0; tapPending = false;
       return out;
     },
     onFirstAction(fn) { listeners.push(fn); },

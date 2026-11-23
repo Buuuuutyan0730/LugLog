@@ -1,8 +1,8 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261123133618';
-import { choiceView, ownedViews } from './talents.js?v=20261123133618';
-import { iconSvg, snapIcons } from './icons.js?v=20261123133618';
+import { ghostColor } from './theme.js?v=20261123133922';
+import { choiceView, ownedViews } from './talents.js?v=20261123133922';
+import { iconSvg, snapIcons } from './icons.js?v=20261123133922';
 
 const $ = (id) => document.getElementById(id);
 
@@ -144,11 +144,14 @@ export function createHud() {
     if (html !== lastBar) { lastBar = html; el.bar.innerHTML = html; }
     setText(el.budgetNum, `${Math.round(state.used + rec)}/${budget}`);
 
-    const phase = !r.active ? 'idle' : r.enough ? 'ok' : 'short';
+    // 案内：動くモード／描くモード（待っている・短い・作れる）
+    const drawing = !!state.player.drawMode;
+    const phase = !drawing ? 'move' : !r.active ? 'idle' : r.enough ? 'ok' : 'short';
     if (phase !== lastPhase) {
       el.recLabel.classList.toggle('on', r.active);
-      el.recText.textContent = r.active ? '軌跡を紡ぐ' : '待機中';
-      el.recHint.textContent = phase === 'idle' ? 'ドラッグで軌跡を描く'
+      el.recText.textContent = !drawing ? '動くモード' : r.active ? '軌跡を紡ぐ' : '描くモード';
+      el.recHint.textContent = phase === 'move' ? 'タップで描くモード'
+        : phase === 'idle' ? 'ドラッグで描く・タップで動くモード'
         : phase === 'short' ? 'もっと長く描くと分身が作れる'
         : '指を離すと分身が生まれる';
       lastPhase = phase;

@@ -1,14 +1,15 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123133618';
-import { spawnPop, stepParticle } from './pops.js?v=20261123133618';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123133618';
+import { CONFIG } from './config.js?v=20261123133922';
+import { spawnPop, stepParticle } from './pops.js?v=20261123133922';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123133922';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
 const X = CONFIG.experiments;
 const P = CONFIG.player;
+const DM = CONFIG.drawMode;
 const G = CONFIG.ghost;
 const PH = CONFIG.phase;
 const SH = CONFIG.shard;
@@ -122,6 +123,7 @@ export function createGame() {
       player: {
         x: W / 2, y: H * 0.62, r: radiusOf(P.power), magnetR: radiusOf(P.power) + SH.magnet,
         tx: W / 2, ty: H * 0.62,
+        drawMode: DM.start,   // 描くモード（タップで切り替え）
         inv: 0, fireCd: 0,
         catching: false,     // 押した直後、指の位置へ追いつく途中か
       },
@@ -339,15 +341,21 @@ export function createGame() {
     }
     const aimAt = leadPoint(from, target);
     const d = Math.max(1, dist(aimAt, from));
+    // 分身の弾のぶれ：曲がった線から生まれた分身ほど、狙いから左右にずれる
+    let ax = (aimAt.x - from.x) / d, ay = (aimAt.y - from.y) / d, spread = 0;
+    if (owner === 'ghost' && from.straight != null) {
+      spread = rand(-1, 1) * (1 - from.straight) * DM.spread * Math.PI / 180;
+      if (spread) { const c = Math.cos(spread), sn = Math.sin(spread); [ax, ay] = [ax * c - ay * sn, ax * sn + ay * c]; }
+    }
     const sh = {
       x: from.x, y: from.y,
-      vx: (aimAt.x - from.x) / d * CONFIG.shot.speed,
-      vy: (aimAt.y - from.y) / d * CONFIG.shot.speed,
+      vx: ax * CONFIG.shot.speed,
+      vy: ay * CONFIG.shot.speed,
       life: 0.8 * s.zoom, owner, idx, src: s.dmgSrc,
       power,                                   // 残りの攻撃力（余れば貫通する）
       size: radiusOf(power) * 0.3,             // 弾の太さも強さに比例
       target,
-      reserved: Math.min(power, target.hp - (target.incoming || 0)),
+      reserved: Math.abs(spread) > 0.05 ? 0 : Math.min(power, target.hp - (target.incoming || 0)),   // 大きくぶれた弾は、当たる前提で予約しない
       hit: new Set(),
       base: power,                             // 撃ったときの攻撃力（爆発の強さに使う）
       blast: opts.blast || 0,
@@ -447,7 +455,7 @@ export function createGame() {
       // スティック：中心からのずれの向きへ、ずれの大きさに合わせた速さで進む（指を止めていても進み続ける）
       //   速さだけを、決まった加速でなめらかに上げる（どれだけ倒しても、0.2秒かけて最高速度になる）。
       //   向きはスティックの向きにすぐ合わせ、ゆるめたときもすぐ遅くする
-      const max = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1);
+      const max = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1) * (p.drawMode ? DM.speed : 1);
       const sx = input.stickX || 0, sy = input.stickY || 0, mag = Math.hypot(sx, sy);
       const goal = input.held ? mag * max : 0;
       p.sspd = Math.min(goal, (p.sspd || 0) + (max / P.stickAccelTime) * DT);
@@ -480,7 +488,7 @@ export function createGame() {
     const dx = p.tx - p.x, dy = p.ty - p.y;
     const d = Math.hypot(dx, dy);
     // 最高速はスティックもドラッグも同じ。ドラッグで指がそれより速く動いた分は捨てずに残るので、少し遅れても指の動いた分だけ必ず進む
-    const step = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1) * DT;
+    const step = T.moveSpeed.value * s.zoom * (s.st.curse.chain ? 0.5 : 1) * (p.drawMode ? DM.speed : 1) * DT;   // 描くモードは遅い
     if (d <= step) { p.x = p.tx; p.y = p.ty; p.catching = false; }
     else { p.x += dx / d * step; p.y += dy / d * step; }
     if (p.inv > 0) p.inv -= DT;
@@ -1893,8 +1901,11 @@ export function createGame() {
       const len = clip.length - 1;
       // 軌跡の総量を超える分だけ、古い分身から押し出す（孤独な王：前の分身はすべて押し出す）
       while (s.ghosts.length && (cu.lonely || usedLength() + len > budgetNow())) evictOldest();
+      // まっすぐさ（0〜1）：線の端から端までの距離 ÷ 線の長さ。まっすぐな線ほど弾がよく当たる
+      const st0 = r.path[0], st1 = r.path[r.path.length - 1];
+      const straight = clamp(Math.hypot(st1.x - st0.x, st1.y - st0.y) / Math.max(1, r.length), 0, 1);
       const main = {
-        clip, len, dist: 0, idx, power: 0, r: 4,
+        clip, len, dist: 0, idx, power: 0, r: 4, straight,
         x: clip[0].x, y: clip[0].y,
         life: 1, fireCd: rand(0, 0.3), trail: [], spawnGlow: 0,
         full: atLimit,       // フルチャージ用：上限まで描いた分身か
@@ -1941,6 +1952,14 @@ export function createGame() {
     r.length = 0;
   }
 
+  // 描く／動くモードの切り替え。描いている途中なら、その線はそこで分身になる
+  function toggleDrawMode() {
+    const p = s.player;
+    if (p.drawMode && s.record.active) finishStroke();
+    p.drawMode = !p.drawMode;
+    sfx(p.drawMode ? 'draw' : 'tap');
+    ring(p.x, p.y, p.r, p.r * 3, 0.25, p.drawMode ? 'white' : 'player', 0, 2);
+  }
   function updateRecord(held) {
     const r = s.record;
     const p = s.player;
@@ -1953,7 +1972,7 @@ export function createGame() {
     }
     s.wasHeld = held;
 
-    if (held && !r.active && !p.catching) {
+    if (held && !r.active && !p.catching && p.drawMode) {
       r.active = true;
       sfx('draw');
       r.path = [{ x: p.x, y: p.y }];
@@ -2465,6 +2484,7 @@ export function createGame() {
   function hurtPlayer(amount, from) {
     const p = s.player;
     if (p.demonT > 0) return;   // 鬼神：無敵
+    if (p.drawMode) amount *= DM.damage;   // 描いている間は、受けるダメージが増える
     // 生命の泉：たまったシールドが先に減る
     if (s.lifeShield > 0) {
       const used = Math.min(s.lifeShield, amount);
@@ -3703,6 +3723,9 @@ export function createGame() {
     }
     s.time += DT;
     if (s.combo.t > 0) { s.combo.t -= DT; if (s.combo.t <= 0) s.combo.stacks = 0; }
+    // タップ：描く／動くモードを切り替える
+    if (input.tap) toggleDrawMode();
+    { const goal = s.player.drawMode ? 1 : 0; s.drawEdge = (s.drawEdge || 0) + clamp(goal - (s.drawEdge || 0), -DT * 6, DT * 6); }
     movePlayer(input);
     updateHp();
     updateRecord(input.held);
