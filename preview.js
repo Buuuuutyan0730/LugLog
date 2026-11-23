@@ -2,13 +2,13 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261123044945';
-import { CONFIG } from './config.js?v=20261123044945';
-import { SKILL_ROADS } from './skilldefs.js?v=20261123044945';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123044945';
-import { GACHA_POOL } from './skins.js?v=20261123044945';
-import { createGame } from './game.js?v=20261123044945';
-import { createGachaFx } from './gachafx.js?v=20261123044945';
+import { BOOSTS, CURSES } from './talents.js?v=20261123123153';
+import { CONFIG } from './config.js?v=20261123123153';
+import { SKILL_ROADS } from './skilldefs.js?v=20261123123153';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261123123153';
+import { GACHA_POOL } from './skins.js?v=20261123123153';
+import { createGame } from './game.js?v=20261123123153';
+import { createGachaFx } from './gachafx.js?v=20261123123153';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -374,8 +374,7 @@ function buildGuardRoad() {
     enemy('chaser', 168, 318, 9, 20, {}, { ang: toward(168, 318), flash: 1 }),
     // 自爆：止まって点滅し、爆発する範囲を見せている
     enemy('bomber', 262, 168, 20, 20, {}, { phase: 'windup', timer: 0.25, windupMax: 0.8, blast: 46 }),
-    // 自爆が爆発したところと、巻き込まれた敵
-    enemy('chaser', 92, 112, 8, 20, {}, { flash: 1 }),
+    // 自爆が爆発したところ（ほかの敵には当たらない）
   ];
   const lasers = [{ x1: decoy.x + 10, y1: decoy.y + 8, x2: 168, y2: 318, w: 1.6, life: 0.08, max: 0.1, idx: 1 }];   // 反撃の線
   const rings = [

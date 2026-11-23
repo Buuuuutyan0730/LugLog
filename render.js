@@ -1,8 +1,8 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123044945';
-import { makeForms } from './forms.js?v=20261123044945';
-import { CONFIG } from './config.js?v=20261123044945';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261123123153';
+import { makeForms } from './forms.js?v=20261123123153';
+import { CONFIG } from './config.js?v=20261123123153';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -914,7 +914,9 @@ export function createRenderer(canvas, view) {
         ctx.restore();
       }
 
-      const st = e.status || NO_STATUS;
+      const st0 = e.status || NO_STATUS;
+      // 冷えて遅い敵も、凍った敵と同じ見た目にする
+      const st = st0.chill && !st0.freeze ? { ...st0, freeze: true } : st0;
       if (st.pull) drawPullLines(e, st.pull, t);
 
       const warn = (e.phase === 'windup' || e.flow === 'warn') && Math.sin(t * 40) > 0; // 撃つ・突っ込む直前は白く点滅（ボスは技の予告の間）

@@ -1,9 +1,9 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261123044945';
-import { spawnPop, stepParticle } from './pops.js?v=20261123044945';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123044945';
+import { CONFIG } from './config.js?v=20261123123153';
+import { spawnPop, stepParticle } from './pops.js?v=20261123123153';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice } from './talents.js?v=20261123123153';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2601,7 +2601,7 @@ export function createGame() {
     }
   }
 
-  // 自爆の爆発：範囲の本体・おとりの分身・ほかの敵にダメージ。自分は消える（かけらは落とさない）
+  // 自爆の爆発：範囲の本体・おとりの分身にダメージ。自分は消える（かけらは落とさない）
   function explodeBomber(e) {
     const t = ET.bomber, R = e.blast, p = s.player;
     e.hp = 0;
@@ -2617,9 +2617,7 @@ export function createGame() {
     for (const g of [...s.ghosts]) {
       if (g.maxHp > 0 && Math.hypot(g.x - e.x, g.y - e.y) < R + g.r) hurtGhost(g, T.contactDamage.value * t.blastDamage * Math.sqrt(e.tier), null);
     }
-    for (const o of s.enemies) {
-      if (o !== e && o.hp > 0 && Math.hypot(o.x - e.x, o.y - e.y) < R + o.r) damageEnemy(o, e.maxHp * t.blastEnemy);
-    }
+    // ほかの敵（ボスも）にはダメージを与えない（敵どうしで攻撃は入らない）
   }
 
   // ステージの中の、でたらめな場所へふらふら向かう。ときどき行き先を変える（漂い・かけら泥棒）
