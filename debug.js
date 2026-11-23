@@ -1,8 +1,8 @@
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261124035150';
-import { CATS } from './preview.js?v=20261124035150';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124035517';
+import { CATS } from './preview.js?v=20261124035517';
 
 // スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
 const PARAM = {
@@ -204,7 +204,7 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
   // 記録は2種類：みんなのプレイ（サーバー）／ボス試験（自分で試した結果）
   let recKind = 'play', testBoss = 0;
   const showRec = () => {
-    if (recKind === 'test') { rec.innerHTML = recSwitch(recKind); const box = document.createElement('div'); rec.appendChild(box); renderTests(box, sampleTests(config), testBoss, config); return; }
+    if (recKind === 'test') { rec.innerHTML = recSwitch(recKind); const box = document.createElement('div'); rec.appendChild(box); renderTests(box, loadTests(), testBoss, config); return; }
     if (recErr) { rec.innerHTML = `${recSwitch(recKind)}<div class="dbg-rec-note">${recErr}</div><button class="btn btn-small btn-sub dbg-reload">読み込み直す</button>`; return; }
     if (!runs) { rec.innerHTML = `${recSwitch(recKind)}<div class="dbg-rec-hint">読み込み中…</div>`; return; }
     const from = recRange === 'week' ? records.weekStart() : 0;
@@ -220,6 +220,8 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     if (e.target.closest('.dbg-reload')) { loadRec(); return; }
     const k = e.target.closest('[data-rk]'); if (k) { recKind = k.dataset.rk; showRec(); return; }
     const tb = e.target.closest('[data-tboss]'); if (tb) { testBoss = Number(tb.dataset.tboss); showRec(); return; }
+    const del = e.target.closest('.dbg-tdel');
+    if (del) { if (del.dataset.sure) { try { localStorage.removeItem('luglog-bosstests'); } catch (er) { /* なし */ } showRec(); } else { del.dataset.sure = '1'; del.textContent = 'もう一度押すと全部消えます'; } return; }
     const b = e.target.closest('[data-range]'); if (!b) return;
     recRange = b.dataset.range; showRec();
   });
@@ -237,8 +239,10 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
 // ---------- ボス試験の記録 ----------
 const recSwitch = (k) => `<div class="seg dbg-rk"><button data-rk="play" class="${k === 'play' ? 'active' : ''}">みんなのプレイ</button><button data-rk="test" class="${k === 'test' ? 'active' : ''}">ボス試験</button></div>`;
 const SK_NAME = Object.fromEntries(SKILL_ROADS.flatMap((r) => r.skills.map((k) => [k.id, k.name])));
-// 見本の記録（見た目を決めるための仮の数字）
-function sampleTests(config) {
+// この端末にためた試験の記録（main.js がためる）
+function loadTests() { try { return JSON.parse(localStorage.getItem('luglog-bosstests') || '[]'); } catch (e) { return []; } }
+// 見本の記録（見た目を決めるための仮の数字。今は使っていない）
+export function sampleTests(config) {
   let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const B = config.boss, all = SKILL_ROADS.flatMap((r) => r.skills.map((k) => k.id));
   const strong = new Set(['poison', 'corrode', 'thunder']), weak = new Set(['float', 'keeper']);
@@ -271,7 +275,7 @@ function renderTests(root, all, boss, config) {
   const row = (a) => `<div class="dbg-srow"><span>${SK_NAME[a.id] || a.id}</span>${bar(a.r)}<b class="${a.r >= 1.5 ? 'bad' : a.r <= 0.7 ? 'low' : ''}">×${a.r.toFixed(2)}</b><small>${a.n}回</small></div>`;
   const when = (ms) => { const d = new Date(ms); return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`; };
   root.innerHTML = `
-    <div class="dbg-hint">見本の数字です（まだ記録はためていません）</div>
+    <div class="dbg-hint">この端末で試した記録です。${all.length ? '' : 'まだ記録がありません。テストの「ボスを試す」で戦うと、ここにたまります。'}</div>
     <div class="dbg-tboss"><button data-tboss="0" class="${!boss ? 'active' : ''}">全部</button>${B.order.map((k, i) => `<button data-tboss="${i + 1}" class="${boss === i + 1 ? 'active' : ''}">${i + 1}</button>`).join('')}</div>
     <div class="dbg-rec-count"><b>${tests.length}</b>回の試験</div>
 
@@ -285,9 +289,10 @@ function renderTests(root, all, boss, config) {
     ${tests.slice().sort((a, b) => b.at - a.at).map((t) => `
       <div class="dbg-test ${t.win ? 'win' : 'lose'}">
         <div class="dbg-test-h"><b>${t.n} ${t.name}</b><span>${t.win ? `倒した ${mmss(t.sec)}` : `やられた ${mmss(t.sec)}`}</span><em>${t.dps.toLocaleString()}/秒</em></div>
-        <div class="dbg-test-sk">${Object.entries(t.skills).map(([id, lv]) => `<span>${SK_NAME[id] || id}<small>${lv}</small></span>`).join('')}</div>
-        <div class="dbg-test-f"><small>${when(t.at)}</small><small>${t.auto ? 'おまかせ' : '自分で'}</small></div>
-      </div>`).join('')}`;
+        <div class="dbg-test-sk">${Object.entries(t.skills).map(([id, lv]) => `<span>${SK_NAME[id] || id}<small>${lv > 5 ? '極' : lv}</small></span>`).join('')}</div>
+        <div class="dbg-test-f"><small>${when(t.at)}</small><small>${t.mixed ? '途中からおまかせ' : t.auto ? 'おまかせ' : '自分で'}</small></div>
+      </div>`).join('')}
+    ${all.length ? '<button class="btn btn-small btn-sub wide dbg-tdel">試験の記録を全部消す</button>' : ''}`;
 }
 
 // ---------- プレイの記録（見た目） ----------

@@ -1,27 +1,27 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261124035150';
-import { createGame, DT } from './game.js?v=20261124035150';
-import { applyForms } from './talents.js?v=20261124035150';
-import { createRenderer } from './render.js?v=20261124035150';
-import { createHud } from './ui.js?v=20261124035150';
-import { createInput } from './input.js?v=20261124035150';
-import { setupDebugPanel } from './debug.js?v=20261124035150';
-import { createPreview } from './preview.js?v=20261124035150';
-import { createMenus } from './menus.js?v=20261124035150';
-import { createDemo } from './demo.js?v=20261124035150';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261124035150';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261124035150';
-import { ensureDaily, addRun } from './missions.js?v=20261124035150';
-import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261124035150';
-import { SKILL_ROADS } from './skilldefs.js?v=20261124035150';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261124035150';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261124035150';
-import { setEquipped } from './skinshot.js?v=20261124035150';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261124035150';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261124035150';
-import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261124035150';
+import { CONFIG } from './config.js?v=20261124035517';
+import { createGame, DT } from './game.js?v=20261124035517';
+import { applyForms } from './talents.js?v=20261124035517';
+import { createRenderer } from './render.js?v=20261124035517';
+import { createHud } from './ui.js?v=20261124035517';
+import { createInput } from './input.js?v=20261124035517';
+import { setupDebugPanel } from './debug.js?v=20261124035517';
+import { createPreview } from './preview.js?v=20261124035517';
+import { createMenus } from './menus.js?v=20261124035517';
+import { createDemo } from './demo.js?v=20261124035517';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261124035517';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261124035517';
+import { ensureDaily, addRun } from './missions.js?v=20261124035517';
+import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261124035517';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124035517';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261124035517';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261124035517';
+import { setEquipped } from './skinshot.js?v=20261124035517';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261124035517';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261124035517';
+import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261124035517';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -362,6 +362,13 @@ function tick(now) {
     if (!s.test.done) game.endBossTest(false);
     lastTest = { n: s.test.n, auto: s.test.auto, taken: s.test.taken.slice() };
     const d = s.test.done;
+    // この端末に、試験の記録をためる（調整パネルの「記録 → ボス試験」で、スキルごとの強さを比べる）
+    try {
+      const key = 'luglog-bosstests', list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.push({ at: Date.now(), n: d.n, name: d.name, phase: d.phase, win: d.win, sec: Math.round(d.sec), dps: d.dps, bossLeft: d.bossLeft, auto: d.auto, mixed: d.mixed,
+        skills: Object.fromEntries(Object.entries(s.skills).map(([id, o]) => [id, o.evo ? 6 : o.lv])) });
+      localStorage.setItem(key, JSON.stringify(list.slice(-500)));
+    } catch (e) { /* ためられなくても、ゲームはそのまま */ }
     setTimeout(() => menus.open('s_btresult', { bossTest: d }, false), d.win ? 1200 : 700);
   }
   if (s.over && !resultShown) {
