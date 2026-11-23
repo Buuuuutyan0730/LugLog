@@ -2,15 +2,15 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261124001748';
-import { CONFIG } from './config.js?v=20261124001748';
-import { SKILL_ROADS } from './skilldefs.js?v=20261124001748';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261124001748';
-import { GACHA_POOL } from './skins.js?v=20261124001748';
-import { createGame } from './game.js?v=20261124001748';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261124001748';
-import { createGachaFx } from './gachafx.js?v=20261124001748';
-import { createEndingFx, sampleTrails } from './endingfx.js?v=20261124001748';
+import { BOOSTS, CURSES } from './talents.js?v=20261124031941';
+import { CONFIG } from './config.js?v=20261124031941';
+import { SKILL_ROADS } from './skilldefs.js?v=20261124031941';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261124031941';
+import { GACHA_POOL } from './skins.js?v=20261124031941';
+import { createGame } from './game.js?v=20261124031941';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261124031941';
+import { createGachaFx } from './gachafx.js?v=20261124031941';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261124031941';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -912,6 +912,8 @@ export function createPreview(hud) {
     hud.hideOwned();
     marks.closeNote();
     // カード選び（引き直し）：本物のカード選びの画面に、引き直すボタンを出して見せる
+    if (id === 's_btpick') { screens.hide(); const set = CARD_SETS.rarity; hud.showSample('PHASE 12', 'カードを選ぼう', set.cards); document.getElementById('skill').classList.add('with-bt'); marks.attachDom(id); return; }
+    document.getElementById('skill').classList.remove('with-bt');
     if (id === 's_reroll') { screens.hide(); const set = CARD_SETS.rarity; hud.showSample(set.title, set.sub, set.cards); document.getElementById('skill').classList.add('with-reroll'); marks.attachDom(id); return; }
     document.getElementById('skill').classList.remove('with-reroll');
     efx.stop();
@@ -948,7 +950,7 @@ export function createPreview(hud) {
     bar.classList.remove('show');
     bar.setAttribute('aria-hidden', 'true');
     hud.hideSample();
-    document.getElementById('skill').classList.remove('with-reroll');
+    document.getElementById('skill').classList.remove('with-reroll', 'with-bt');
     hud.hideOwned();
     marks.closeNote();
     screens.hide();

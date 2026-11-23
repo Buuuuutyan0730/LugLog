@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261124001748">
+  <link rel="stylesheet" href="style.css?v=20261124031941">
 </head>
 <body>
   <div id="app">
@@ -97,6 +97,8 @@
       <!-- 才能の選択 -->
       <div id="skill" class="skill" aria-hidden="true">
         <div class="skill-inner">
+          <!-- ボスを試す準備：何枚目か・残りはおまかせ（調整パネルから） -->
+          <div class="bt-bar" id="bt-bar"><span>双子 を試す準備　<b id="bt-count">12 / 30</b></span><button class="btn btn-small btn-sub" id="bt-auto">残りはおまかせ</button></div>
           <div class="skill-title" id="skill-title">PHASE 1 CLEAR!</div>
           <div class="skill-sub">才能を1つ選ぼう</div>
           <div class="skill-cards" id="skill-cards"></div>
@@ -152,7 +154,6 @@
           <span class="sheet-title">調整パネル</span>
           <div class="sheet-actions">
             <button class="btn btn-small btn-sub" id="open-preview">見本</button>
-            <button class="btn btn-small btn-sub" id="debug-clear">クリア</button>
             <button class="btn btn-small btn-sub" id="restart">やり直す</button>
             <button class="btn btn-small" id="close-debug">とじる</button>
           </div>
@@ -186,6 +187,6 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=20261124001748"></script>
+  <script type="module" src="main.js?v=20261124031941"></script>
 </body>
 </html>

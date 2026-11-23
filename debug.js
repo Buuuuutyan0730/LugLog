@@ -1,6 +1,27 @@
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
+import { SKILL_ROADS } from './skilldefs.js?v=20261124031941';
+
+// スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
+const PARAM = {
+  power: '威力', per: 'レベルごとに増える分', base: '基本の値', radius: '範囲', reach: '届く距離', every: '間隔（秒）', time: '続く時間（秒）',
+  life: '残る時間（秒）', count: '数', width: '太さ', speed: '速さ', push: '押し返す強さ', max: '上限', cap: '上限', slow: '遅くする割合',
+  gap: '置く間隔（距離）', chance: '確率', again: '次に出るまで（秒）', delay: '遅れ（秒）', keep: '続く時間（秒）', burst: '弾ける範囲',
+  burstPower: '弾ける威力', mult: '倍率', share: '分ける割合', turn: '曲がる強さ', hits: '回数', size: '大きさ', hp: '体力', rate: '割合',
+  interval: '撃つ間隔（秒）', spread: '広がり', warn: '予告（秒）', bounce: '跳ね返り', still: '止まっている時間（秒）', dist: '距離',
+  slowTime: '遅くする時間（秒）', blast: '爆発の範囲', blastPower: '爆発の威力', near: '近さ', stop: '止まる時間（秒）', heal: '回復',
+  regen: '回復の速さ', inv: '無敵（秒）', buff: '強くなる割合', jump: '移る距離', move: '動きの割合', pull: '引き寄せ', look: '見る先',
+  close: '閉じる距離', minLen: '最低の長さ', min: '最低', period: '周期（秒）', height: '高さ', floor: '下限', planet: '惑星の大きさ',
+};
+const paramLabel = (k) => {
+  const m = /^(kiwami|king|boss|hell)(.+)$/.exec(k);
+  if (m) { const base = m[2][0].toLowerCase() + m[2].slice(1); const tag = { kiwami: '極み', king: '王', boss: 'ボス', hell: '地獄' }[m[1]]; return `${PARAM[base] || base}（${tag}）`; }
+  return PARAM[k] || k;
+};
+// 数値を「項目名 → 値」に平らにする（レベルごとの表などは「shots.2」のようにする）
+const flatNums = (o, pre = '') => Object.entries(o || {}).flatMap(([k, v]) => (typeof v === 'number' ? [[pre + k, v]] : v && typeof v === 'object' ? flatNums(v, `${pre}${k}.`) : []));
+
 export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onPreview, coins, records }) {
   const sheet = document.getElementById('debug');
   const body = document.getElementById('debug-body');
@@ -20,28 +41,127 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
   document.getElementById('close-debug').addEventListener('click', close);
   document.getElementById('restart').addEventListener('click', () => { onRestart(); close(); });
   document.getElementById('open-preview').addEventListener('click', () => { close(); onPreview(); });
-  document.getElementById('debug-clear').addEventListener('click', () => { close(); onClearPhase(); });
 
-  // ---- 上のタブ：調整｜記録 ----
-  //   記録：遊んだ人のプレイの記録をまとめて見る（今は見た目だけ。数字は見本）
+  // ---- 上のタブ：テスト｜スキルの数値｜プレイの記録 ----
   const tabs = document.createElement('div');
   tabs.className = 'seg dbg-tabs';
-  tabs.innerHTML = '<button class="active" data-t="tune">調整</button><button data-t="rec">プレイの記録</button>';
+  tabs.innerHTML = '<button class="active" data-t="test">テスト</button><button data-t="skill">スキルの数値</button><button data-t="rec">プレイの記録</button>';
   body.appendChild(tabs);
-  const tune = document.createElement('div');
-  const rec = document.createElement('div');
-  rec.className = 'dbg-rec';
-  rec.hidden = true;
-  body.appendChild(tune);
-  body.appendChild(rec);
+  const test = document.createElement('div');
+  const skill = document.createElement('div'); skill.className = 'dbg-skill'; skill.hidden = true;
+  const rec = document.createElement('div'); rec.className = 'dbg-rec'; rec.hidden = true;
+  body.append(test, skill, rec);
   tabs.addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b) return;
     tabs.querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
-    tune.hidden = b.dataset.t !== 'tune';
+    test.hidden = b.dataset.t !== 'test';
+    skill.hidden = b.dataset.t !== 'skill';
     rec.hidden = b.dataset.t !== 'rec';
     if (!rec.hidden && !runs) loadRec(); else if (!rec.hidden) showRec();
   });
-  // 記録はタブを開いたときに1回だけ読む（「読み込み直す」でもう一度）
+  // 見た目だけのボタン：押したら「まだ動きません」と出す
+  const notYet = (btn) => { const t = btn.textContent; btn.textContent = 'まだ見た目だけ'; setTimeout(() => { btn.textContent = t; }, 1000); };
+
+  // ================= テスト =================
+  const B = config.boss;
+  const bossRows = B.order.map((k, i) => `<button class="dbg-boss" data-boss="${i + 1}"><b>${i + 1}</b><span>${(B[k] && B[k].name) || k}</span><small>フェーズ ${(i + 1) * B.every}</small></button>`).join('');
+  test.innerHTML = `
+    <div class="group-title">▼ ボスを試す</div>
+    <div class="dbg-hint">そのフェーズまで遊んだのと同じ強さで、ボスが出るところから始めます。ランキングと記録には入りません。</div>
+    <div class="dbg-bosses">${bossRows}</div>
+    <div class="dbg-bossgo" hidden>
+      <div class="dbg-bossgo-h"><b></b><span></span></div>
+      <div class="dbg-hint">カードを <b class="dbg-n"></b> 回選んでから戦います</div>
+      <div class="dbg-2btn">
+        <button class="btn btn-sub" data-go="pick">自分で選ぶ</button>
+        <button class="btn" data-go="auto">おまかせで選ぶ</button>
+      </div>
+    </div>
+
+    <div class="group-title">▼ フェーズを進める</div>
+    <div class="seg dbg-seg-gap"><button data-ph="1">次のフェーズへ</button><button data-ph="10">+10 フェーズ</button></div>
+
+    <div class="group-title">▼ コイン</div>
+    <div class="row"><div class="row-label"><span>持っているコイン</span><span class="row-value dbg-coins"></span></div>
+      <div class="seg"><button data-c="1000">+1,000</button><button data-c="10000">+10,000</button><button data-c="100000">+100,000</button><button data-c="0">0にする</button></div></div>
+
+    <div class="group-title">▼ 保存の状態を戻す</div>
+    <div class="dbg-resets">
+      <button class="btn btn-small btn-sub" data-reset="skin">着せ替えを最初に戻す</button>
+      <button class="btn btn-small btn-sub" data-reset="tuto">チュートリアルをもう一度</button>
+      <button class="btn btn-small btn-sub" data-reset="ending">エンディングをもう一度見る</button>
+    </div>`;
+  const coinVal = test.querySelector('.dbg-coins');
+  let showCoins = () => { if (coins) coinVal.textContent = coins.get().toLocaleString(); };
+  showCoins();
+  const go = test.querySelector('.dbg-bossgo');
+  test.addEventListener('click', (e) => {
+    const bb = e.target.closest('.dbg-boss');
+    if (bb) {
+      const n = Number(bb.dataset.boss), k = B.order[n - 1], ph = n * B.every;
+      test.querySelectorAll('.dbg-boss').forEach((x) => x.classList.toggle('active', x === bb));
+      go.hidden = false;
+      go.querySelector('.dbg-bossgo-h b').textContent = `${n}体目　${(B[k] && B[k].name) || k}`;
+      go.querySelector('.dbg-bossgo-h span').textContent = `フェーズ ${ph}`;
+      go.querySelector('.dbg-n').textContent = ph;
+      return;
+    }
+    const g = e.target.closest('[data-go]'); if (g) { notYet(g); return; }
+    const ph = e.target.closest('[data-ph]');
+    if (ph) { if (ph.dataset.ph === '1') { close(); onClearPhase(); } else notYet(ph); return; }
+    const c = e.target.closest('[data-c]');
+    if (c && coins) { const v = Number(c.dataset.c); if (v) coins.add(v); else coins.set(0); showCoins(); return; }
+    const r = e.target.closest('[data-reset]');
+    if (r) {
+      if (r.dataset.reset === 'skin' && coins) { coins.resetSkins(); const t = r.textContent; r.textContent = '戻しました'; setTimeout(() => { r.textContent = t; }, 1200); }
+      else notYet(r);
+    }
+  });
+
+  // ================= スキルの数値 =================
+  const roadsHtml = ['<button class="active" data-road="">全部</button>', ...SKILL_ROADS.map((r) => `<button data-road="${r.id}">${r.name}</button>`)].join('');
+  const skillHtml = SKILL_ROADS.map((r) => r.skills.map((k) => {
+    const nums = flatNums(config.skill[k.id]);
+    const rows = nums.map(([key, v]) => `<div class="dbg-prm" data-key="${key}" data-def="${v}"><span>${paramLabel(key.split('.').pop())}${key.includes('.') ? `<i>${key.split('.').slice(0, -1).join('.')}</i>` : ''}<small>${key}</small></span><input type="number" inputmode="decimal" step="any" value="${v}"><button class="dbg-undo" title="戻す">↺</button></div>`).join('');
+    return `<details class="dbg-sk" data-road="${r.id}" data-name="${k.name}"><summary><span class="dbg-kind">${k.kind}</span><b>${k.name}</b><small>${r.name}</small><em>${nums.length ? `${nums.length}個` : '数値なし'}</em></summary>${rows || '<div class="dbg-hint">調整できる数値はありません</div>'}</details>`;
+  }).join('')).join('');
+  skill.innerHTML = `
+    <div class="dbg-sk-top">
+      <input class="dbg-search" type="search" placeholder="スキルの名前で探す">
+      <div class="dbg-roads">${roadsHtml}</div>
+    </div>
+    <div class="dbg-sklist">${skillHtml}</div>
+    <div class="dbg-sk-foot"><span class="dbg-changed">変えた数値 <b>0</b> 個</span><button class="btn btn-small btn-sub" data-sk="reset">全部戻す</button><button class="btn btn-small" data-sk="export">変えた値を書き出す</button></div>`;
+  let road = '';
+  const filter = () => {
+    const q = skill.querySelector('.dbg-search').value.trim();
+    skill.querySelectorAll('.dbg-sk').forEach((d) => { d.hidden = (road && d.dataset.road !== road) || (q && !d.dataset.name.includes(q)); });
+  };
+  const countChanged = () => {
+    const n = skill.querySelectorAll('.dbg-prm.changed').length;
+    skill.querySelector('.dbg-changed b').textContent = n;
+    skill.querySelectorAll('.dbg-sk').forEach((d) => d.classList.toggle('changed', !!d.querySelector('.dbg-prm.changed')));
+  };
+  skill.querySelector('.dbg-search').addEventListener('input', filter);
+  skill.addEventListener('input', (e) => {
+    const row = e.target.closest('.dbg-prm'); if (!row) return;
+    row.classList.toggle('changed', Number(e.target.value) !== Number(row.dataset.def));
+    countChanged();
+  });
+  skill.addEventListener('click', (e) => {
+    const rb = e.target.closest('[data-road]');
+    if (rb && rb.tagName === 'BUTTON') { road = rb.dataset.road; skill.querySelectorAll('.dbg-roads button').forEach((x) => x.classList.toggle('active', x === rb)); filter(); return; }
+    const u = e.target.closest('.dbg-undo');
+    if (u) { const row = u.closest('.dbg-prm'); row.querySelector('input').value = row.dataset.def; row.classList.remove('changed'); countChanged(); return; }
+    const f = e.target.closest('[data-sk]');
+    if (f) {
+      if (f.dataset.sk === 'reset') { skill.querySelectorAll('.dbg-prm').forEach((row) => { row.querySelector('input').value = row.dataset.def; row.classList.remove('changed'); }); countChanged(); }
+      else notYet(f);
+    }
+  });
+
+  // ================= プレイの記録 =================
+  //   タブを開いたときに1回だけ読む（「読み込み直す」でもう一度）
   let recRange = 'all', runs = null, recErr = '';
   const showRec = () => {
     if (recErr) { rec.innerHTML = `<div class="dbg-rec-note">${recErr}</div><button class="btn btn-small btn-sub dbg-reload">読み込み直す</button>`; return; }
@@ -60,87 +180,6 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     recRange = b.dataset.range; showRec();
   });
 
-  const title = (text) => {
-    const h = document.createElement('div');
-    h.className = 'group-title';
-    h.textContent = text;
-    tune.appendChild(h);
-  };
-
-  // コイン（ガチャを試すため）
-  let showCoins = () => {};
-  if (coins) {
-    title('▼ コイン（ガチャを試す）');
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `<div class="row-label"><span>持っているコイン</span><span class="row-value"></span></div>`;
-    const val = row.querySelector('.row-value');
-    showCoins = () => { val.textContent = coins.get().toLocaleString(); };
-    const seg = document.createElement('div');
-    seg.className = 'seg';
-    for (const [label, fn] of [['+1,000', () => coins.add(1000)], ['+10,000', () => coins.add(10000)], ['+100,000', () => coins.add(100000)], ['0にする', () => coins.set(0)]]) {
-      const b = document.createElement('button');
-      b.textContent = label;
-      b.addEventListener('click', () => { fn(); showCoins(); });
-      seg.appendChild(b);
-    }
-    row.appendChild(seg);
-    const row2 = document.createElement('div');
-    row2.className = 'row';
-    row2.innerHTML = `<div class="row-label"><span>着せ替えの持ち物</span></div>`;
-    const seg2 = document.createElement('div');
-    seg2.className = 'seg';
-    const rb = document.createElement('button');
-    rb.textContent = '最初の状態に戻す';
-    rb.addEventListener('click', () => { coins.resetSkins(); rb.textContent = '戻しました'; setTimeout(() => { rb.textContent = '最初の状態に戻す'; }, 1200); });
-    seg2.appendChild(rb);
-    row2.appendChild(seg2);
-    tune.appendChild(row);
-    tune.appendChild(row2);
-    showCoins();
-  }
-
-  title('▼ 比べる項目');
-  for (const [key, item] of Object.entries(config.experiments)) {
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `<div class="row-label"><span>${item.label}</span></div>`;
-    const seg = document.createElement('div');
-    seg.className = 'seg';
-    for (const opt of item.options) {
-      const b = document.createElement('button');
-      b.textContent = opt.label;
-      if (opt.value === item.value) b.classList.add('active');
-      b.addEventListener('click', () => {
-        item.value = opt.value;
-        seg.querySelectorAll('button').forEach((x) => x.classList.remove('active'));
-        b.classList.add('active');
-        onChange(key, opt);
-      });
-      seg.appendChild(b);
-    }
-    row.appendChild(seg);
-    tune.appendChild(row);
-  }
-
-  title('▼ 数値');
-  for (const [key, item] of Object.entries(config.tuning)) {
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.innerHTML = `
-      <div class="row-label"><span>${item.label}</span><span class="row-value"></span></div>
-      <input class="slider" type="range" min="${item.min}" max="${item.max}" step="${item.step}" value="${item.value}">`;
-    const val = row.querySelector('.row-value');
-    const input = row.querySelector('input');
-    const show = () => { val.textContent = `${item.value}${item.unit}`; };
-    show();
-    input.addEventListener('input', () => {
-      item.value = Number(input.value);
-      show();
-      onChange(key, item);
-    });
-    tune.appendChild(row);
-  }
 }
 
 // ---------- プレイの記録（見た目） ----------

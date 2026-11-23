@@ -1,21 +1,21 @@
 // ゲームの外の画面（ホーム・遊び方・一時停止・設定・結果・図鑑・プロフィールなど）の見た目。
 //   同じ作りを、本物の画面（menus.js が本当の記録を渡す）と見本（MOCK の仮の数字）の両方で使う。
 //   押せる部品には data-act（何をするか）を付ける。見本では押しても何も起きない
-import { iconSvg, snapIcons } from './icons.js?v=20261124001748';
-import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261124001748';
-import { CONFIG } from './config.js?v=20261124001748';
-import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261124001748';
-import { POP_STYLES } from './pops.js?v=20261124001748';
-import { TITLES, titleChip } from './titles.js?v=20261124001748';
-import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261124001748';
-import { titleOf } from './titles.js?v=20261124001748';
+import { iconSvg, snapIcons } from './icons.js?v=20261124031941';
+import { SKILL_ROADS, SKILL_TEXT } from './skilldefs.js?v=20261124031941';
+import { CONFIG } from './config.js?v=20261124031941';
+import { COLOR_SETS, BACKGROUNDS, AVATAR_ITEMS, GACHA, GACHA_POOL } from './skins.js?v=20261124031941';
+import { POP_STYLES } from './pops.js?v=20261124031941';
+import { TITLES, titleChip } from './titles.js?v=20261124031941';
+import { FRAMES, frameHtml, frameOf } from './frames.js?v=20261124031941';
+import { titleOf } from './titles.js?v=20261124031941';
 // ランキングの見本（見た目だけ）
 const RK = (rows) => rows.map(([name, icon, frame, title, phase, score], i) => ({ rank: i + 1, name, icon, frame, title, phase, score }));
 const RANK_MOCK = {
   week: { list: RK([['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 61, 412800], ['Sora', 'b_hunter', 'f_sr4', 't_sr1', 58, 389120], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 55, 351900], ['kei', 'robot', 'f_r6', 't_n12', 51, 298440], ['のーとん', 'note', 'f_none', '', 49, 270010], ['みずいろ', 'drop', 'f_n8', 't_r2', 47, 251300], ['Bob', 'a2', 'f_r9', 't_n2', 45, 233870], ['ぺんぎん', 'fish', 'f_sr2', 't_sr5', 44, 219500], ['あおい', 'leaf', 'f_n7', '', 42, 201200], ['ゆう', 'a0', 'f_none', 't_n1', 40, 188000]]), me: { rank: 128, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
   all: { list: RK([['Sora', 'b_hunter', 'f_sr4', 't_sr1', 88, 1204300], ['ねこまる', 'cat', 'f_ssr1', 't_ssr1', 81, 998200], ['kei', 'robot', 'f_r6', 't_n12', 77, 871000], ['いちご大福', 'sakura', 'f_sr3', 't_r4', 70, 702500], ['Bob', 'a2', 'f_r9', 't_n2', 66, 655000], ['みずいろ', 'drop', 'f_n8', 't_r2', 61, 588100]]), me: { rank: 342, name: 'ほしのこ', icon: 'a0', frame: 'f_r1', title: 't_n5', phase: 42, score: 128400 } },
 };
-import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261124001748';
+import { DAILY_BONUS, ACHIEVEMENTS, fmtN } from './missions.js?v=20261124031941';
 // ミッションの見本（見た目だけ）：途中・達成・受け取り済みを並べる
 const MISSION_MOCK = {
   daily: [
@@ -26,16 +26,16 @@ const MISSION_MOCK = {
   bonus: 'yet',
   ach: { phase: { now: 23, got: 1 }, kills: { now: 3120, got: 1 }, bosses: { now: 2, got: 2 }, ghosts: { now: 640, got: 0 }, plays: { now: 14, got: 0 }, score: { now: 48210, got: 1 }, skills: { now: 41, got: 0 }, items: { now: 37, got: 0 }, pulls: { now: 120, got: 2 } },
 };
-import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261124001748';
-import { iconArtSvg } from './iconart.js?v=20261124001748';
-import { COMMON_SOUNDS, playSound } from './audio.js?v=20261124001748';
-import { SONG_LIST, playBgm, stopBgm, bgmNow, setFinalLevel, finalLevelNow } from './bgm.js?v=20261124001748';
+import { skinImage, unitImage, bgImage, popImage } from './skinshot.js?v=20261124031941';
+import { iconArtSvg } from './iconart.js?v=20261124031941';
+import { COMMON_SOUNDS, playSound } from './audio.js?v=20261124031941';
+import { SONG_LIST, playBgm, stopBgm, bgmNow, setFinalLevel, finalLevelNow } from './bgm.js?v=20261124031941';
 
 export const SCREEN_TABS = [
   ['s_load', '読み込み'], ['s_home', 'ホーム'], ['s_howto', '遊び方'], ['s_pause', '一時停止'], ['s_settings', '設定'],
   ['s_reroll', 'カード選び'], ['s_result', '結果'], ['s_zukan', '図鑑'], ['s_zukan2', '図鑑の詳細'], ['s_skin', '着せ替え'], ['s_gacha', 'ガチャ'], ['s_gacharesult', 'ガチャ結果'],
   ['s_rates', '確率'], ['s_ranking', 'ランキング'], ['s_name', '名前登録'], ['s_profile', 'プロフィール'], ['s_mission', 'ミッション'], ['s_news', 'お知らせ'],
-  ['s_credits', 'クレジット'], ['s_online', 'オンライン'], ['s_ending', 'エンディング'],
+  ['s_credits', 'クレジット'], ['s_online', 'オンライン'], ['s_ending', 'エンディング'], ['s_btpick', 'ボス試験の準備'], ['s_btresult', 'ボス試験の結果'],
 ];
 // 全面の画面（ゲームの表示を隠す）。ないものは、ゲームの上に重ねる画面
 export const SOUND_TABS = [['s_snd_bgm', 'BGM'], ['s_snd_common', '共通'], ...SKILL_ROADS.map((r) => [`s_snd_${r.id}`, r.name])];
@@ -153,6 +153,7 @@ export const MOCK = {
   stats: { plays: 213, time: 111600, kills: 412905, bosses: 58 },
   pause: { phase: 23, time: 768 },
   settings: { bgm: true, bgmVol: 100, se: false, seVol: 100, control: 'drag', shake: true, glow: 1 },
+  bossTest: { n: 3, name: '双子', phase: 30, win: true, sec: 143, bossLeft: 0, hpLeft: 62, auto: true },
   result: { score: 128400, isNew: true, phase: 42, time: 1102, kills: 3912, best: 128400, bosses: ['core', 'hunter', 'twin', 'clock'],
     roads: [['volley', 'giant', 'gigant'], ['thunder', 'chainbolt'], ['float', 'satellite']], mvp: { src: 'thunder', pct: 38 }, coins: { score: 358, boss: 120 } },
   ending: { score: 48120500, phase: 100, time: 4380, kills: 41290, ghosts: 612, roads: [['volley', 'giant', 'gigant'], ['thunder', 'chainbolt', 'skybolt'], ['float', 'satellite'], ['poison', 'contagion']] },
@@ -294,6 +295,28 @@ export const SCREENS = {
         ${sec('最後に持っていたスキル', nSkills ? `${nSkills}個` : '', m('最後に持っていたスキル', R.roads.length ? R.roads.map((ids) => `<div class="ms-chipline">${ids.map((id) => `<span class="ms-chip">${iconSvg('sk_' + id)}</span>`).join('')}</div>`).join('') : '<div class="ms-none">スキルなし</div>', 'ms-roads'))}
         ${R.coins ? m('もらったコイン', `<span class="ms-rw-l">もらったコイン<small>スコア ${num(R.coins.score)}${R.coins.boss ? `・ボス ${num(R.coins.boss)}` : ''}</small></span><span class="ms-rw-v">${coin}<b>+${num(R.coins.score + R.coins.boss)}</b></span>`, 'ms-reward2') : ''}
         <div class="ms-row ms-rbtns">${btn('タイトルへ', 'btn-sub', 'title')}${btn('もう一回', '', 'retry')}</div>
+      </div>
+    </div>`;
+  },
+
+  // ボスを試す（調整パネル）：戦い終わったときの結果。ランキングと記録には入らない
+  s_btresult: (st, d) => {
+    const R = st.bossTest || d.bossTest;
+    return `
+    <div class="ms-dim">
+      <div class="box ms-result ms-bt">
+        <div class="ms-bt-tag">ボスを試す</div>
+        <div class="ms-rhead">
+          ${m('結果の見出し', R.win ? '倒せた！' : 'やられた…', `ms-rtitle ${R.win ? 'win' : ''}`)}
+          ${m('ボス', `<small>${R.n}体目・フェーズ ${R.phase}</small><b>${esc(R.name)}</b>`, 'ms-bt-boss')}
+        </div>
+        <div class="ms-rgrid">
+          ${m('かかった時間', `<span>${R.win ? '倒すまで' : 'やられるまで'}</span><b>${fmtTime(R.sec)}</b>`, 'ms-rcell')}
+          ${m('ボスの残り体力', `<span>ボスの残り</span><b>${R.bossLeft}%</b>`, 'ms-rcell')}
+          ${m('本体の残り体力', `<span>本体の残り</span><b>${R.hpLeft}%</b>`, 'ms-rcell')}
+          ${m('スキルの選び方', `<span>カード</span><b>${R.auto ? 'おまかせ' : '自分で'}</b>`, 'ms-rcell')}
+        </div>
+        <div class="ms-row ms-rbtns ms-bt-btns">${btn('やめる', 'btn-sub', 'bt-quit')}${btn('選び直す', 'btn-sub', 'bt-repick')}${btn('同じスキルでもう一度', '', 'bt-again')}</div>
       </div>
     </div>`;
   },
