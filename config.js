@@ -180,7 +180,7 @@ export const CONFIG = {
                               //   6万→20.8万→50万→99万→173万→278万→418万（前のボスとの伸びが 8.3倍→3.5倍→2.4倍→2.0倍… と、だんだん小さくなる）
     eliteCap: 0.3,            // 中ボスの体力の上限＝次に出てくるボスの体力のこの割合
     // ボスのねらい撃ち：動いている間も、決まった間隔で本体をねらって撃つ（何もしてこない時間をなくす）
-    pressure: { every: 1.4, rageEvery: 0.9, speed: 150, ways: 1, rageWays: 3, spread: 0.22 },
+    pressure: { every: 1.0, rageEvery: 0.6, speed: 150, ways: 1, rageWays: 5, spread: 0.22 },
     // ボス戦では、ふつうの敵は出てこない（ボスが見えなくなるため）。代わりに、ときどき援軍が来る
     //   first 秒後から every 秒ごと。eliteEvery 回に1回は中ボス、それ以外は大きめの敵を bigCount 体
     //   （フェーズ bigX4From 以上は、さらに大きい敵）。ボス以外の敵が maxAlive 体いるときは来ない
@@ -189,7 +189,15 @@ export const CONFIG = {
     finalAppear: 2.8,         // ラスボス（終筆）は墨が広がる分だけ長く              // フェーズが始まってから、ボスが現れるまでの秒数
     clearDelay: 1.2,          // ボスを倒してから、カード選びになるまでの秒数
     // どのボスも「動く→予告→技→すき」をくり返す。すきの秒数（怒ると短い）／怒ったときの予告の秒数の倍／すきの間に受けるダメージの倍
-    rest: 1.6, rageRest: 1.1, rageWarn: 0.8, vulnMul: 1.5,
+    // 技のすき（秒）。怒ると短く、予告も短く。warnMul：どのボスも、技の予告をこの倍に短くする
+    rest: 0.9, rageRest: 0.5, rageWarn: 0.75, warnMul: 0.75, vulnMul: 1.5,
+    // 怒っているとき：技を出したあと、rageChain の確率で、すきを置かずにすぐ次の技の予告に入る（技が続けて来る）
+    rageChain: 0.6,
+    // ボス戦で受けるダメージ：何体目のボスかで dmgGrow 倍ずつ痛くなる（1体目は1倍、5体目は約2.2倍、10体目は約6倍）。
+    //   本体の最大HPの伸び（ボスを試すで測ると、1体目100 → 5体目約220 → 10体目約600〜700）に合わせ、後半でも数回当たれば危なくなる
+    dmgGrow: 1.22,
+    // 弾：何体目のボスかで、速さが shotSpeedGrow ずつ、輪の弾の数が shotCountGrow ずつ増える
+    shotSpeedGrow: 0.05, shotCountGrow: 0.08,
     core: { name: 'コア', radius: 42, y: 0.32, spin: 0.9, arms: 3, fireEvery: 0.16, bulletSpeed: 110, callEvery: 8, callCount: 3,
             rageAt: 0.5, rageSpin: 1.5, rageArms: 5,
             moveSpeed: 55, moveTime: 1.6, spiralTime: 2.2, rageSpiralTime: 2.8, ringWays: 16, rageRingWays: 22, ringCount: 3, ringGap: 0.45, ringSpeed: 95, rageCallCount: 5, blastR: 120, blastDamage: 1.5, blastWays: 14 },   // 回る速さ／渦の本数／撃つ間隔／弾の速さ／追跡を呼ぶ間隔と数／HPがこの割合を切ると怒る（回る速さの倍・渦の本数）

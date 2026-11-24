@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124044212';
-import { spawnPop, stepParticle } from './pops.js?v=20261124044212';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124044212';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124044212';
+import { CONFIG } from './config.js?v=20261124162235';
+import { spawnPop, stepParticle } from './pops.js?v=20261124162235';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124162235';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261124162235';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2635,6 +2635,7 @@ export function createGame() {
     if (p.demonT > 0) return;   // 鬼神：無敵
     if (s.tuto) return;         // チュートリアルの練習場では、ダメージを受けない
     if (p.drawMode) amount *= DM.damage;   // 描いている間は、受けるダメージが増える
+    if (s.bossPhase) amount *= bossDmgMul();   // ボス戦：後ろのボスほど痛い
     // 生命の泉：たまったシールドが先に減る
     if (s.lifeShield > 0) {
       const used = Math.min(s.lifeShield, amount);
@@ -3331,8 +3332,7 @@ export function createGame() {
           if (list.includes(c)) id = c;
         }
         e.techId = id || list[0];
-        e.flow = 'warn'; e.ft = F[e.techId].warn * (e.rage ? BOSS.rageWarn : 1); e.ftMax = e.ft; e.tt = 0;
-        if (F[e.techId].aim) F[e.techId].aim(e);
+        startWarn(e, F);
       }
     } else if (e.flow === 'warn') {
       const T2 = F[e.techId];
@@ -3343,13 +3343,23 @@ export function createGame() {
     } else if (e.flow === 'act') {
       const T2 = F[e.techId];
       e.tt += DT;
-      if (T2.tick(e)) { if (T2.end) T2.end(e); e.flow = 'rest'; e.ft = e.rage ? BOSS.rageRest : BOSS.rest; e.ftMax = e.ft; e.vx = 0; e.vy = 0; }
+      if (T2.tick(e)) {
+        if (T2.end) T2.end(e);
+        // 怒っているときは、すきを置かずに次の技が続けて来ることがある
+        if (e.rage && list.length > 1 && Math.random() < BOSS.rageChain) { const prev = e.techId; const opts = list.filter((x) => x !== prev); e.techId = opts[Math.floor(Math.random() * opts.length)]; startWarn(e, F); return; }
+        e.flow = 'rest'; e.ft = e.rage ? BOSS.rageRest : BOSS.rest; e.ftMax = e.ft; e.vx = 0; e.vy = 0;
+      }
     } else {
       e.vx = 0; e.vy = 0;
       e.ft -= DT;
       if (e.ft <= 0) { e.flow = 'move'; e.ft = moveTime; e.wx = null; }
     }
     e.vuln = e.flow === 'rest';
+  }
+  // 決まった技（e.techId）の予告に入る。予告はどのボスも warnMul 倍に短く、怒るとさらに短く
+  function startWarn(e, F) {
+    e.flow = 'warn'; e.ft = F[e.techId].warn * BOSS.warnMul * (e.rage ? BOSS.rageWarn : 1); e.ftMax = e.ft; e.tt = 0;
+    if (F[e.techId].aim) F[e.techId].aim(e);
   }
   // ねらい撃ち：技の合間（動いている間・すきの間）も、決まった間隔で本体をねらって撃つ（怒ると間隔が短く、3方向）
   function bossPressure(e, shooters) {
@@ -3367,11 +3377,15 @@ export function createGame() {
   // 予告の形（赤く光る）。k：'circle'（x,y,r）・'line'（x1,y1,x2,y2,w）・'fan'（x,y,a,spread,len）・'path'（pts,w）
   //   follow：その敵についていく、hot：当たる状態（明るく）
   function warnShape(o, time) { const w = { ...o, t: time, max: time }; s.warns.push(w); return w; }
+  // 何体目のボスか（1〜10、2周目以降も同じ順）
+  const bossNum = () => Math.max(1, Math.round(s.phase / BOSS.every));
+  function bossDmgMul() { return Math.pow(BOSS.dmgGrow, bossNum() - 1); }
   function bossShot(e, a, sp, life = 1.5) {
     const z = s.zoom;
+    sp *= 1 + BOSS.shotSpeedGrow * (bossNum() - 1);   // 後ろのボスほど弾が速い
     s.enemyShots.push({ x: e.x + Math.cos(a) * e.r * 0.8, y: e.y + Math.sin(a) * e.r * 0.8, vx: Math.cos(a) * sp * z, vy: Math.sin(a) * sp * z, r: EB.radius * z, life: EB.life * life, damage: EB.damage, from: e });
   }
-  function bossRing(e, n, sp, off = 0) { for (let k = 0; k < n; k++) bossShot(e, off + (k * Math.PI * 2) / n, sp); }
+  function bossRing(e, n, sp, off = 0) { n = Math.round(n * (1 + BOSS.shotCountGrow * (bossNum() - 1))); for (let k = 0; k < n; k++) bossShot(e, off + (k * Math.PI * 2) / n, sp); }   // 後ろのボスほど弾が多い
   // 画面の中をゆっくり漂う（本体から少し離れた場所を行き先にする）
   function bossWander(e, speed, area = [0.15, 0.85, 0.14, 0.55]) {
     const z = s.zoom, p = s.player;
