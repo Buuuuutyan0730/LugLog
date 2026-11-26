@@ -1,10 +1,10 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261124162235';
-import { spawnPop, stepParticle } from './pops.js?v=20261124162235';
-import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261124162235';
-import { SKILL_BY_ID } from './skilldefs.js?v=20261124162235';
+import { CONFIG } from './config.js?v=20261126164827';
+import { spawnPop, stepParticle } from './pops.js?v=20261126164827';
+import { BOOST_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, RARITIES } from './talents.js?v=20261126164827';
+import { SKILL_BY_ID } from './skilldefs.js?v=20261126164827';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -277,15 +277,25 @@ export function createGame() {
     // 着せ替えの「はじけ方」：標準以外は、その散り方に置きかえる（白い光と揺れは同じ）
     if (s.popStyle && s.popStyle !== 'std' && spawnPop(s.popStyle, e, (p) => s.particles.push(p))) {
       flash(e.x, e.y, e.r * 2.4, 0.14, 'white');
-      if (e.r > 16) s.shake = Math.max(s.shake, Math.min(8, e.r * 0.25));
+      deathShake(e);
       return;
     }
-    flash(e.x, e.y, e.r * 2.4, 0.14, 'white');
-    ring(e.x, e.y, e.r * 0.8, e.r * 3 + 24, 0.4, 'enemy', 0, 2 + big * 1.5);
-    ring(e.x, e.y, e.r * 0.5, e.r * 1.8 + 10, 0.22, 'white', 0, 2);
-    burst(e.x, e.y, 'enemy', Math.round(12 + e.r * 1.2), 240 + e.r * 4);
-    sparks(e.x, e.y, 'white', Math.round(6 + e.r * 0.5), 420 + e.r * 6);
-    if (e.r > 16) s.shake = Math.max(s.shake, Math.min(8, e.r * 0.25));
+    flash(e.x, e.y, e.r * 3, 0.16, 'white');
+    ring(e.x, e.y, e.r * 0.8, e.r * 3.6 + 30, 0.42, 'enemy', 0, 2.5 + big * 1.5);
+    ring(e.x, e.y, e.r * 0.5, e.r * 2.2 + 14, 0.24, 'white', 0, 2.5);
+    burst(e.x, e.y, 'enemy', Math.round(18 + e.r * 1.6), 300 + e.r * 5);
+    sparks(e.x, e.y, 'white', Math.round(10 + e.r * 0.7), 520 + e.r * 7);
+    deathShake(e);
+  }
+  // 大きい敵・中ボスが倒れたら、画面を揺らす（中ボスは少し時間もゆっくりに）
+  function deathShake(e) {
+    if (e.elite) {
+      s.shake = Math.max(s.shake, 12);
+      s.slowT = Math.max(s.slowT || 0, 0.25);
+      s.hitstop = Math.max(s.hitstop, 0.06);
+      for (let k = 0; k < 3; k++) ring(e.x, e.y, e.r, e.r * (3 + k * 2), 0.45 + k * 0.12, 'enemy', 0, 5 - k);
+      flash(e.x, e.y, e.r * 5, 0.3, 'white');
+    } else if ((e.tier || 1) >= 2 || e.r > 16) s.shake = Math.max(s.shake, Math.min(10, 3 + e.r * 0.25 + (e.tier || 1)));
   }
 
   // 分身が生まれたときの演出：軌跡全体が光り、生まれた所から輪が広がる
@@ -312,6 +322,7 @@ export function createGame() {
     let best = null, bd = reach;
     for (const e of s.enemies) {
       if (e.hp - (e.incoming || 0) <= 0.001) continue;
+      if (!inView(e)) continue;   // 画面の外の敵は狙わない
       const d = dist(e, from);
       if (d < bd) { bd = d; best = e; }
     }
@@ -413,8 +424,11 @@ export function createGame() {
     }
   }
   // kind：ダメージの数字の色分け（hit ふつう／crit 会心／poison 毒／burn 炎／shock 雷／ice 氷／none 出さない）
+  // 画面の中にいるか（中心が画面の内側）。画面の外の敵には攻撃が当たらない（ボスは別）
+  const inView = (e) => e.boss || (e.x >= 0 && e.x <= s.world.w && e.y >= 0 && e.y <= s.world.h);
   function damageEnemy(e, amount, raw = false, dot = false, kind = 'hit') {
     if (e.vanish) return;   // 影が消えている間は当たらない
+    if (!inView(e)) return;   // 画面の外：当たらない（かけらが画面の外に落ちないように）
     if (e.shiftT > 0) return;   // 終筆：段階が変わる間は当たらない
     const hp0 = e.hp;
     e.lastSrc = s.dmgSrc || 'ghost';
@@ -2526,7 +2540,7 @@ export function createGame() {
     const tier = TIERS.noBig.includes(kind) ? 1 : rollTier();   // 漂い・群れは大きくならない
     // 群れは、固まって出る全員の体力の合計で数える
     const scale = hpScaleOf(s.phase);
-    return { kind, tier, scale, hp: ET[kind].hp * tier * (ET[kind].group || 1) * scale };
+    return { kind, tier, scale, hp: ET[kind].hp * tier * (ET[kind].group || 1) * scale / PH.crowd };   // crowd：1体を弱くして、その分たくさん出す
   }
 
   function spawnEnemy(next, elite = false) {
@@ -2535,10 +2549,13 @@ export function createGame() {
     // 大きさは、体力の倍率（後半の伸び）をかける前の体力で決める（後半でも見た目の大きさは変わらない）
     let sc = next.scale;
     if (sc == null) { sc = hpScaleOf(s.phase); one *= sc; }
-    let r = radiusOf(one / sc) * (t.sizeMul || 1);
+    // 数を増やした分（crowd）、1体の体力は割ってある。ふつうの敵は、割った体力の大きさにして（少し小さく）、画面にたくさん入るように。
+    //   中ボスは、割る前の体力・大きさのまま
+    const cr = next.full ? 1 : PH.crowd;
+    let r = radiusOf((one * (elite ? cr : 1)) / sc) * (t.sizeMul || 1);
     // 中ボス：1体だけ、体力が多く、少し大きい（大きさは今まで通り）。ふつうの敵だけ enemySize 倍
     // 中ボスの体力は、次に出てくるボスの体力の eliteCap 倍まで（後半でも、中ボスがボスより強くならないように）
-    if (elite) { r *= CONFIG.elite.size; one = Math.min(one * CONFIG.elite.hp, bossHpOf(Math.ceil(s.phase / BOSS.every)) * BOSS.eliteCap); } else r *= CONFIG.enemySize;
+    if (elite) { r *= CONFIG.elite.size; one = Math.min(one * cr * CONFIG.elite.hp, bossHpOf(Math.ceil(s.phase / BOSS.every)) * BOSS.eliteCap); } else r *= CONFIG.enemySize;
     r *= s.zoom;   // ステージが広がっても、画面の上での大きさは変わらない（本体・分身・ボスと同じ）
     const W = s.world.w, H = s.world.h;
     const m = r + 12;
@@ -2595,7 +2612,7 @@ export function createGame() {
     const n = Math.round(rand(R.bigCount[0], R.bigCount[1]));
     for (let k = 0; k < n; k++) {
       const c = pick(); if (!c) break;
-      spawnEnemy({ ...c, tier, hp: ET[c.kind].hp * tier * (ET[c.kind].group || 1) * c.scale });
+      spawnEnemy({ ...c, tier, full: true, hp: ET[c.kind].hp * tier * (ET[c.kind].group || 1) * c.scale });
     }
   }
   function maybeSpawnElite() {
@@ -2869,7 +2886,7 @@ export function createGame() {
     const tierAvg = 4 * p4 + 2 * p2 + 1 * (1 - p4 - p2);
     const W = types.reduce((v, [, t]) => v + t.weight, 0);
     let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
-    for (const [k, t] of types) { const g = t.group || 1, ta = TIERS.noBig.includes(k) ? 1 : tierAvg; hpPer += (t.weight / W) * t.hp * g * ta; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * ta; }
+    for (const [k, t] of types) { const g = t.group || 1, ta = TIERS.noBig.includes(k) ? 1 : tierAvg; hpPer += (t.weight / W) * t.hp * g * ta / PH.crowd; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * ta; }
     const rate = PH.hpRateBase * growthOf(phase);
     return Math.max(1, Math.round((rate * PH.needSec / (hpPer * hpScaleOf(phase))) * shPer * PH.needRatio));
   }
@@ -2922,6 +2939,14 @@ export function createGame() {
       if (e.stunT > 0) e.stunT -= DT;
       if (e.trapSlowT > 0) e.trapSlowT -= DT;
       const slow = aweSlow(e) * iceSlow(e) * (e.stunT > 0 ? 0 : 1) * (e.trapSlowT > 0 ? SK.trap.slow : 1) * (e.boss && e.inPullT > 0 ? 1 - SK.pull.bossSlow : 1);   // 引力：ボスは引き寄せられない代わりに遅くなる
+      // 画面の外にしばらくいる敵は、画面の中へ入ってくる（外から撃つだけ・うろうろするだけにしない）
+      if (!e.boss && !inView(e)) {
+        e.outT = (e.outT || 0) + DT;
+        if (e.outT > CONFIG.offscreen.enterAfter) {
+          const tx = clamp(e.x, s.world.w * 0.1, s.world.w * 0.9), ty = clamp(e.y, s.world.h * 0.1, s.world.h * 0.9);
+          setVel(e, tx - e.x, ty - e.y, Math.max(40, (ET[e.kind].speed || 60)) * s.zoom * CONFIG.offscreen.enterSpeed);
+        }
+      } else e.outT = 0;
       e.x += e.vx * slow * DT;
       e.y += e.vy * slow * DT;
       // 押しやられた勢い（だんだん弱まる）
@@ -3101,7 +3126,8 @@ export function createGame() {
     const drop = (worth) => {
       const a = rand(0, Math.PI * 2);
       const v = n > 1 ? rand(40, 120) : rand(0, 30);
-      s.pickups.push({ x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: SH.life, spin: rand(0, 6), flying: false, worth, gold: worth > 1 });
+      const m = 14 * s.zoom;   // かけらは画面の中に落とす（ふちで倒しても拾える場所に）
+      s.pickups.push({ x: clamp(e.x, m, s.world.w - m), y: clamp(e.y, m, s.world.h - m), vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: SH.life, spin: rand(0, 6), flying: false, worth, gold: worth > 1 });
     };
     for (let i = 0; i < n; i++) drop(1);
     // かけら泥棒：持っていたかけらを全部返す（多いときはまとめて、40個まで）
