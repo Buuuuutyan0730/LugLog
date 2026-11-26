@@ -1,8 +1,9 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261126173759';
-import { choiceView, ownedViews } from './talents.js?v=20261126173759';
-import { iconSvg, snapIcons } from './icons.js?v=20261126173759';
+import { ghostColor } from './theme.js?v=20261126180136';
+import { choiceView, ownedViews } from './talents.js?v=20261126180136';
+import { iconSvg, snapIcons } from './icons.js?v=20261126180136';
+import { drawComet, COMET_HUES } from './events.js?v=20261126180136';
 
 const $ = (id) => document.getElementById(id);
 
@@ -39,6 +40,7 @@ export function createHud() {
     skillCards: $('skill-cards'),
     rPhase: $('r-phase'),
     ownedCount: $('owned-count'),
+    cometBox: $('comet-count'), cometNum: $('comet-num'),
     owned: $('owned'),
     ownedBody: $('owned-body'),
     talent: $('talent'),
@@ -95,7 +97,21 @@ export function createHud() {
   const setText = (node, v) => { if (node && lastVal.get(node) !== v) { lastVal.set(node, v); node.textContent = v; } };
   const setStyle = (node, k, v) => { if (!node) return; let m = lastVal.get(node.style); if (!m) lastVal.set(node.style, m = {}); if (m[k] !== v) { m[k] = v; node.style[k] = v; } };
   let lastBar = '';
+  // コメットの数：1個でも持ったら出す。増えたら少し跳ねる
+  let cometShown = -1;
+  function updateComets(state) {
+    const n = state.comets || 0, on = n > 0 || (state.cometDrops && state.cometDrops.length);
+    if (el.cometBox.hidden === !!on) el.cometBox.hidden = !on;
+    if (!on) { cometShown = n; return; }
+    if (n !== cometShown) {
+      if (n > cometShown && cometShown >= 0) { el.cometBox.classList.remove('bump'); void el.cometBox.offsetWidth; el.cometBox.classList.add('bump'); }
+      cometShown = n; setText(el.cometNum, String(n));
+    }
+    const c = el.cometBox.firstElementChild.getContext('2d'), t = performance.now() / 1000;
+    c.clearRect(0, 0, 48, 48); drawComet(c, 24, 24, 15, COMET_HUES[Math.floor(t / 2) % COMET_HUES.length], t);
+  }
   function update(state) {
+    updateComets(state);
     setText(el.score, state.score.toLocaleString('en-US')); // 3桁ごとに区切る
     setStyle(el.hint, 'display', state.mode === 'ready' ? '' : 'none'); // 操作待ちの間だけ出す
     if (state.mode === 'ready' && el.hintPhase) setText(el.hintPhase, `PHASE ${state.phase}`);
@@ -421,5 +437,7 @@ export function createHud() {
     el.result.setAttribute('aria-hidden', 'true');
   }
 
-  return { update, showOwned, hideOwned, showResult, hideResult, showSkills, hideSkills, showSample, hideSample, showOwnedSample, showIconSample, showTutorial, hideTutorial };
+  // できごとの画面でも、同じ見た目のカードを使う
+  const cardOf = (state, ch) => cardView(choiceView(state, ch));
+  return { update, showOwned, hideOwned, showResult, hideResult, showSkills, hideSkills, showSample, hideSample, showOwnedSample, showIconSample, showTutorial, hideTutorial, cardOf, fitLines: (n) => fitLines(n), snapIcons };
 }

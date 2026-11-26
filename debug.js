@@ -1,8 +1,9 @@
+import { EVENTS } from './events.js?v=20261126180136';
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261126173759';
-import { CATS } from './preview.js?v=20261126173759';
+import { SKILL_ROADS } from './skilldefs.js?v=20261126180136';
+import { CATS } from './preview.js?v=20261126180136';
 
 // スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
 const PARAM = {
@@ -23,7 +24,7 @@ const paramLabel = (k) => {
 // 数値を「項目名 → 値」に平らにする（レベルごとの表などは「shots.2」のようにする）
 const flatNums = (o, pre = '') => Object.entries(o || {}).flatMap(([k, v]) => (typeof v === 'number' ? [[pre + k, v]] : v && typeof v === 'object' ? flatNums(v, `${pre}${k}.`) : []));
 
-export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onAdvance, onBossTest, resetFlag, onPreview, coins, records }) {
+export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, onClearPhase, onAdvance, onBossTest, onEvent, addComets, resetFlag, onPreview, coins, records }) {
   const sheet = document.getElementById('debug');
   const body = document.getElementById('debug-body');
 
@@ -78,6 +79,12 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     <div class="group-title">▼ フェーズを進める</div>
     <div class="seg dbg-seg-gap"><button data-ph="1">次のフェーズへ</button><button data-ph="10">+10 フェーズ</button></div>
 
+    <div class="group-title">▼ できごとを起こす</div>
+    <div class="dbg-hint">今のフェーズをクリアにして、選んだできごとを出します（ボス戦では出ません）。</div>
+    <div class="dbg-events">${EVENTS.filter((e) => config.events.ready.includes(e.id)).map((e) => `<button class="btn btn-small btn-sub dbg-ev k-${e.kind}" data-ev="${e.id}">${e.name}</button>`).join('')}</div>
+    <div class="row"><div class="row-label"><span>コメット</span></div>
+      <div class="seg"><button data-cm="10">+10</button><button data-cm="50">+50</button><button data-cm="0">0にする</button></div></div>
+
     <div class="group-title">▼ コイン</div>
     <div class="row"><div class="row-label"><span>持っているコイン</span><span class="row-value dbg-coins"></span></div>
       <div class="seg"><button data-c="1000">+1,000</button><button data-c="10000">+10,000</button><button data-c="100000">+100,000</button><button data-c="0">0にする</button></div></div>
@@ -105,6 +112,10 @@ export function setupDebugPanel(config, { onChange, onOpen, onClose, onRestart, 
     }
     const g = e.target.closest('[data-go]');
     if (g) { const a = test.querySelector('.dbg-boss.active'); if (a) { close(); onBossTest(Number(a.dataset.boss), g.dataset.go === 'auto'); } return; }
+    const ev = e.target.closest('[data-ev]');
+    if (ev) { close(); onEvent(ev.dataset.ev); return; }
+    const cm = e.target.closest('[data-cm]');
+    if (cm) { addComets(Number(cm.dataset.cm)); return; }
     const ph = e.target.closest('[data-ph]');
     if (ph) { close(); if (ph.dataset.ph === '1') onClearPhase(); else onAdvance(Number(ph.dataset.ph)); return; }
     const c = e.target.closest('[data-c]');

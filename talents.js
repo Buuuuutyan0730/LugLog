@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261126173759';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126173759';
+import { CONFIG } from './config.js?v=20261126180136';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126180136';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」
@@ -116,7 +116,7 @@ function boostPool(s) {
 }
 
 // 今、候補になるカース（持っているものと、持っている才能と矛盾するものは出さない）
-function cursePool(s) {
+export function cursePool(s) {
   return CURSES.filter((c) => !s.curses.includes(c.id) && !(c.clash || []).some((id) => owns(s, id) || !!s.skills[id]));
 }
 
@@ -181,17 +181,18 @@ const pickOut = (arr) => arr.splice(Math.floor(Math.random() * arr.length), 1)[0
 // フェーズクリアで出すカードを n 枚選ぶ。afterBoss ならスーパーレア以上だけ
 //   枠ごとに、先にレアリティを決めてから、そのレアリティで出せるものを選ぶ
 // first：遊び始めの1枚目（スキルだけ。強化・カースは出さない）
-export function rollChoices(s, { afterBoss = false, first = false } = {}) {
+// できごと（events）からも使う：count（枚数）・floor/top（レア度の下限と上限）・noCurse（カースを出さない）・onlySkill（スキルだけ）
+export function rollChoices(s, { afterBoss = false, first = false, count = 0, floor: fl = null, top: tp = null, noCurse = false, onlySkill = false } = {}) {
   // 豊年（近道の進化）：4枚から選べる
-  const n = s.curses.includes('memory') ? 5 : s.skills && s.skills.shortcut && s.skills.shortcut.evo ? 4 : 3;
-  const floor = afterBoss ? 'super' : 'normal';
-  const boosts = first ? [] : boostPool(s);
-  const curses = first ? [] : cursePool(s);
+  const n = count || (s.curses.includes('memory') ? 5 : s.skills && s.skills.shortcut && s.skills.shortcut.evo ? 4 : 3);
+  const floor = fl || (afterBoss ? 'super' : 'normal');
+  const boosts = first || onlySkill ? [] : boostPool(s);
+  const curses = first || noCurse ? [] : cursePool(s);
   const used = new Set();
   const out = [];
   let curseShown = false;
   for (let tries = 0; out.length < n && tries < n * 4; tries++) {
-    const rarity = rollRarity(s, floor, first ? 'super' : 'mythic');
+    const rarity = rollRarity(s, floor, tp || (first ? 'super' : 'mythic'));
     const skills = skillPool(s, rarity).filter((k) => !used.has(k.id));
     const left = boosts.filter((b) => !used.has(b.id));
     if (!skills.length && !left.length && (curseShown || !curses.length)) break;

@@ -2250,3 +2250,101 @@ body.previewing .evfx { z-index: 8; bottom: 13%; }
 .evfx-pill canvas { width: 9cqw; height: 9cqw; }
 .evfx-pill b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 3.6cqw; }
 .evfx-cnote { font-size: 3cqw; color: #8b97c4; margin-top: 52cqw; }
+
+/* コメットの数（画面の左上） */
+.comet-count { position: absolute; left: 2cqw; top: 2.4cqw; display: flex; align-items: center; gap: 0.4cqw; padding: 0.4cqw 2.4cqw 0.4cqw 0.6cqw; border-radius: 6cqw; background: rgba(8, 12, 34, 0.72); border: 0.4cqw solid rgba(127, 233, 255, 0.45); pointer-events: none; }
+.comet-count[hidden] { display: none; }
+.comet-count canvas { width: 7.5cqw; height: 7.5cqw; }
+.comet-count b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 3.2cqw; color: #fff; }
+.comet-count.bump { animation: cometBump 0.3s ease; }
+@keyframes cometBump { 40% { transform: scale(1.18); } }
+
+/* ================= できごとの画面（eventui.js） ================= */
+.evu { position: absolute; inset: 0; z-index: 72; display: none; overflow: hidden; container-type: inline-size; color: #eef3ff; font-family: 'DotGothic16', sans-serif; }
+.evu.show { display: flex; flex-direction: column; }
+body.previewing .evu { z-index: 8; bottom: 13%; }
+.evu-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.evu-head { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 1cqw; padding-top: 5cqw; text-shadow: 0 0.6cqw 0 var(--ink); animation: evuHead 0.6s cubic-bezier(.2, .9, .3, 1.3) both; }
+.evu-tag { font-size: 3cqw; letter-spacing: 0.3em; padding: 0.6cqw 3cqw; border-radius: 9cqw; background: rgba(0, 0, 0, 0.45); border: 0.4cqw solid rgba(255, 255, 255, 0.25); }
+.evu-title { font-size: 9cqw; font-weight: normal; letter-spacing: 0.12em; }
+.evu[data-kind="good"] .evu-tag { color: #ffe9a0; border-color: rgba(255, 216, 74, 0.6); }
+.evu[data-kind="luck"] .evu-tag { color: #b8f7ff; border-color: rgba(120, 230, 255, 0.6); }
+.evu[data-kind="bad"] .evu-tag { color: #ffb0b0; border-color: rgba(255, 60, 60, 0.7); }
+.evu[data-kind="bad"] .evu-title { color: #ff8a8a; }
+@keyframes evuHead { from { opacity: 0; transform: translateY(-6cqw) scale(1.3); } }
+.evu-wallet { position: absolute; z-index: 3; left: 3cqw; top: 3cqw; display: flex; align-items: center; gap: 1cqw; padding: 0.6cqw 2.6cqw 0.6cqw 0.6cqw; border-radius: 9cqw; background: rgba(0, 0, 0, 0.55); border: 0.5cqw solid var(--ink); }
+.evu-wallet canvas { width: 7cqw; height: 7cqw; }
+.evu-wallet b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 3.4cqw; color: #fff; }
+.evu-body { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3cqw; padding: 3cqw 5cqw 7cqw; min-height: 0; }
+.evu-spacer { flex: 1; }
+.evu-spacer.s { flex: 0.35; }
+.evu-note { font-size: 3.6cqw; text-align: center; color: #dfe6ff; text-shadow: 0 0.5cqw 0 var(--ink); background: rgba(0, 0, 0, 0.4); padding: 1.2cqw 3cqw; border-radius: 2cqw; animation: evuFade 0.5s 0.6s both; }
+.evu-foot { display: flex; gap: 3cqw; justify-content: center; flex-wrap: wrap; margin-top: auto; animation: evuFade 0.5s 0.8s both; }
+.evu-foot.busy { pointer-events: none; opacity: 0.5; }
+.evu-btn { font-size: 4.4cqw; padding: 2.4cqw 6cqw; }
+.evu-btn.dim, .evu-btn:disabled { opacity: 0.4; pointer-events: none; }
+.evu-btn .evu-cost { font-style: normal; font-family: 'Press Start 2P', monospace; font-size: 3cqw; color: var(--gold); }
+.evu-btn:not(.btn-sub) .evu-cost { color: #7a2a00; }
+.evu-danger { background: linear-gradient(180deg, #b0283a, #6a0f1e) !important; color: #fff; }
+@keyframes evuFade { from { opacity: 0; transform: translateY(3cqw); } }
+.evu-card { opacity: 1; transform: none; cursor: default; width: 100%; }
+.evu-toast { position: absolute; z-index: 4; left: 50%; top: 28%; transform: translate(-50%, 0); font-size: 4.2cqw; white-space: nowrap; padding: 1.6cqw 4cqw; border-radius: 2cqw; background: rgba(0, 0, 0, 0.75); border: 0.5cqw solid var(--gold); color: #fff; opacity: 0; pointer-events: none; }
+.evu-toast.bad { border-color: #ff4a4a; color: #ffb0b0; }
+.evu-toast.in { animation: evuToast 1.8s both; }
+@keyframes evuToast { 0% { opacity: 0; transform: translate(-50%, 3cqw) scale(0.8); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.05); } 20% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -3cqw); } }
+.evu-big { font-size: 7.4cqw; text-align: center; line-height: 1.35; text-shadow: 0 0.8cqw 0 var(--ink); animation: evuBig 0.5s cubic-bezier(.2, .9, .3, 1.5) both; }
+.evu-big b { font-family: 'Press Start 2P', monospace; font-weight: normal; color: var(--gold); font-size: 8cqw; }
+.evu-big.bad { color: #ff7070; }
+@keyframes evuBig { from { opacity: 0; transform: scale(2.2); filter: blur(2cqw); } }
+.evu-cim { width: 5cqw; height: 5cqw; vertical-align: middle; }
+
+/* 屋台：のれんの下の棚。カード＋値札 */
+.evu-body:has(.evu-stall) { padding-top: 26cqw; }
+.evu-stall { display: flex; flex-direction: column; gap: 3cqw; width: 100%; }
+.evu-shelf { display: flex; align-items: stretch; gap: 2cqw; animation: evuShelf 0.5s cubic-bezier(.2, .9, .3, 1.3) both; }
+.evu-shelf .evu-card { flex: 1; }
+.evu-shelf.sold .evu-card { filter: grayscale(0.85) brightness(0.6); }
+@keyframes evuShelf { from { opacity: 0; transform: translateX(-12cqw) rotate(-3deg); } }
+.evu-price { flex: 0 0 15cqw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6cqw; font-family: inherit; color: #3a1a08; background: linear-gradient(180deg, #fff3d4, #f0d49a); border: 0.7cqw solid var(--ink); border-radius: 2cqw; box-shadow: 0 1cqw 0 var(--ink); cursor: pointer; transform: rotate(3deg); position: relative; }
+.evu-price::before { content: ''; position: absolute; top: -2.6cqw; left: 50%; width: 0.5cqw; height: 2.6cqw; background: #222; }
+.evu-price .evu-ptop { display: flex; align-items: center; gap: 0.6cqw; }
+.evu-price b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 3.6cqw; }
+.evu-price small { font-size: 3cqw; }
+.evu-price:active { transform: rotate(3deg) translateY(0.8cqw); box-shadow: 0 0.2cqw 0 var(--ink); }
+.evu-price.cant { background: linear-gradient(180deg, #6a4a4a, #4a2a2a); color: #ff8a8a; }
+.evu-price.shake { animation: evuShake 0.35s; }
+@keyframes evuShake { 0%, 100% { transform: rotate(3deg); } 25% { transform: rotate(-6deg) translateX(-1.5cqw); } 75% { transform: rotate(10deg) translateX(1.5cqw); } }
+.evu-sold { font-family: inherit !important; font-size: 3.6cqw !important; color: #c01818; border: 0.5cqw solid #c01818; padding: 0.6cqw 1cqw; transform: rotate(-12deg); display: inline-block; animation: evuStamp 0.3s cubic-bezier(.2, .9, .3, 1.6) both; }
+@keyframes evuStamp { from { transform: rotate(-12deg) scale(2.5); opacity: 0; } }
+
+/* ミニガチャ */
+.evu-gres { width: 100%; min-height: 24cqw; display: flex; align-items: center; justify-content: center; }
+.evu-pop { animation: evuPop 0.45s cubic-bezier(.2, .9, .3, 1.5) both; }
+@keyframes evuPop { from { transform: scale(0.2) rotate(-8deg); opacity: 0; } }
+.evu-gbar.busy { pointer-events: none; opacity: 0.45; }
+
+/* 泉：浮かぶ光の玉の名前 */
+.evu-orbs { display: flex; gap: 2.4cqw; width: 100%; justify-content: center; }
+.evu-orb { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.8cqw; padding: 2cqw 1cqw; font-family: inherit; color: #fff; background: rgba(0, 10, 30, 0.6); border: 0.6cqw solid var(--oc); border-radius: 3cqw; box-shadow: 0 0 3cqw -0.5cqw var(--oc), 0 1cqw 0 var(--ink); cursor: pointer; animation: evuFade 0.5s 0.4s both; }
+.evu-orb b { font-size: 4.2cqw; font-weight: normal; color: var(--oc); }
+.evu-orb small { font-size: 3cqw; }
+.evu-orbs.chosen .evu-orb:not(.on) { opacity: 0.25; pointer-events: none; transition: opacity 0.4s; }
+.evu-orbs.chosen .evu-orb.on { pointer-events: none; box-shadow: 0 0 6cqw 1cqw var(--oc); }
+
+/* 呪いの祭壇 */
+.evu-cursed { box-shadow: 0 0 5cqw 0 rgba(170, 60, 255, 0.7), 0 1.4cqw 0 var(--ink) !important; animation: evuCurseIn 0.8s 0.3s both, evuFloat 3s 1.1s ease-in-out infinite; }
+.evu-cursed.absorb { animation: evuAbsorb 1s forwards; }
+@keyframes evuCurseIn { from { opacity: 0; filter: blur(3cqw) brightness(3); transform: scale(1.3); } }
+@keyframes evuFloat { 50% { transform: translateY(-1.4cqw); } }
+@keyframes evuAbsorb { 30% { transform: scale(1.06); filter: brightness(2) hue-rotate(40deg); } 100% { transform: translateY(40cqw) scale(0.1); opacity: 0; filter: blur(2cqw); } }
+.evu-cursed { width: 88%; align-self: center; }
+.evu-cursed + .evu-note { margin-top: 10cqw; }
+.evu-rewards { display: flex; flex-direction: column; gap: 2.4cqw; width: 100%; }
+.evu-facedown { height: 22cqw; border-radius: 3cqw; border: 0.9cqw solid var(--ink); background: repeating-linear-gradient(45deg, #2a1640 0 2cqw, #3a1e58 2cqw 4cqw); box-shadow: 0 0 4cqw -1cqw #ffd84a, 0 1.4cqw 0 var(--ink); display: flex; align-items: center; justify-content: center; animation: evuFade 0.5s 0.9s both, evuGlint 2s 1.4s infinite; }
+.evu-facedown span { font-size: 9cqw; color: #ffd84a; text-shadow: 0 0 3cqw #ffd84a; }
+@keyframes evuGlint { 50% { box-shadow: 0 0 7cqw 0 #ffd84a, 0 1.4cqw 0 var(--ink); } }
+.evu-flip { animation: evuFlip 0.5s both; }
+@keyframes evuFlip { from { transform: rotateY(90deg); filter: brightness(3); } }
+.dbg-events { display: flex; flex-wrap: wrap; gap: 1.4cqw; margin-bottom: 2cqw; }
+.dbg-ev.k-bad { color: #ff9a9a; }
+.dbg-ev.k-luck { color: #9aeaff; }

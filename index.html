@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20261126173759">
+  <link rel="stylesheet" href="style.css?v=20261126180136">
 </head>
 <body>
   <div id="app">
@@ -35,6 +35,8 @@
           <div class="box clock">
             <div class="clock-time" id="time">00:00</div>
           </div>
+          <!-- コメット（このゲームの間だけのお金） -->
+          <div class="comet-count" id="comet-count" hidden><canvas width="48" height="48"></canvas><b id="comet-num">0</b></div>
           <div class="hud-right">
             <!-- 取得した才能の一覧 -->
             <button class="btn btn-icon btn-owned" id="open-owned" aria-label="取得した才能">
@@ -186,6 +188,6 @@
     </div>
   </div>
 
-  <script type="module" src="main.js?v=20261126173759"></script>
+  <script type="module" src="main.js?v=20261126180136"></script>
 </body>
 </html>

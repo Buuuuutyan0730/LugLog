@@ -62,6 +62,21 @@ export const CONFIG = {
   power: { sizeK: 2.2, minRadius: 4 },
   ally: { damageMul: 1.8 },             // 味方（分身・スキル）が与えるダメージの倍率
   enemySize: 1.15,                      // ふつうの敵の見た目と当たりの大きさの倍率（中ボス・ボスは変えない）   // 攻撃力10→半径7、20→約10、80→約20
+  // できごと（フェーズの合間に、カード選びの代わりに起きる）
+  //   chance：ボス以外のフェーズをクリアしたとき、起きる確率。from：このフェーズから起きる
+  //   kindWeight：分類の割合。rarWeight：分類ごとの、レア度の割合。ready：中身ができているもの（これだけが起きる）
+  events: {
+    chance: 0.2, from: 2,
+    kindWeight: { good: 6, luck: 2, bad: 2 },
+    rarWeight: { good: { common: 60, uncommon: 28, rare: 10, super: 2 }, luck: { common: 60, uncommon: 40 }, bad: { common: 85, rare: 15 } },
+    ready: ['stall', 'minigacha', 'spring', 'altar', 'thief', 'ambush'],
+    // コメットの落ち方：中ボス 3〜5個、ボス 10個、大きい敵はこの確率で1個、金色の敵はこの確率で1個
+    drop: { elite: [3, 5], boss: 10, bigChance: 0.15, goldChance: 0.35 },
+    goldShards: 5,
+    trial: { time: 25, hpMul: 1.6, reward: 12 },
+    mimic: { hpMul: 2, every: 1.5, bonus: 3 },
+    hoard: { time: 15, every: 0.45, hpMul: 0.5, chestChance: 0.35, chestComets: [2, 4] },
+  },
   // 画面の外の敵：分身や本体の攻撃は当たらない（かけらが画面の外に落ちないように）。
   //   出てから enterAfter 秒たっても外にいる敵は、画面の中へ向かって入ってくる
   offscreen: { enterAfter: 1.2, enterSpeed: 1.2 },

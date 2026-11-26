@@ -1,33 +1,35 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261126173759';
-import { createGame, DT } from './game.js?v=20261126173759';
-import { applyForms } from './talents.js?v=20261126173759';
-import { createRenderer } from './render.js?v=20261126173759';
-import { createHud } from './ui.js?v=20261126173759';
-import { createInput } from './input.js?v=20261126173759';
-import { setupDebugPanel } from './debug.js?v=20261126173759';
-import { createPreview } from './preview.js?v=20261126173759';
-import { createMenus } from './menus.js?v=20261126173759';
-import { createDemo } from './demo.js?v=20261126173759';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261126173759';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261126173759';
-import { ensureDaily, addRun } from './missions.js?v=20261126173759';
-import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261126173759';
-import { SKILL_ROADS } from './skilldefs.js?v=20261126173759';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261126173759';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261126173759';
-import { setEquipped } from './skinshot.js?v=20261126173759';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261126173759';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261126173759';
-import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261126173759';
+import { CONFIG } from './config.js?v=20261126180136';
+import { createGame, DT } from './game.js?v=20261126180136';
+import { applyForms } from './talents.js?v=20261126180136';
+import { createRenderer } from './render.js?v=20261126180136';
+import { createHud } from './ui.js?v=20261126180136';
+import { createInput } from './input.js?v=20261126180136';
+import { setupDebugPanel } from './debug.js?v=20261126180136';
+import { createPreview } from './preview.js?v=20261126180136';
+import { createEventUI } from './eventui.js?v=20261126180136';
+import { createMenus } from './menus.js?v=20261126180136';
+import { createDemo } from './demo.js?v=20261126180136';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261126180136';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261126180136';
+import { ensureDaily, addRun } from './missions.js?v=20261126180136';
+import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261126180136';
+import { SKILL_ROADS } from './skilldefs.js?v=20261126180136';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261126180136';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261126180136';
+import { setEquipped } from './skinshot.js?v=20261126180136';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261126180136';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261126180136';
+import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261126180136';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
 const hud = createHud();
 const input = createInput(canvas, [document.querySelector('.dock')]);
 const game = createGame();
+const evu = createEventUI(document.getElementById('stage'), hud);   // できごとの画面
 const preview = createPreview(hud); // 新しい見た目の見本（動かない）
 window.__game = game; // 確認用
 
@@ -40,6 +42,7 @@ let pausedByDebug = false;
 let pausedByOwned = false;
 let resultShown = false;
 let skillShown = false;
+let eventShown = false;
 let seenCount = 0;
 
 // 設定をゲームに反映する（操作方法・揺れ・光の強さ）
@@ -103,6 +106,8 @@ function restart() {
   hud.hideSkills();
   resultShown = false;
   skillShown = false;
+  eventShown = false;
+  evu.close();
   seenCount = 0;
 }
 
@@ -134,6 +139,9 @@ const debugPanel = setupDebugPanel(CONFIG, {
   onRestart: () => { restart(); game.firstPick(); menus.close(); },
   onClearPhase: () => game.debugClearPhase(),
   onAdvance: (n) => { if (menus.id) return; game.debugAdvance(n); },
+  // できごとを起こす：今のフェーズをクリアにして、決めたできごとを出す
+  onEvent: (id) => { const s = game.state; if (menus.id || s.mode !== 'play' || s.over || s.bossPhase) return; s.forceEvent = id; game.debugClearPhase(); },
+  addComets: (n) => { const s = game.state; s.comets = n ? s.comets + n : 0; },
   // ボスを試す：最初から始め、カードを選んでいって、目当てのボスと戦う
   onBossTest: (n, auto) => startTest(n, auto),
   resetFlag(k) { if (k === 'tuto') { save.tutoDone = false; save.howtoDone = false; } if (k === 'ending') save.endingSeen = false; writeSave(save); },
@@ -248,7 +256,7 @@ function syncTutorial(s) {
 // 一時停止：右上のボタン、または別のアプリ・タブへ切りかえたとき
 function pause() {
   const s = game.state;
-  if (menus.id || s.over || s.mode === 'select' || s.mode === 'returning' || preview.active) return;
+  if (menus.id || s.over || s.mode === 'select' || s.mode === 'event' || s.mode === 'returning' || preview.active) return;
   menus.open('s_pause', {}, false);
 }
 document.getElementById('open-pause').addEventListener('click', () => { playSound('tap'); pause(); });
@@ -341,6 +349,12 @@ function tick(now) {
 
   const s = game.state;
 
+  // フェーズクリア → できごと（カード選びの代わり）
+  if (s.mode === 'event' && !eventShown && !menus.id && s.event) {
+    eventShown = true;
+    const id = s.event.id;
+    setTimeout(() => evu.open(s, game.eventApi, id, () => { eventShown = false; game.finishEvent(); }), 350);
+  }
   // フェーズクリア → スキル選択
   if (s.mode === 'select' && !skillShown && !menus.id) {
     skillShown = true;

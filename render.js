@@ -1,8 +1,9 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261126173759';
-import { makeForms } from './forms.js?v=20261126173759';
-import { CONFIG } from './config.js?v=20261126173759';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261126180136';
+import { makeForms } from './forms.js?v=20261126180136';
+import { CONFIG } from './config.js?v=20261126180136';
+import { drawComet } from './events.js?v=20261126180136';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -225,7 +226,62 @@ export function createRenderer(canvas, view) {
   }
 
   // ---------- かけら ----------
+  // 金色の敵（黄金の時間・宝の山）：体に金をかぶせ、ときどき光が走る
+  function drawGoldCoat(e, t) {
+    ctx.save();
+    enemyShape(e);
+    const g = ctx.createLinearGradient(-e.r, -e.r, e.r, e.r);
+    const sh = ((t * 0.8 + e.x * 0.01) % 1.6) - 0.3;
+    g.addColorStop(0, 'rgba(255,196,40,0.85)'); g.addColorStop(Math.max(0, Math.min(1, sh)), 'rgba(255,250,210,0.95)'); g.addColorStop(1, 'rgba(200,130,10,0.85)');
+    ctx.fillStyle = g; glow('#ffd84a', 14); ctx.fill(); noGlow();
+    ctx.strokeStyle = '#fff2b0'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.restore();
+  }
+  // 宝箱とミミック：木の箱に金の金具。ミミックはふたが開いて、牙と舌、ぎょろっとした目
+  function drawChestEnemy(e, t, hit) {
+    const r = e.r, w = r * 1.7, h = r * 1.25;
+    const bob = e.mimic ? Math.sin(t * 9) * r * 0.06 : Math.sin(t * 2 + e.x) * r * 0.04;
+    ctx.translate(0, bob);
+    if (e.mimic) { glow('#ff2a3a', 18 + 8 * Math.sin(t * 6)); } else glow('#ffd84a', 16);
+    // 箱
+    ctx.fillStyle = hit ? '#ffffff' : '#6b3a14';
+    ctx.fillRect(-w / 2, -h * 0.1, w, h * 0.65);
+    noGlow();
+    ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2.5; ctx.strokeRect(-w / 2, -h * 0.1, w, h * 0.65);
+    // ふた（ミミックは口のように開閉）
+    const open = e.mimic ? 0.35 + 0.25 * Math.abs(Math.sin(t * 5)) : 0;
+    ctx.save(); ctx.translate(0, -h * 0.1); ctx.rotate(-open);
+    ctx.fillStyle = hit ? '#ffffff' : '#7e4518';
+    ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2, -h * 0.28); ctx.quadraticCurveTo(0, -h * 0.55, w / 2, -h * 0.28); ctx.lineTo(w / 2, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#ffd84a'; ctx.stroke();
+    if (e.mimic) {   // ふたの裏の牙
+      ctx.fillStyle = '#fff6e0';
+      for (let k = 0; k < 5; k++) { const x = -w / 2 + w * (k + 0.5) / 5; ctx.beginPath(); ctx.moveTo(x - w * 0.06, 0); ctx.lineTo(x, h * 0.16); ctx.lineTo(x + w * 0.06, 0); ctx.fill(); }
+    }
+    ctx.restore();
+    // 金具と錠前
+    ctx.fillStyle = '#ffd84a';
+    ctx.fillRect(-w * 0.08, -h * 0.12, w * 0.16, h * 0.24);
+    if (e.mimic) {
+      // 口の中：赤い闇と、舌と、下の牙
+      ctx.fillStyle = '#3a0008'; ctx.fillRect(-w / 2 + 3, -h * 0.1, w - 6, h * 0.14);
+      ctx.fillStyle = '#ff4a6a'; ctx.beginPath(); ctx.ellipse(w * 0.1, -h * 0.02 + Math.sin(t * 7) * 2, w * 0.16, h * 0.07, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff6e0';
+      for (let k = 0; k < 4; k++) { const x = -w / 2 + w * (k + 0.7) / 4.4; ctx.beginPath(); ctx.moveTo(x - w * 0.05, -h * 0.1); ctx.lineTo(x, -h * 0.22); ctx.lineTo(x + w * 0.05, -h * 0.1); ctx.fill(); }
+      // 目
+      for (const sx of [-1, 1]) { ctx.fillStyle = '#ffec6a'; ctx.beginPath(); ctx.arc(sx * w * 0.22, -h * 0.42 - open * h * 0.5, r * 0.13, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(sx * w * 0.22, -h * 0.42 - open * h * 0.5, r * 0.04, r * 0.11, 0, 0, Math.PI * 2); ctx.fill(); }
+    } else {
+      // きらっ
+      const tw = Math.max(0, Math.sin(t * 3 + e.y));
+      if (tw > 0.8) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; const L = r * 0.5 * (tw - 0.8) / 0.2; ctx.beginPath(); ctx.moveTo(w * 0.3 - L, -h * 0.3); ctx.lineTo(w * 0.3 + L, -h * 0.3); ctx.moveTo(w * 0.3, -h * 0.3 - L); ctx.lineTo(w * 0.3, -h * 0.3 + L); ctx.stroke(); }
+    }
+  }
+  // 落ちているコメット
+  function drawCometDrops(state, t) {
+    for (const c of state.cometDrops || []) drawComet(ctx, c.x, c.y, 6.5 * (state.zoom || 1), c.hue, t * 2 + c.spin, c.spin + t * 3);
+  }
   function drawPickups(state, t) {
+    drawCometDrops(state, t);
     const blinkAt = 3;
     for (const k of state.pickups) {
       if (k.life < blinkAt && Math.sin(t * 24) < 0) continue; // 消える前は点滅
@@ -1051,6 +1107,8 @@ export function createRenderer(canvas, view) {
       if (e.vanish) ctx.globalAlpha *= 0.12;   // 影が消えている間
       if (e.fake) ctx.globalAlpha *= 0.5 + 0.15 * Math.sin(t * 6 + e.x);   // 蜃気楼の偽物：うすく、ゆらめく
       ctx.translate(e.x, e.y);
+      // 宝の山の宝箱・ミミック：箱の形で描く（体の形の代わり）
+      if (e.chest || e.mimic) { drawChestEnemy(e, t, hit); ctx.restore(); return; }   // 体力バーは別の所でまとめて描く
       ctx.rotate(e.kind === 'tank' || (e.boss && e.kind !== 'hunter' && e.kind !== 'twin' && e.kind !== 'comet') ? 0 : e.ang || 0);
       // 体の色：凍結＝水色、毒＝紫（両方なら凍結を優先）。影と敵の分身は黒い体
       const dark = e.kind === 'shade' || e.kind === 'echo' || e.kind === 'eclipse' || e.kind === 'abyss' || e.kind === 'shuhitsu' || e.kind === 'inkghost';
@@ -1061,6 +1119,7 @@ export function createRenderer(canvas, view) {
       // ふつうの敵：体（光・塗り・縁・まんなかの点）は、前に描いた絵を使い回して貼るだけにする（見た目は同じで、ずっと軽い）
       if (USE_SPRITES && !e.boss && !e.elite && !e.vanish && !e.rage && e.kind !== 'echo') {
         drawEnemySprite(e, body, edge, hit, heavy);
+        if (e.gold) drawGoldCoat(e, t);
       } else {
         // 怒った双子：赤く脈打つ光
         if (e.rage) { const k = 0.5 + 0.5 * Math.sin(t * 10); glow(THEME.enemy, 30 * k); }
@@ -1072,6 +1131,7 @@ export function createRenderer(canvas, view) {
         ctx.fill();
         noGlow();
         ctx.stroke();
+        if (e.gold) drawGoldCoat(e, t);
         // ボス：縁の外側を白く光らせて、敵や弾の中でも見分けやすくする
         if (e.boss) {
           ctx.save();
