@@ -1,16 +1,18 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127030107';
-import { playSound } from './audio.js?v=20261127030107';
-import { CURSE_BY_ID } from './talents.js?v=20261127030107';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127030107';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127030557';
+import { playSound } from './audio.js?v=20261127030557';
+import { CURSE_BY_ID } from './talents.js?v=20261127030557';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127030557';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const ease = (u) => 1 - (1 - clamp(u)) ** 3;
 const back = (u) => { u = clamp(u); const c = 1.7; return 1 + (c + 1) * (u - 1) ** 3 + c * (u - 1) ** 2; };
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// 待つ：できごとを閉じたり切り替えたりしたら、待っている続きは二度と動かない（前の画面の文字や音が、次の画面に出ないように）
+let GEN = 0;
+const wait = (ms) => { const g = GEN; return new Promise((r) => setTimeout(() => { if (g === GEN) r(); }, ms)); };
 const RAR_COL = { normal: '#9fb0ff', rare: '#4cf08a', super: '#c7a6ff', mythic: 'rainbow' };
 const PRICE = { normal: 3, rare: 5, super: 8, mythic: 12 };
 const cometIcon = (n) => `<i class="evu-ci" data-n="${n}"></i>`;
@@ -45,7 +47,7 @@ export function createEventUI(stage, hud) {
     <div class="evu-toast"></div>`;
   stage.appendChild(root);
   const cv = root.querySelector('.evu-bg'), c = cv.getContext('2d');
-  const body = root.querySelector('.evu-body'), footEl = root.querySelector('.evu-foot'), toastEl = root.querySelector('.evu-toast');
+  let body = root.querySelector('.evu-body'), footEl = root.querySelector('.evu-foot'); const toastEl = root.querySelector('.evu-toast');
   const wallet = root.querySelector('.evu-wallet'), wc = wallet.querySelector('canvas').getContext('2d');
   let cur = null, raf = 0;
   // 絵（キャンバス）を直接さわる：宝箱・コイン・レバーなど。座標はキャンバスの画素
@@ -82,47 +84,54 @@ export function createEventUI(stage, hud) {
     const r = root.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
     root.querySelector('.evu-title').textContent = ev.name;
-    body.innerHTML = ''; footEl.innerHTML = ''; cv.style.cursor = ''; dragging = null;
-    cur = { s, api, ev, t0: performance.now(), shown: s.comets, draw: null, onDone };
+    // 本文とボタンの入れ物は、毎回新しくする（前のできごとの続きが、古い入れ物に書いても見えない）
+    GEN++;
+    const nb = body.cloneNode(false); body.replaceWith(nb); body = nb;
+    const nf = footEl.cloneNode(false); footEl.replaceWith(nf); footEl = nf;
+    toastEl.className = 'evu-toast'; toastEl.innerHTML = '';
+    cv.style.cursor = ''; dragging = null;
+    cur = { s, api, ev, t0: performance.now(), shown: s.comets, draw: null, onDone, body, foot: footEl };
     wallet.querySelector('b').textContent = s.comets;
     raf = requestAnimationFrame(frame);
     const ctx = makeCtx(cur);
     (SCENES[id] || SCENES.stall)(ctx);
   }
-  function close() { cancelAnimationFrame(raf); cur = null; root.classList.remove('show'); root.style.transform = ''; root.classList.remove('tapall'); body.innerHTML = ''; footEl.innerHTML = ''; }
+  function close() { GEN++; if (cur) cur.dead = true; cancelAnimationFrame(raf); cur = null; toastEl.className = 'evu-toast'; toastEl.innerHTML = ''; root.classList.remove('show'); root.style.transform = ''; root.classList.remove('tapall'); body.innerHTML = ''; footEl.innerHTML = ''; }
 
   // 各できごとに渡す道具
   function makeCtx(C) {
+    const live = () => !C.dead;
     const ctx = {
       s: C.s, api: C.api, body, root,
+      get dead() { return !!C.dead; },
       // 背景の絵（毎フレーム呼ばれる）
       draw(fn) { C.draw = fn; },
       time: () => (performance.now() - C.t0) / 1000,
       rect(el) { if (!el || !el.isConnected) return null; const a = el.getBoundingClientRect(), b = root.getBoundingClientRect(), k = cv.width / Math.max(1, b.width); return { x: (a.left - b.left) * k, y: (a.top - b.top) * k, w: a.width * k, h: a.height * k }; },
-      sfx: (id, o) => playSound(id, o),
+      sfx: (id, o) => { if (live()) playSound(id, o); },
       html(h) { const d = document.createElement('div'); d.innerHTML = h; return d.firstElementChild; },
       btn(label, cls, fn) { const b = document.createElement('button'); b.className = `btn evu-btn ${cls || ''}`; b.innerHTML = `<span>${label}</span>`; b.addEventListener('click', () => { if (!b.disabled) fn(b); }); return b; },
       // カード1枚（できごとの中で使う、ふつうと同じ見た目）
       card(ch) { const { cls, html } = hud.cardOf(C.s, ch); const b = document.createElement('div'); b.className = `${cls} evu-card`; b.innerHTML = html; return b; },
       fit(node) { hud.fitLines(node); hud.snapIcons(node); },
       cometImg: (h = 48) => `<canvas class="evu-cim" width="32" height="32" data-h="${h}"></canvas>`,
-      toast(text, cls = '') { toastEl.className = `evu-toast ${cls}`; toastEl.innerHTML = text; void toastEl.offsetWidth; toastEl.classList.add('in'); },
-      done() { const cb = C.onDone; close(); if (cb) cb(); },
+      toast(text, cls = '') { if (!live()) return; toastEl.className = `evu-toast ${cls}`; toastEl.innerHTML = text; void toastEl.offsetWidth; toastEl.classList.add('in'); },
+      done() { if (!live()) return; const cb = C.onDone; close(); if (cb) cb(); },
       // 別のできごとへつなぐ（おみくじの大凶 → 大凶）
-      goto(id) { const { s, api, onDone } = C; open(s, api, id, onDone); },
-      flash(col = '#fff', d = 0.4, a = 1) { C.flash = { col, d, a, t0: performance.now() }; },
-      shake(px = 14, d = 0.4) { C.shake = { px, d, t0: performance.now() }; },
+      goto(id) { if (!live()) return; const { s, api, onDone } = C; open(s, api, id, onDone); },
+      flash(col = '#fff', d = 0.4, a = 1) { if (!live()) return; C.flash = { col, d, a, t0: performance.now() }; },
+      shake(px = 14, d = 0.4) { if (!live()) return; C.shake = { px, d, t0: performance.now() }; },
       skillName: (id) => (SKILL_BY_ID[id] ? SKILL_BY_ID[id].name : id),
       // 下のボタン：どのできごとも同じ場所・同じ2種類（戻る＝やめる／OK＝進む・受ける）
-      foot(...btns) { footEl.innerHTML = ''; footEl.append(...btns); return { remove() { footEl.innerHTML = ''; } }; },
+      foot(...btns) { const f = C.foot; f.innerHTML = ''; if (live()) f.append(...btns); return { remove() { f.innerHTML = ''; } }; },
       ok(fn) { return ctx.btn('OK', 'evu-ok', fn); },
       back(fn) { return ctx.btn('戻る', 'btn-sub evu-back', fn || (() => ctx.done())); },
       // 絵を直接さわる（tap：押したとき、hot：指が乗ると押せる形に、drag：引っぱる）
       tap(fn, hot) { C.tap = fn; C.hot = hot || null; },
       // 画面のどこをさわっても発動（呪いを受ける・挑む など）。下に「画面をタップで〜」を出す
-      tapAnywhere(label, fn) { const el = ctx.html(`<div class="evu-prompt">画面をタップで <b>${label}</b></div>`); body.appendChild(el); root.classList.add('tapall'); let used = false; ctx.tap(() => { if (used) return; used = true; el.remove(); root.classList.remove('tapall'); C.tap = null; C.hot = null; cv.style.cursor = ''; fn(); }, () => !used); return el; },
+      tapAnywhere(label, fn) { const el = ctx.html(`<div class="evu-prompt">画面をタップで <b>${label}</b></div>`); C.body.appendChild(el); root.classList.add('tapall'); let used = false; ctx.tap(() => { if (used) return; used = true; el.remove(); root.classList.remove('tapall'); C.tap = null; C.hot = null; cv.style.cursor = ''; fn(); }, () => !used); return el; },
       // 下の空き：説明の一行（ボタンの上）
-      hint(text) { const el = ctx.html(`<div class="evu-hint">${text}</div>`); body.appendChild(el); return el; },
+      hint(text) { const el = ctx.html(`<div class="evu-hint">${text}</div>`); C.body.appendChild(el); return el; },
       drag(o) { C.drag = o; },
       wait,
     };
@@ -502,7 +511,7 @@ const SCENES = {
   ambush(x) {
     x.api.next('ambush', 2);
     const eyes = Array.from({ length: 22 }, (_, i) => ({ x: Math.random(), y: 0.55 + Math.random() * 0.4, d: 0.3 + Math.random() * 1.6, s: 0.6 + Math.random() * 0.8, b: Math.random() * 6 }));
-    setTimeout(() => x.sfx('ev_ambush'), 1300);
+    wait(1300).then(() => x.sfx('ev_ambush'));
     x.draw((c, t, W, H, u) => {
       c.fillStyle = '#030104'; c.fillRect(0, 0, W, H);
       const vg = c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, H * 0.7); vg.addColorStop(0, 'rgba(70,0,10,0.4)'); vg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = vg; c.fillRect(0, 0, W, H);
@@ -1100,7 +1109,7 @@ Object.assign(SCENES, {
 
   // ---------------- 七福神：金の波に宝船。最高のカード3枚から、好きな1枚 ----------------
   fortune(x) {
-    x.flash('#fff', 1.0, 1); x.sfx('ev_fortune'); setTimeout(() => x.sfx('gssr'), 300);
+    x.flash('#fff', 1.0, 1); x.sfx('ev_fortune'); wait(300).then(() => x.sfx('gssr'));
     const ch3 = x.api.roll({ count: 3, floor: 'mythic', noCurse: true });
     x.draw((c, t, W, H, u) => {
       const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3a0a3a'); g.addColorStop(0.5, '#a83a10'); g.addColorStop(1, '#f0b030'); c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -1413,7 +1422,7 @@ Object.assign(SCENES, {
       let r = Math.random() * W8.reduce((a, b) => a + b, 0), pick = 0; for (let i = 0; i < 8; i++) { r -= W8[i]; if (r <= 0) { pick = i; break; } }
       const seg = TAU / 8, want = -pick * seg + (Math.random() - 0.5) * seg * 0.6;
       const base = ang + TAU * 5; target = base + (((want - base) % TAU) + TAU) % TAU;
-      let tick = 0; const tk = setInterval(() => { if (target == null) return clearInterval(tk); x.sfx('ev_coin', { pitch: 1.8 + (tick++ % 2) * 0.2 }); }, 110);
+      let tick = 0; const tk = setInterval(() => { if (target == null || x.dead) return clearInterval(tk); x.sfx('ev_coin', { pitch: 1.8 + (tick++ % 2) * 0.2 }); }, 110);
       x._stop = async () => {
         x._stop = null; done = true; clearInterval(tk);
         const w = WHEEL[pick]; let good = true;
@@ -1501,7 +1510,7 @@ Object.assign(SCENES, {
 
   // ---------------- 時の旅人：歯車と砂時計の旅人。スキルを1つ渡すと、同じレベルの別のスキルに変えてくれる ----------------
   traveler(x) {
-    x.flash('#cfe8ff', 0.9, 0.9); x.sfx('ev_star'); setTimeout(() => x.sfx('ev_gong', { pitch: 1.6 }), 200);
+    x.flash('#cfe8ff', 0.9, 0.9); x.sfx('ev_star'); wait(200).then(() => x.sfx('ev_gong', { pitch: 1.6 }));
     let sand = 0;
     x.draw((c, t, W, H, u) => {
       const g = c.createRadialGradient(W / 2, H * 0.3, 0, W / 2, H * 0.3, H * 0.9); g.addColorStop(0, '#1a3a5a'); g.addColorStop(1, '#04060e'); c.fillStyle = g; c.fillRect(0, 0, W, H);

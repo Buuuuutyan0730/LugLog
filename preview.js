@@ -2,18 +2,18 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261127030107';
-import { CONFIG } from './config.js?v=20261127030107';
-import { SKILL_ROADS } from './skilldefs.js?v=20261127030107';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261127030107';
-import { GACHA_POOL } from './skins.js?v=20261127030107';
-import { createGame } from './game.js?v=20261127030107';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261127030107';
-import { createGachaFx } from './gachafx.js?v=20261127030107';
-import { createEndingFx, sampleTrails } from './endingfx.js?v=20261127030107';
-import { createEventFx } from './eventfx.js?v=20261127030107';
-import { createEventUI } from './eventui.js?v=20261127030107';
-import { EVENTS } from './events.js?v=20261127030107';
+import { BOOSTS, CURSES } from './talents.js?v=20261127030557';
+import { CONFIG } from './config.js?v=20261127030557';
+import { SKILL_ROADS } from './skilldefs.js?v=20261127030557';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261127030557';
+import { GACHA_POOL } from './skins.js?v=20261127030557';
+import { createGame } from './game.js?v=20261127030557';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261127030557';
+import { createGachaFx } from './gachafx.js?v=20261127030557';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261127030557';
+import { createEventFx } from './eventfx.js?v=20261127030557';
+import { createEventUI } from './eventui.js?v=20261127030557';
+import { EVENTS } from './events.js?v=20261127030557';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -921,7 +921,16 @@ export function createPreview(hud) {
   document.getElementById('pv-prev').addEventListener('click', () => step(-1));
   document.getElementById('pv-next').addEventListener('click', () => step(1));
 
+  // 見本を切り替えるたびに、前の見本で出したものを全部しまう（文字・カード・演出・できごと・音）。見本のゲームも作り直す
+  function resetAll() {
+    hud.hideOwned(); hud.hideSample(); hud.hideTutorial(); marks.closeNote();
+    document.getElementById('skill').classList.remove('with-bt', 'with-reroll');
+    screens.hide(); gfx.stop(); efx.stop(); evx.stop();
+    clearTimeout(evuTimer); evu.close();
+    og = null; md = null;
+  }
   function select(id) {
+    resetAll();
     tab = id;
     const c = CATS.find((x) => x.tabs.some(([t]) => t === id)) || CATS[0];
     cat = c.id;
@@ -969,17 +978,9 @@ export function createPreview(hud) {
 
   function close() {
     active = false;
-    hud.hideTutorial();
     bar.classList.remove('show');
     bar.setAttribute('aria-hidden', 'true');
-    hud.hideSample();
-    document.getElementById('skill').classList.remove('with-reroll', 'with-bt');
-    hud.hideOwned();
-    marks.closeNote();
-    screens.hide();
-    gfx.stop();
-    efx.stop();
-    evx.stop(); clearTimeout(evuTimer); evu.close();
+    resetAll();
   }
 
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
