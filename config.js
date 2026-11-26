@@ -69,12 +69,15 @@ export const CONFIG = {
     chance: 0.2, from: 2,
     kindWeight: { good: 6, luck: 2, bad: 2 },
     rarWeight: { good: { common: 60, uncommon: 28, rare: 10, super: 2 }, luck: { common: 60, uncommon: 40 }, bad: { common: 85, rare: 15 } },
-    ready: ['stall', 'minigacha', 'spring', 'altar', 'thief', 'ambush'],
+    ready: ['stall', 'minigacha', 'spring', 'altar', 'thief', 'ambush', 'seal', 'kyo', 'mimic', 'chests', 'potion', 'coin', 'dice', 'trial', 'hoard', 'golden', 'shooting', 'fortune', 'stray', 'blackmarket', 'slot', 'roulette', 'omikuji', 'traveler'],
     // コメットの落ち方：中ボス 3〜5個、ボス 10個、大きい敵はこの確率で1個、金色の敵はこの確率で1個
     drop: { elite: [3, 5], boss: 10, bigChance: 0.15, goldChance: 0.35 },
     goldShards: 5,
     trial: { time: 25, hpMul: 1.6, reward: 12 },
     mimic: { hpMul: 2, every: 1.5, bonus: 3 },
+    stray: { orbit: 34, spin: 2.2, every: 0.55, power: 0.7 },   // 迷子の分身：本体のまわりを回る半径・速さ・撃つ間隔・威力（本体の弾の何倍か。連れていくたびに+15%）
+    blackmarket: { price: { super: 10, mythic: 18 }, kiwami: 30 },
+    slot: { cost: 3 },
     hoard: { time: 15, every: 0.45, hpMul: 0.5, chestChance: 0.35, chestComets: [2, 4] },
   },
   // 画面の外の敵：分身や本体の攻撃は当たらない（かけらが画面の外に落ちないように）。

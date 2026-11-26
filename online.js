@@ -2,7 +2,7 @@
 //   人の見分け：名前の登録なしで端末ごとに見分ける「匿名ログイン」
 //   全期間の最高は scores/<見分けの番号>、その週の最高は weeks/<週の番号>/scores/<見分けの番号> に1つずつ
 //   つながらないとき（電波がない・読みこめない）は、ゲームはそのまま遊べる。ランキングだけ「つながりません」と出す
-import { CONFIG as GAME } from './config.js?v=20261126180136';
+import { CONFIG as GAME } from './config.js?v=20261126181944';
 const CONFIG = {
   apiKey: 'AIzaSyA9JWRT-1pPiMH4wnL78nrt_7icvCd_v7M',
   authDomain: 'luglog.firebaseapp.com',
@@ -33,7 +33,7 @@ function connect() {
   if (ready) return ready;
   ready = (async () => {
     // Firebaseの部品はゲームに同梱（外のサイトから読みこまない）。ランキングを使うときだけ読みこむ
-    const fs = await import('./firebase.js?v=20261126180136');
+    const fs = await import('./firebase.js?v=20261126181944');
     const app = fs.initializeApp(CONFIG);
     const auth = fs.getAuth(app);
     const cred = auth.currentUser ? { user: auth.currentUser } : await fs.signInAnonymously(auth);

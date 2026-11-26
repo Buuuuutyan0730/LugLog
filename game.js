@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261126180136';
-import { spawnPop, stepParticle } from './pops.js?v=20261126180136';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261126180136';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126180136';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261126180136';
+import { CONFIG } from './config.js?v=20261126181944';
+import { spawnPop, stepParticle } from './pops.js?v=20261126181944';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261126181944';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126181944';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261126181944';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -65,7 +65,7 @@ export function createGame() {
       mode: 'ready',
       test: null,       // ボスを試す（調整パネル）の途中なら、その中身
       bossSpawned: false,   // このフェーズでボスが出たか（いなくなったら倒した扱いにする確認用）
-      comets: 0,            // コメット（このゲームの間だけのお金。できごとで使う）
+      comets: 0, pal: null,            // コメット（このゲームの間だけのお金。できごとで使う）
       cometDrops: [],       // 落ちているコメット
       event: null,          // 起きているできごと（フェーズクリアのあと、カード選びの代わり）
       nextMods: {},         // できごとで決まった「次のフェーズ」の変化（待ち伏せ・封印・黄金の時間など）
@@ -3300,6 +3300,16 @@ export function createGame() {
     if (M.hoard) { M.hoard = { t: EV.hoard.time, spawnT: 0 }; s.banner = { text: '宝の山', sub: `${EV.hoard.time}秒！`, t: 1.4 }; }
     if (M.potion) s.banner = { text: M.potion.name, sub: M.potion.sub, t: 1.6 };
   }
+  // 迷子の分身（できごとで連れてきた相棒）：本体のまわりを回り、近い敵を撃つ。プレイの終わりまで一緒
+  function updatePal() {
+    const q = s.pal; if (!q) return;
+    const p = s.player, R = EV.stray.orbit * s.zoom;
+    q.a += DT * EV.stray.spin; q.bob += DT;
+    const tx = p.x + Math.cos(q.a) * R, ty = p.y + Math.sin(q.a) * R * 0.8;
+    q.x += (tx - q.x) * Math.min(1, DT * 8); q.y += (ty - q.y) * Math.min(1, DT * 8);
+    q.cd -= DT;
+    if (q.cd <= 0) { const e = nearestEnemy(q, range()); if (e) { fire(q, e, 'ghost', q.idx, P.power * s.st.attack * EV.stray.power * (1 + 0.15 * (q.lv - 1))); q.cd = EV.stray.every / s.st.rate; } }
+  }
   // できごとで出す中ボス（待ち伏せ・腕試し・ミミック）：画面のふちから
   function spawnModElite({ hpMul, tag }) {
     let next = null;
@@ -3359,6 +3369,7 @@ export function createGame() {
     ownedSkills() { return Object.keys(s.skills).map((id) => ({ id, ...s.skills[id] })); },
     maxSkill(id) { const o = s.skills[id]; if (!o) return; if (o.lv >= SKILL_MAX) o.evo = true; else o.lv = SKILL_MAX; s.st = stats(); },
     swapSkill(from, to) { const o = s.skills[from]; if (!o) return; delete s.skills[from]; s.skills[to] = { lv: Math.max(1, o.lv), evo: false }; s.st = stats(); },
+    addPal() { if (s.pal) { s.pal.lv++; return s.pal.lv; } s.pal = { x: s.player.x, y: s.player.y, a: 0, bob: 0, cd: 0.5, idx: 3, r: 6, straight: 1, lv: 1 }; return 1; },
     stealHalf() { const n = Math.floor(s.comets / 2); s.comets -= n; return n; },
   };
   // できごとを終える：カードは取らずに、次のフェーズへ
@@ -4606,6 +4617,7 @@ export function createGame() {
     updatePickups();
     updateComets();
     updateMods();
+    updatePal();
     if (s.tuto) tutoCheck();
     updateEffects();
   }

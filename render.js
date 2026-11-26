@@ -1,9 +1,9 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261126180136';
-import { makeForms } from './forms.js?v=20261126180136';
-import { CONFIG } from './config.js?v=20261126180136';
-import { drawComet } from './events.js?v=20261126180136';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261126181944';
+import { makeForms } from './forms.js?v=20261126181944';
+import { CONFIG } from './config.js?v=20261126181944';
+import { drawComet } from './events.js?v=20261126181944';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -277,11 +277,26 @@ export function createRenderer(canvas, view) {
     }
   }
   // 落ちているコメット
+  // 迷子の分身：小さな白い分身。目がふたつ、ふわふわ上下する
+  function drawPal(state, t) {
+    const q = state.pal; if (!q) return;
+    const z = state.zoom || 1, r = (7 + q.lv) * z, y = q.y + Math.sin(q.bob * 4) * 2 * z;
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    const g = ctx.createRadialGradient(q.x, y, 0, q.x, y, r * 2.4); g.addColorStop(0, 'rgba(200,240,255,0.5)'); g.addColorStop(1, 'rgba(200,240,255,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q.x, y, r * 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#eef8ff'; ctx.beginPath(); ctx.arc(q.x, y - r * 0.2, r, Math.PI, 0);
+    for (let k = 0; k <= 4; k++) ctx.lineTo(q.x + r - (k * r * 2) / 4, y + r * 0.7 + (k % 2 ? -r * 0.3 : 0));
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1a2040'; ctx.fillRect(q.x - r * 0.45, y - r * 0.35, r * 0.25, r * 0.4); ctx.fillRect(q.x + r * 0.2, y - r * 0.35, r * 0.25, r * 0.4);
+    ctx.restore();
+  }
   function drawCometDrops(state, t) {
     for (const c of state.cometDrops || []) drawComet(ctx, c.x, c.y, 6.5 * (state.zoom || 1), c.hue, t * 2 + c.spin, c.spin + t * 3);
   }
   function drawPickups(state, t) {
     drawCometDrops(state, t);
+    drawPal(state, t);
     const blinkAt = 3;
     for (const k of state.pickups) {
       if (k.life < blinkAt && Math.sin(t * 24) < 0) continue; // 消える前は点滅
