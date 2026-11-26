@@ -1,11 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127035235';
-import { playSound } from './audio.js?v=20261127035235';
-import { CURSE_BY_ID } from './talents.js?v=20261127035235';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127035235';
-import { rarityOfLevel } from './ui.js?v=20261127035235';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127041040';
+import { playSound } from './audio.js?v=20261127041040';
+import { CURSE_BY_ID } from './talents.js?v=20261127041040';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127041040';
+import { rarityOfLevel } from './ui.js?v=20261127041040';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -45,7 +45,8 @@ export function createEventUI(stage, hud) {
     <div class="evu-wallet"><canvas width="48" height="48"></canvas><b>0</b></div>
     <div class="evu-body"></div>
     <div class="evu-foot"></div>
-    <div class="evu-toast"></div>`;
+    <div class="evu-toast"></div>
+    <div class="evu-intro"><div class="evu-icard"><div class="f front"><span>？</span></div><div class="f back"><span class="mk"></span></div></div><b class="evu-iname"></b><small class="evu-isub"></small></div>`;
   stage.appendChild(root);
   const cv = root.querySelector('.evu-bg'), c = cv.getContext('2d');
   let body = root.querySelector('.evu-body'), footEl = root.querySelector('.evu-foot'); const toastEl = root.querySelector('.evu-toast');
@@ -94,10 +95,28 @@ export function createEventUI(stage, hud) {
     cur = { s, api, ev, t0: performance.now(), shown: s.comets, draw: null, onDone, body, foot: footEl };
     wallet.querySelector('b').textContent = s.comets;
     raf = requestAnimationFrame(frame);
-    const ctx = makeCtx(cur);
-    (SCENES[id] || SCENES.stall)(ctx);
+    // 始まりの間：画面が暗くなり、くるくる回るカードが落ちてきて、めくると、できごとの名前。そのあと本編
+    const C = cur, intro = root.querySelector('.evu-intro');
+    intro.querySelector('.mk').textContent = ev.mark || '？';
+    intro.querySelector('.evu-iname').textContent = ev.name;
+    intro.querySelector('.evu-isub').textContent = ev.line || '';
+    root.classList.remove('intro', 'flip', 'reveal'); void root.offsetWidth; root.classList.add('intro');
+    playSound('ev_intro');
+    const g0 = GEN;
+    (async () => {
+      await wait(750); if (g0 !== GEN) return;
+      root.classList.add('flip'); playSound(ev.kind === 'bad' ? 'ev_open_bad' : ev.kind === 'luck' ? 'ev_open_luck' : 'ev_open_good');
+      if (ev.rar === 'rare' || ev.rar === 'super') playSound(ev.rar === 'super' ? 'gssr' : 'gsr');
+      await wait(1050); if (g0 !== GEN) return;
+      root.classList.add('reveal');   // カードが消え、本編がふわっと出る
+      C.t0 = performance.now();
+      const ctx = makeCtx(C);
+      (SCENES[id] || SCENES.stall)(ctx);
+      await wait(450); if (g0 !== GEN) return;
+      root.classList.remove('intro', 'flip', 'reveal');
+    })();
   }
-  function close() { GEN++; if (cur) cur.dead = true; cancelAnimationFrame(raf); cur = null; toastEl.className = 'evu-toast'; toastEl.innerHTML = ''; root.classList.remove('show'); root.style.transform = ''; root.classList.remove('tapall'); body.innerHTML = ''; footEl.innerHTML = ''; }
+  function close() { root.classList.remove('intro', 'flip', 'reveal'); GEN++; if (cur) cur.dead = true; cancelAnimationFrame(raf); cur = null; toastEl.className = 'evu-toast'; toastEl.innerHTML = ''; root.classList.remove('show'); root.style.transform = ''; root.classList.remove('tapall'); body.innerHTML = ''; footEl.innerHTML = ''; }
 
   // 各できごとに渡す道具
   function makeCtx(C) {

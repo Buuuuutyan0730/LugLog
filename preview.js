@@ -2,18 +2,19 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261127035235';
-import { CONFIG } from './config.js?v=20261127035235';
-import { SKILL_ROADS } from './skilldefs.js?v=20261127035235';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261127035235';
-import { GACHA_POOL } from './skins.js?v=20261127035235';
-import { createGame } from './game.js?v=20261127035235';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261127035235';
-import { createGachaFx } from './gachafx.js?v=20261127035235';
-import { createEndingFx, sampleTrails } from './endingfx.js?v=20261127035235';
-import { createEventFx } from './eventfx.js?v=20261127035235';
-import { createEventUI } from './eventui.js?v=20261127035235';
-import { EVENTS } from './events.js?v=20261127035235';
+import { BOOSTS, CURSES } from './talents.js?v=20261127041040';
+import { CONFIG } from './config.js?v=20261127041040';
+import { SKILL_ROADS } from './skilldefs.js?v=20261127041040';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261127041040';
+import { GACHA_POOL } from './skins.js?v=20261127041040';
+import { createGame } from './game.js?v=20261127041040';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261127041040';
+import { createGachaFx } from './gachafx.js?v=20261127041040';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261127041040';
+import { createEventFx } from './eventfx.js?v=20261127041040';
+import { createEventUI } from './eventui.js?v=20261127041040';
+import { playBgm, bgmNow } from './bgm.js?v=20261127041040';
+import { EVENTS } from './events.js?v=20261127041040';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -849,6 +850,7 @@ export function createPreview(hud) {
     s.phase = 8; s.comets = 30;
     for (let k = 0; k < 5; k++) { const ch = g.eventApi.roll({ count: 1, noCurse: true, onlySkill: true })[0]; if (ch) g.eventApi.give(ch); }
     s.hp = s.maxHp * 0.6;
+    if (bgmNow() !== 'event') playBgm('event', { fade: 1 });   // 見本でも、できごと用の曲を流す
     evu.open(s, g.eventApi, id, () => { evuTimer = setTimeout(() => { if (active && tab === 'ev_' + id) openEventSample(id); }, 500); });
   }
   const pool = (r) => GACHA_POOL.filter((x) => x.rarity === r);

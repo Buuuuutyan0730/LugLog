@@ -2,7 +2,7 @@
 //   どの曲も、目立たず、落ち着いていて、でも体が揺れる感じ。盛り上げない（フェーズが進んでも変えない）。
 //   4曲は、楽器・リズム・拍子・調をそれぞれ別に作る（同じ曲の手直しにしない）。
 //   曲を切りかえるときは、前の曲を少しずつ小さく、次の曲を少しずつ大きくする。
-import { audioParts, onAudioReset } from './audio.js?v=20261127035235';
+import { audioParts, onAudioReset } from './audio.js?v=20261127041040';
 
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
 const vary = (v) => v * (0.88 + Math.random() * 0.24);
@@ -447,6 +447,45 @@ export const SONGS = {
         const j = (bar % 8) * 6 + i;
         for (const [at, m, len] of [[0, 69, 3], [3, 70, 1], [4, 72, 2], [6, 74, 6], [12, 70, 3], [15, 67, 1], [16, 70, 2], [18, 69, 6], [24, 67, 3], [27, 70, 1], [28, 74, 2], [30, 72, 6], [36, 69, 3], [39, 65, 1], [40, 67, 2], [42, 71, 6]])
           if (at === j) I.celesta(song, m + 12, t, len * sd, 0.04, celOut);
+      }
+    },
+  },
+
+  // できごと：占い小屋のような、ふしぎで少しおどけたワルツ（ニ短調・3拍子）。
+  //   ウッドベースの「ズン」、ピアノの「チャッチャッ」、シャカシャカ、オルゴールの旋律（16小節で1回り。前半はオルゴールの分散和音だけ）
+  event: {
+    name: 'できごと', bpm: 112, swing: 0.1, steps: 12, div: 4, gain: 0.9,
+    bars: [
+      { keys: [53, 57, 60, 64], root: 38 },   // Dm9
+      { keys: [53, 58, 62, 65], root: 43 },   // Gm9
+      { keys: [50, 53, 57, 62], root: 46 },   // Bbmaj7
+      { keys: [55, 58, 61, 64], root: 45 },   // A7(b9)
+    ],
+    arrange(song, i, bar, t, sd) {
+      const S = this, B = S.bars[bar % 4], cyc = bar % 16;
+      const keyOut = song.f('key', 'lowpass', 1700, 0, song.out), bassOut = song.f('bass', 'lowpass', 700, 0, song.out);
+      const shOut = song.f('sh', 'highpass', 6500, 0.6, song.out), celOut = song.f('cel', 'lowpass', 6000, 0, song.out);
+      // ワルツの「ズン・チャッ・チャッ」
+      if (i === 0) I.upright(song, B.root, t, 3 * sd, vary(0.32), bassOut);
+      if (i === 8 && bar % 2) I.upright(song, B.root + 7, t, 2 * sd, vary(0.2), bassOut);
+      if (i === 4 || i === 8) B.keys.forEach((m, n) => I.felt(song, m, t + n * 0.006, 1.5 * sd, vary(0.018), keyOut));
+      // シャカシャカ（2・3拍目を少し強く）
+      if (i % 2 === 0) I.noise(song, t, vary(i === 4 || i === 8 ? 0.02 : 0.01), 0.05, shOut);
+      // 前半：オルゴールが和音の音を、ころころと
+      if (cyc < 8 && (i === 0 || i === 6 || i === 10)) I.celesta(song, B.keys[(i / 2 + bar) % 4] + 24, t, 2 * sd, 0.022, celOut);
+      // 後半：オルゴールの旋律（8小節）
+      if (cyc >= 8) {
+        const j = (bar % 8) * 12 + i;
+        for (const [at, m, len] of [
+          [0, 81, 4], [4, 77, 2], [6, 76, 2], [8, 74, 4],
+          [12, 79, 4], [16, 82, 2], [18, 81, 2], [20, 79, 4],
+          [24, 77, 4], [28, 74, 2], [30, 77, 2], [32, 81, 4],
+          [36, 79, 2], [38, 77, 2], [40, 76, 4], [44, 73, 4],
+          [48, 86, 4], [52, 81, 2], [54, 77, 2], [56, 74, 4],
+          [60, 76, 4], [64, 79, 2], [66, 82, 2], [68, 86, 4],
+          [72, 84, 4], [76, 81, 2], [78, 77, 2], [80, 74, 4],
+          [84, 76, 4], [88, 73, 4], [92, 69, 4],
+        ]) if (at === j) I.celesta(song, m, t, len * sd, 0.04, celOut);
       }
     },
   },

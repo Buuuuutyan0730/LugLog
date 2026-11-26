@@ -168,7 +168,7 @@ export const COMMON_SOUNDS = [
   ['ev_seal', '封印：お札が貼りつく'], ['ev_chain', '封印：鎖が巻きつく'], ['ev_thunder', '大凶：雷'], ['ev_kyo', '大凶：凶のくじ'],
   ['ev_chest', '宝箱：ふたが開く'], ['ev_bite', 'ミミック：かみつく'], ['ev_potion', 'ふしぎな薬：飲む'], ['ev_flip', '運命のコイン：はじく'],
   ['ev_dice', '丁半：つぼを振る'], ['ev_bowl', '丁半：つぼを伏せる'], ['ev_win', 'できごと：当たり'], ['ev_lose', 'できごと：はずれ'],
-  ['ev_gong', '腕試し：銅鑼'], ['ev_gold', '黄金の時間'], ['ev_star', '流れ星：流れる'], ['ev_wish', '流れ星：願いがかなう'], ['ev_fortune', '七福神：宝船'], ['ev_reach', 'スロット：リーチ'], ['ev_heart', 'スロット：ドキドキ'], ['ev_jackpot', 'スロット：大当たり'],
+  ['ev_gong', '腕試し：銅鑼'], ['ev_gold', '黄金の時間'], ['ev_star', '流れ星：流れる'], ['ev_wish', '流れ星：願いがかなう'], ['ev_fortune', '七福神：宝船'], ['ev_intro', 'できごと：始まり'], ['ev_open_good', 'できごと：めくる（良い）'], ['ev_open_luck', 'できごと：めくる（運しだい）'], ['ev_open_bad', 'できごと：めくる（悪い）'], ['ev_reach', 'スロット：リーチ'], ['ev_heart', 'スロット：ドキドキ'], ['ev_jackpot', 'スロット：大当たり'],
 ];
 export const SOUNDS = {
   tap: S([T('square', 880, 1320, 0.05, 0.16)], 0.03),
@@ -203,6 +203,10 @@ export const SOUNDS = {
   ev_reach: S([...arp('square', n('C5 E5 G5 C6 E6 G6 C7'), 0.045, 0.12, 0.09, { lp: 3000 }), T('sawtooth', 200, 800, 0.5, 0.06, { lp: 1800 })], 0.4),
   ev_heart: S([T('sine', 70, 45, 0.12, 0.6), T('sine', 70, 45, 0.12, 0.45, { at: 0.16 })], 0.3),
   ev_jackpot: S([...arp('square', n('C6 C6 C6 G5 C6 E6 G6 C7'), 0.08, 0.2, 0.1, { lp: 4000 }), ...arpAt(0.7, 'triangle', n('C7 E7 G7 C7 E7 G7'), 0.05, 0.3, 0.08), T('sine', 523, 523, 1.6, 0.12, { at: 0.6 })], 1.0),
+  ev_intro: S([N(0.45, 0.12, 400, 3000), ...arpAt(0.15, 'sine', n('E6 B6 E7'), 0.07, 0.25, 0.06)], 0.3),
+  ev_open_good: S([...arp('triangle', n('C6 E6 G6 C7'), 0.05, 0.3, 0.12), T('sine', 1047, 1047, 0.8, 0.06, { at: 0.2 })], 0.4),
+  ev_open_luck: S([...arp('sine', n('A5 E6 C6 A6'), 0.07, 0.35, 0.1), T('triangle', 1760, 1760, 0.6, 0.04, { at: 0.25 })], 0.4),
+  ev_open_bad: S([T('sawtooth', 110, 98, 0.7, 0.14, { lp: 700 }), T('sawtooth', 116, 104, 0.7, 0.12, { lp: 700 }), N(0.3, 0.2, 900, 200), T('sine', 55, 40, 0.8, 0.3)], 0.5),
   ev_fortune: S([...arp('triangle', n('D5 E5 G5 A5 B5 D6 E6 G6'), 0.07, 0.35, 0.11), T('sine', 294, 294, 1.6, 0.18), T('sine', 3136, 3136, 1.0, 0.04, { at: 0.6 })], 0.8),
   draw: S([T('triangle', 330, 520, 0.09, 0.22)], 0.08),
   born: S([...arp('triangle', n('C6 G6'), 0.05, 0.12, 0.2), T('sine', 2093, 2093, 0.2, 0.06, { at: 0.08 })], 0.06),

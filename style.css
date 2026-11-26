@@ -2492,3 +2492,31 @@ body.previewing .evu { z-index: 8; }
 .evu-say { background: rgba(10, 16, 36, 0.9); border: 0.5cqw solid rgba(160, 210, 255, 0.5); border-radius: 3cqw; position: relative; }
 .evu-say.evu-talk { animation: evuSay 0.4s cubic-bezier(.2, .9, .3, 1.3) both; }
 @keyframes evuSay { from { opacity: 0; transform: translateY(2cqw) scale(0.94); } }
+/* ===== できごとの始まり：暗くなる → カードが回りながら落ちる → めくると名前 → 本編へ ===== */
+.evu { --kc: 255, 216, 74; }
+.evu[data-kind="luck"] { --kc: 90, 220, 255; }
+.evu[data-kind="bad"] { --kc: 255, 50, 60; }
+.evu-intro { position: absolute; inset: 0; z-index: 6; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 3cqw; background: radial-gradient(circle at 50% 45%, rgba(var(--kc), 0.28), rgba(4, 4, 12, 0.88) 65%); perspective: 120cqw; pointer-events: none; }
+.evu.intro .evu-intro { display: flex; animation: evuIntroBg 0.35s both; }
+.evu.intro.reveal .evu-intro { animation: evuIntroOut 0.45s both; }
+.evu.intro:not(.reveal) > :not(.evu-intro):not(.evu-bg) { opacity: 0; }
+.evu.intro.reveal > :not(.evu-intro) { animation: evuFade 0.45s both; }
+@keyframes evuIntroBg { from { opacity: 0; } }
+@keyframes evuIntroOut { to { opacity: 0; transform: scale(1.15); } }
+.evu-icard { position: relative; width: 36cqw; height: 50cqw; transform-style: preserve-3d; animation: evuCardDrop 0.75s cubic-bezier(.2, .8, .3, 1.15) both; }
+.evu.flip .evu-icard { animation: evuCardFlip 0.55s cubic-bezier(.3, 1.4, .5, 1) both; }
+.evu-icard .f { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 3cqw; border: 1cqw solid var(--ink); backface-visibility: hidden; box-shadow: 0 0 8cqw 1cqw rgba(var(--kc), 0.6), 0 1.6cqw 0 var(--ink); }
+.evu-icard .front { background: repeating-linear-gradient(45deg, #241a44 0 3cqw, #34265e 3cqw 6cqw); }
+.evu-icard .front span { font-size: 22cqw; color: rgb(var(--kc)); text-shadow: 0 0 4cqw rgb(var(--kc)); animation: evuPulse 0.6s ease-in-out infinite; }
+.evu-icard .back { transform: rotateY(180deg); background: radial-gradient(circle at 50% 40%, #fffbe8, rgb(var(--kc)) 140%); }
+.evu-icard .back span { font-size: 24cqw; color: #1a0e08; }
+.evu[data-kind="bad"] .evu-icard .back { background: radial-gradient(circle at 50% 40%, #3a0a10, #0a0004); }
+.evu[data-kind="bad"] .evu-icard .back span { color: #ff4a50; text-shadow: 0 0 4cqw #ff2030; }
+@keyframes evuCardDrop { 0% { transform: translateY(-90cqw) rotateY(0deg) rotateZ(-20deg); } 100% { transform: translateY(0) rotateY(720deg) rotateZ(0deg); } }
+@keyframes evuCardFlip { 0% { transform: rotateY(0deg) scale(1); } 60% { transform: rotateY(200deg) scale(1.12); } 100% { transform: rotateY(180deg) scale(1.05); } }
+.evu-iname, .evu-isub { opacity: 0; text-align: center; text-shadow: 0 0.8cqw 0 var(--ink); }
+.evu-iname { font-size: 8cqw; font-weight: normal; letter-spacing: 0.1em; color: #fff; }
+.evu-isub { font-size: 3.6cqw; color: #dfe6ff; }
+.evu.flip .evu-iname { animation: evuBig 0.45s 0.25s both; opacity: 1; }
+.evu.flip .evu-isub { animation: evuFade 0.4s 0.5s both; opacity: 1; }
+.evu[data-kind="bad"] .evu-iname { color: #ff8a8a; }

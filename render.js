@@ -1,9 +1,9 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127035235';
-import { makeForms } from './forms.js?v=20261127035235';
-import { CONFIG } from './config.js?v=20261127035235';
-import { drawComet } from './events.js?v=20261127035235';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127041040';
+import { makeForms } from './forms.js?v=20261127041040';
+import { CONFIG } from './config.js?v=20261127041040';
+import { drawComet } from './events.js?v=20261127041040';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -904,6 +904,8 @@ export function createRenderer(canvas, view) {
         c2.fill();
         c2.shadowBlur = 0;
         c2.stroke();
+        // 白ぶち：体の外がわを白い線でかこみ、背景や分身の中でも敵を見分けやすくする
+        if (!hit) { c2.save(); c2.scale(1.12, 1.12); enemyShape(fake); c2.strokeStyle = 'rgba(255,255,255,0.92)'; c2.lineWidth = 1.7; c2.stroke(); c2.restore(); }
         c2.fillStyle = 'rgba(255,255,255,0.85)';
         c2.beginPath(); c2.arc(0, 0, heavy ? 4 : 2.5, 0, Math.PI * 2); c2.fill();
       } finally { ctx = save; }
@@ -1146,6 +1148,8 @@ export function createRenderer(canvas, view) {
         ctx.fill();
         noGlow();
         ctx.stroke();
+        // 白ぶち（ボスは、外がわを光らせる別の白い縁がある）
+        if (!e.boss && !hit) { ctx.save(); ctx.scale(1.12, 1.12); enemyShape(e); ctx.strokeStyle = 'rgba(255,255,255,0.92)'; ctx.lineWidth = e.elite ? 2.4 : 1.7; ctx.stroke(); ctx.restore(); }
         if (e.gold) drawGoldCoat(e, t);
         // ボス：縁の外側を白く光らせて、敵や弾の中でも見分けやすくする
         if (e.boss) {
