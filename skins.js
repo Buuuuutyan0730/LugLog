@@ -1,9 +1,9 @@
 // 着せ替えの品（色のセット・背景・アイコン）とガチャの決まり。
 //   色のセットは「本体・分身・敵・かけら」の色をまとめて変える（形は変えない）。見た目だけで、強さは変わらない
-import { ICON_ART } from './iconart.js?v=20261127024812';
-import { POP_STYLES } from './pops.js?v=20261127024812';
-import { TITLES } from './titles.js?v=20261127024812';
-import { FRAMES } from './frames.js?v=20261127024812';
+import { ICON_ART } from './iconart.js?v=20261127030107';
+import { POP_STYLES } from './pops.js?v=20261127030107';
+import { TITLES } from './titles.js?v=20261127030107';
+import { FRAMES } from './frames.js?v=20261127030107';
 export const RARITIES = ['N', 'R', 'SR', 'SSR'];
 
 // 色のセット。ghost は分身の色の幅（色相の始まりと終わり、鮮やかさ、明るさ）

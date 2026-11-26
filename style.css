@@ -2436,3 +2436,25 @@ body.previewing .evu { z-index: 8; }
 .evu-sayrow { display: flex; align-items: center; gap: 2cqw; width: 100%; justify-content: space-between; }
 .evu-leave { font-size: 3.4cqw !important; padding: 1.6cqw 3.4cqw !important; animation: evuFade 0.5s 0.8s both; }
 .evu-pick3 .evu-card { zoom: 0.86; }
+/* 画面をタップで発動（呪いを受ける・挑む・連れていく） */
+.evu-prompt { margin-top: auto; font-size: 4cqw; color: #fff; text-shadow: 0 0.5cqw 0 var(--ink); padding: 1.6cqw 4cqw; border-radius: 9cqw; background: rgba(8, 8, 20, 0.7); border: 0.5cqw solid rgba(255, 255, 255, 0.35); pointer-events: none !important; animation: evuFade 0.5s 0.8s both, evuPulse 1.4s 1.3s ease-in-out infinite; }
+.evu-prompt b { font-weight: normal; color: var(--gold); }
+@keyframes evuPulse { 50% { transform: scale(1.06); opacity: 0.75; } }
+/* 下の空きに出す、ひとことの説明 */
+.evu-hint { margin-top: auto; font-size: 3.6cqw; color: #fff; text-shadow: 0 0.5cqw 0 var(--ink); pointer-events: none !important; animation: evuFade 0.5s 1.2s both, evuPulse 1.6s 1.7s ease-in-out infinite; }
+/* 料金表・役の表 */
+.evu-sheet { width: 84cqw; padding: 2cqw 3.4cqw; border-radius: 2.4cqw; background: #fbf3dc; color: #3a2410; border: 0.7cqw solid var(--ink); box-shadow: 0 1.2cqw 0 var(--ink); pointer-events: none !important; animation: evuFade 0.5s 0.6s both; }
+.evu-sheet-h { font-size: 3.2cqw; text-align: center; letter-spacing: 0.3em; color: #8a5a20; border-bottom: 0.4cqw dashed #c8a878; margin: 0.6cqw 0 1cqw; padding-bottom: 0.6cqw; }
+.evu-sheet-r { display: flex; justify-content: space-between; align-items: center; gap: 2cqw; font-size: 3.4cqw; padding: 0.5cqw 0; }
+.evu-sheet-r b { font-weight: normal; color: #a01818; display: flex; align-items: center; gap: 0.6cqw; white-space: nowrap; }
+.evu-sheet-r.bad b { color: #5a5a6a; }
+.evu-sheet-f { margin-top: 1cqw; font-size: 3cqw; text-align: center; color: #8a5a20; }
+.evu-sheet .evu-cim { width: 4.4cqw; height: 4.4cqw; }
+.evu-paygrid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 3cqw; }
+.evu-paygrid .evu-sheet-r { font-size: 2.9cqw; }
+.evu-sheet .syms { display: flex; gap: 0.3cqw; }
+.evu-sym { width: 5cqw; height: 5cqw; background: #fff; border-radius: 0.6cqw; }
+.evu-sheet[hidden] { display: none; }
+.evu-dres { flex-direction: column; gap: 2cqw; }
+.evu-top { margin-bottom: auto; }
+.evu.tapall .evu-body > * { pointer-events: none; }
