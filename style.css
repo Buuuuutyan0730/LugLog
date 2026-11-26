@@ -2482,3 +2482,9 @@ body.previewing .evu { z-index: 8; }
 .evu-steps .evu-sheet-r.now .mk::after { content: '◀ いま'; color: #a01818; font-size: 2.8cqw; }
 .evu-hint.static { margin-top: 0; animation: evuFade 0.4s both; }
 .evu-hint b { color: var(--gold); font-weight: normal; }
+/* 短冊の絵：カードと同じ色（--tc）で描く */
+.evu-tzc.tc-boost { --tc: #e6e9ff; } .evu-tzc.tc-ghost { --tc: #3fe0ff; } .evu-tzc.tc-player { --tc: var(--gold); }
+.evu-tzc-ic .card-icon { color: var(--tc); background: rgba(255, 255, 255, 0.06); border-radius: 1cqw; }
+.evu-tzc-ic .card-icon svg { color: var(--tc); fill: currentColor; }
+.evu-result { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 2cqw; pointer-events: none !important; z-index: 3; }
+.evu-result .evu-big { text-shadow: 0 0.8cqw 0 var(--ink), 0 0 4cqw rgba(0, 0, 0, 0.8); }

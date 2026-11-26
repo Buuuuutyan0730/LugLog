@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127032308';
-import { spawnPop, stepParticle } from './pops.js?v=20261127032308';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127032308';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127032308';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127032308';
+import { CONFIG } from './config.js?v=20261127033728';
+import { spawnPop, stepParticle } from './pops.js?v=20261127033728';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127033728';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127033728';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127033728';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3293,6 +3293,7 @@ export function createGame() {
     const M = s.mods || {};
     s.st = stats();
     if (M.ambush) for (let k = 0; k < M.ambush; k++) spawnModElite({ hpMul: 1, tag: 'ambush' });
+    if (M.strayFoe) { spawnModElite({ hpMul: 1.5, tag: 'stray' }); s.banner = { text: '迷子の分身', sub: '襲いかかってきた！', t: 1.6 }; }
     if (M.trial) { const e = spawnModElite({ hpMul: EV.trial.hpMul, tag: 'trial' }); M.trial = { t: EV.trial.time, e, done: false }; s.banner = { text: '腕試し', sub: `${EV.trial.time}秒以内に倒せ！`, t: 1.6 }; }
     if (M.mimic) { const e = spawnModElite({ hpMul: EV.mimic.hpMul, tag: 'mimic' }); e.mimic = true; e.stolen = 0; e.drainT = EV.mimic.every; s.banner = { text: 'ミミック', sub: '倒すまでコメットを奪われる！', t: 1.6 }; }
     if (M.seal) { const k = SKILL_BY_ID[M.seal]; s.banner = { text: '封印', sub: `${k ? k.name : ''} が使えない`, t: 1.6 }; }
@@ -3368,7 +3369,7 @@ export function createGame() {
     next(k, v) { s.nextMods[k] = v; },
     ownedSkills() { return Object.keys(s.skills).map((id) => ({ id, ...s.skills[id] })); },
     maxSkill(id) { const o = s.skills[id]; if (!o) return; if (o.lv >= SKILL_MAX) o.evo = true; else o.lv = SKILL_MAX; s.st = stats(); },
-    swapSkill(from, to) { const o = s.skills[from]; if (!o) return; delete s.skills[from]; s.skills[to] = { lv: Math.max(1, o.lv), evo: false }; s.st = stats(); },
+    swapSkill(from, to, up = 0) { const o = s.skills[from]; if (!o) return 0; delete s.skills[from]; const lv = Math.min(SKILL_MAX, Math.max(1, o.lv) + up); s.skills[to] = { lv, evo: false }; s.st = stats(); return lv; },
     addPal() { if (s.pal) { s.pal.lv++; return s.pal.lv; } s.pal = { x: s.player.x, y: s.player.y, a: 0, bob: 0, cd: 0.5, idx: 3, r: 6, straight: 1, lv: 1 }; return 1; },
     stealHalf() { const n = Math.floor(s.comets / 2); s.comets -= n; return n; },
   };

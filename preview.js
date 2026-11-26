@@ -2,18 +2,18 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261127032308';
-import { CONFIG } from './config.js?v=20261127032308';
-import { SKILL_ROADS } from './skilldefs.js?v=20261127032308';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261127032308';
-import { GACHA_POOL } from './skins.js?v=20261127032308';
-import { createGame } from './game.js?v=20261127032308';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261127032308';
-import { createGachaFx } from './gachafx.js?v=20261127032308';
-import { createEndingFx, sampleTrails } from './endingfx.js?v=20261127032308';
-import { createEventFx } from './eventfx.js?v=20261127032308';
-import { createEventUI } from './eventui.js?v=20261127032308';
-import { EVENTS } from './events.js?v=20261127032308';
+import { BOOSTS, CURSES } from './talents.js?v=20261127033728';
+import { CONFIG } from './config.js?v=20261127033728';
+import { SKILL_ROADS } from './skilldefs.js?v=20261127033728';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261127033728';
+import { GACHA_POOL } from './skins.js?v=20261127033728';
+import { createGame } from './game.js?v=20261127033728';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261127033728';
+import { createGachaFx } from './gachafx.js?v=20261127033728';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261127033728';
+import { createEventFx } from './eventfx.js?v=20261127033728';
+import { createEventUI } from './eventui.js?v=20261127033728';
+import { EVENTS } from './events.js?v=20261127033728';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力

@@ -1,11 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127032308';
-import { playSound } from './audio.js?v=20261127032308';
-import { CURSE_BY_ID } from './talents.js?v=20261127032308';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127032308';
-import { rarityOfLevel } from './ui.js?v=20261127032308';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127033728';
+import { playSound } from './audio.js?v=20261127033728';
+import { CURSE_BY_ID } from './talents.js?v=20261127033728';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127033728';
+import { rarityOfLevel } from './ui.js?v=20261127033728';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -132,6 +132,8 @@ export function createEventUI(stage, hud) {
       // 画面のどこをさわっても発動（呪いを受ける・挑む など）。下に「画面をタップで〜」を出す
       tapAnywhere(label, fn) { const el = ctx.html(`<div class="evu-prompt">画面をタップで <b>${label}</b></div>`); C.body.appendChild(el); root.classList.add('tapall'); let used = false; ctx.tap(() => { if (used) return; used = true; el.remove(); root.classList.remove('tapall'); C.tap = null; C.hot = null; cv.style.cursor = ''; fn(); }, () => !used); return el; },
       // 下の空き：説明の一行（ボタンの上）
+      // 結果（大きな文字＋ひとこと）を、上の空きの決まった高さに出す（ボタンの上ではなく）
+      result(big, sub = '', { top = 22, cls = '', color = '' } = {}) { const el = ctx.html(`<div class="evu-result ${cls}" style="top:${top}%"><div class="evu-big ${cls}"${color ? ` style="color:${color}"` : ''}>${big}</div>${sub ? `<div class="evu-note">${sub}</div>` : ''}</div>`); C.body.appendChild(el); return el; },
       hint(text) { const el = ctx.html(`<div class="evu-hint">${text}</div>`); C.body.appendChild(el); return el; },
       drag(o) { C.drag = o; },
       wait,
@@ -396,8 +398,7 @@ const SCENES = {
         if (o.key === 'hp') x.api.hpUp(0.15);
         if (o.key === 'heal') x.api.heal(1);
         if (o.key === 'comet') x.api.addComets(6);
-        row.replaceWith(x.html(`<div class="evu-big" style="color:rgb(${o.col.join(',')})">${o.name}</div>`));
-        x.body.appendChild(x.html(`<div class="evu-note">${o.sub}</div>`));
+        row.remove(); x.result(o.name, o.sub, { top: 14, color: `rgb(${o.col.join(',')})` });
         await wait(900);
         x.foot(x.ok(() => x.done()));
       });
@@ -783,9 +784,9 @@ Object.assign(SCENES, {
       let card = null;
       if (k === 'card') { const ch = x.api.roll({ count: 1, floor: 'super', noCurse: true })[0]; if (ch) { card = x.card(ch); card.classList.add('evu-pop'); x.api.give(ch); x.sfx(ch.rarity === 'mythic' ? 'gssr' : 'gsr'); } }
       if (k === 'comet') { x.api.addComets(8); x.sfx('ev_win'); }
-      x.body.append(k === 'mimic' ? x.html('<div class="evu-big bad">ミミックだ！</div>') : x.html(`<div class="evu-big">${k === 'card' ? '当たり！' : 'コメット <b>+8</b>'}</div>`));
+      if (k === 'mimic') x.result('ミミックだ！', '次のフェーズ、ミミックがコメットを奪いに来る', { top: 6, cls: 'bad' });
+      else x.result(k === 'card' ? '当たり！' : 'コメット <b>+8</b>', '', { top: 8 });
       if (card) { x.body.appendChild(card); x.fit(x.body); }
-      if (k === 'mimic') x.body.appendChild(x.html('<div class="evu-note">次のフェーズ、ミミックがコメットを奪いに来る</div>'));
       await wait(800);
       // 残りの箱も開けて、何が入っていたか見せる
       for (let j = 0; j < 3; j++) if (j !== i) { if (kinds[j] === 'mimic') { st[j].open = 1; st[j].lid = 0.8; } else openLid(j); reveal(j); await wait(250); }
@@ -853,7 +854,7 @@ Object.assign(SCENES, {
       if (r.now) r.now(x.api);
       x.sfx(good ? 'ev_win' : 'ev_lose'); if (!good) x.shake(10, 0.4);
       note.remove();
-      x.body.append(x.html(`<div class="evu-big ${good ? '' : 'bad'}">${r.name}</div>`), x.html(`<div class="evu-note">${r.sub}</div>`));
+      x.result(r.name, r.sub, { top: 12, cls: good ? '' : 'bad' });
       x.foot(x.ok(() => x.done()));
     }
   },
@@ -902,11 +903,11 @@ Object.assign(SCENES, {
       if (res) {
         x.sfx('ev_win'); x.flash('#ffe9a0', 0.4, 0.6);
         const ch = x.api.roll({ count: 1, floor: 'super', noCurse: true })[0];
-        x.body.prepend(x.html('<div class="evu-big evu-top">表！</div>'));
+        x.result('表！', 'レアなカードを手に入れた', { top: 18 });
         if (ch) { const card = x.card(ch); card.classList.add('evu-pop'); x.api.give(ch); x.body.appendChild(card); x.fit(x.body); }
       } else {
         x.sfx('ev_lose'); x.flash('#ff1a2a', 0.5, 0.6); x.shake(16, 0.5); x.api.hurt(0.5);
-        x.body.prepend(x.html('<div class="evu-big bad evu-top">裏…</div>')); x.body.append(x.html('<div class="evu-note">HPが半分になった</div>'));
+        x.result('裏…', 'HPが半分になった', { top: 18, cls: 'bad' });
       }
       x.foot(x.ok(() => x.done()));
     };
@@ -1115,8 +1116,9 @@ Object.assign(SCENES, {
     list.forEach((k, i) => {
       const max = k.lv >= SKILL_MAX, rar = rarityOfLevel(k.lv, SKILL_MAX);
       // スキルのカードを、縦長の短冊にしたもの（上に絵、名前は縦書き、下にレベル）
-      const icon = x.card({ id: k.id, kind: 'skill', rarity: rar }).querySelector('.card-icon');
-      const b = x.html(`<button class="evu-tzc r-${rar}" style="animation-delay:${0.4 + i * 0.12}s, ${i * 0.37}s"><span class="evu-tzc-ic"></span><b>${x.skillName(k.id)}</b><small>Lv${k.lv}<br>↓<br>${max ? '進化' : 'MAX'}</small></button>`);
+      const srcCard = x.card({ id: k.id, kind: 'skill', rarity: rar }), icon = srcCard.querySelector('.card-icon');
+      const tc = [...srcCard.classList].find((c) => c.startsWith('tc-')) || 'tc-ghost';
+      const b = x.html(`<button class="evu-tzc r-${rar} ${tc}" style="animation-delay:${0.4 + i * 0.12}s, ${i * 0.37}s"><span class="evu-tzc-ic"></span><b>${x.skillName(k.id)}</b><small>Lv${k.lv}<br>↓<br>${max ? '進化' : 'MAX'}</small></button>`);
       if (icon) { icon.querySelector('.card-rarity')?.remove(); b.querySelector('.evu-tzc-ic').appendChild(icon); }
       b.addEventListener('click', async () => {
         if (hit) return; hit = { el: b, t0: performance.now() }; wrap.classList.add('chosen'); b.classList.add('on'); note.remove();
@@ -1185,6 +1187,19 @@ function palFig(c, x, y, r, t, happy, wet) {
   if (wet) { const k = (t % 1.6) / 1.6; c.fillStyle = `rgba(140,200,255,${1 - k})`; c.beginPath(); c.ellipse(r * 0.38, -r * 0.0 + k * r * 0.8, r * 0.07, r * 0.12, 0, 0, TAU); c.fill(); }
   c.restore();
 }
+// 正体をあらわした分身：黒く大きく、赤い目と牙
+function foeFig(c, x, y, r, t) {
+  c.save(); c.translate(x, y);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, r * 2.2); g.addColorStop(0, 'rgba(255,30,40,0.45)'); g.addColorStop(1, 'rgba(255,30,40,0)'); c.fillStyle = g; c.beginPath(); c.arc(0, 0, r * 2.2, 0, TAU); c.fill();
+  c.fillStyle = '#12020a'; c.beginPath(); c.arc(0, -r * 0.2, r, Math.PI, 0);
+  for (let k = 0; k <= 8; k++) c.lineTo(r - (k * r * 2) / 8, r * 0.8 + (k % 2 ? -r * 0.35 : 0) + Math.sin(t * 9 + k) * r * 0.08);
+  c.closePath(); c.fill(); c.strokeStyle = 'rgba(255,60,60,0.8)'; c.lineWidth = r * 0.05; c.stroke();
+  c.fillStyle = '#ff2030'; c.shadowColor = '#ff2030'; c.shadowBlur = r * 0.4;
+  for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * r * 0.15, -r * 0.3); c.lineTo(s * r * 0.6, -r * 0.45); c.lineTo(s * r * 0.5, -r * 0.18); c.closePath(); c.fill(); }
+  c.shadowBlur = 0; c.fillStyle = '#fff';
+  for (let k = 0; k < 6; k++) { const tx = -r * 0.45 + k * r * 0.18; c.beginPath(); c.moveTo(tx, r * 0.05); c.lineTo(tx + r * 0.09, r * 0.28); c.lineTo(tx + r * 0.18, r * 0.05); c.fill(); }
+  c.restore();
+}
 // スロットの絵柄
 const SLOT = [
   { k: '7', col: '#ff3a4a' }, { k: '星', col: '#4ad8ff' }, { k: '桜', col: '#ff9ad0' }, { k: '鈴', col: '#ffd84a' }, { k: '骨', col: '#d8d8e8' },
@@ -1215,7 +1230,7 @@ const WHEEL = [
 Object.assign(SCENES, {
   // ---------------- 迷子の分身：雨の夜道、街灯の下でふるえる小さな分身 ----------------
   stray(x) {
-    let joined = 0;
+    let joined = 0, foe = 0;   // foe：運わるく、襲いかかってきた（その時刻）
     const drops = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), v: 0.6 + Math.random() * 0.6 }));
     x.draw((c, t, W, H, u) => {
       c.fillStyle = '#060a14'; c.fillRect(0, 0, W, H);
@@ -1229,26 +1244,35 @@ Object.assign(SCENES, {
       const lg = c.createLinearGradient(0, ly, 0, H * 0.7); lg.addColorStop(0, 'rgba(255,230,160,0.35)'); lg.addColorStop(1, 'rgba(255,230,160,0.05)'); c.fillStyle = lg; c.beginPath(); c.moveTo(lx - 6 * u, ly); c.lineTo(lx + 6 * u, ly); c.lineTo(lx + 90 * u, H * 0.7); c.lineTo(lx - 90 * u, H * 0.7); c.fill();
       c.fillStyle = 'rgba(255,230,160,0.15)'; c.beginPath(); c.ellipse(lx, H * 0.7, 90 * u, 14 * u, 0, 0, TAU); c.fill();
       // 雨（連れていくと止む）
-      const rain = joined ? clamp(1 - (performance.now() - joined) / 1500) : 1;
+      const rain = foe ? 1.6 : joined ? clamp(1 - (performance.now() - joined) / 1500) : 1;
+      if (foe) { const k = (performance.now() - foe) / 1000; c.fillStyle = `rgba(120,0,10,${Math.min(0.45, k * 0.6) + 0.08 * Math.sin(t * 6)})`; c.fillRect(0, 0, W, H); }
       c.strokeStyle = `rgba(160,190,230,${0.5 * rain})`; c.lineWidth = 1.2 * u;
       for (const d of drops) { d.y += d.v / 60; if (d.y > 1) { d.y = 0; d.x = Math.random(); } c.beginPath(); c.moveTo(d.x * W, d.y * H); c.lineTo(d.x * W - 4 * u, d.y * H + 14 * u); c.stroke(); }
       // 分身
       let px = lx, py = H * 0.62 + Math.sin(t * 3) * 3 * u, happy = false;
       if (!joined) px += Math.sin(t * 25) * 1.2 * u;   // ふるえる
       else { const k = (performance.now() - joined) / 1000; happy = true; py -= Math.abs(Math.sin(k * 7)) * 26 * u * Math.max(0, 1 - k * 0.4); px = lx + (W * 0.5 - lx) * ease(k / 1.2); }
-      palFig(c, px, py, 34 * u, t, happy, !joined);
+      if (foe) { const k = (performance.now() - foe) / 1000; foeFig(c, lx + Math.sin(t * 30) * 2 * u, H * 0.6 - ease(k / 0.5) * 30 * u, (34 + ease(k / 0.5) * 34) * u, t); }
+      else palFig(c, px, py, 34 * u, t, happy, !joined);
       // ハート
-      if (joined) { const k = (performance.now() - joined) / 1000; for (let i = 0; i < 6; i++) { const p = clamp(k * 0.8 - i * 0.12); if (p <= 0 || p >= 1) continue; const hx = px + Math.sin(i * 2 + p * 4) * 40 * u, hy = py - 40 * u - p * 120 * u; c.fillStyle = `rgba(255,120,160,${1 - p})`; c.font = `${Math.round(18 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, '♥', hx, hy); } }
+      if (joined && !foe) { const k = (performance.now() - joined) / 1000; for (let i = 0; i < 6; i++) { const p = clamp(k * 0.8 - i * 0.12); if (p <= 0 || p >= 1) continue; const hx = px + Math.sin(i * 2 + p * 4) * 40 * u, hy = py - 40 * u - p * 120 * u; c.fillStyle = `rgba(255,120,160,${1 - p})`; c.font = `${Math.round(18 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, '♥', hx, hy); } }
     });
     const lv = x.s.pal ? x.s.pal.lv : 0;
-    const note = x.html(`<div class="evu-note">ひとりぼっちの分身が、こっちを見ている…<br><small>${lv ? '連れていけば、今いる相棒と合わさって強くなる' : '連れていけば、本体のまわりを回って敵を撃ってくれる（このプレイの終わりまで）'}</small></div>`);
+    const note = x.html(`<div class="evu-note">ひとりぼっちの分身が、こっちを見ている…<br><small>${lv ? '今の相棒と合わさって、強くなるかも' : '本体のまわりを回って、たたかってくれるかも'}</small></div>`);
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
     x.foot(x.back());
     x.tapAnywhere('連れていく', async () => {
-      x.foot(); joined = performance.now(); x.sfx('born'); x.sfx('ev_win');
+      x.foot(); note.remove();
+      // 運がわるいと（3割）、正体をあらわして襲いかかってくる
+      if (Math.random() < 0.3) {
+        foe = performance.now(); x.sfx('ev_bite'); x.sfx('ev_ambush'); x.flash('#ff1a2a', 0.6, 0.8); x.shake(24, 0.7);
+        x.api.next('strayFoe', 1);
+        x.result('襲いかかってきた！', '次のフェーズ、正体をあらわした分身が襲ってくる', { top: 6, cls: 'bad' });
+        await wait(1000); x.foot(x.ok(() => x.done())); return;
+      }
+      joined = performance.now(); x.sfx('born'); x.sfx('ev_win');
       const n = x.api.addPal();
-      note.remove();
-      x.body.append(x.html(`<div class="evu-big">${n > 1 ? `相棒が強くなった！<br><small class="evu-small">Lv${n}</small>` : '仲間になった！'}</div>`));
+      x.result(n > 1 ? '相棒が強くなった！' : '仲間になった！', n > 1 ? `相棒 Lv${n}` : '本体のまわりを回って、たたかってくれる', { top: 8 });
       await wait(1000); x.foot(x.ok(() => x.done()));
     });
   },
@@ -1317,13 +1341,22 @@ Object.assign(SCENES, {
     x.sfx('ev_coin', { pitch: 1.5 });
     const reels = [0, 1, 2].map(() => ({ pos: Math.random() * 5, v: 0, stop: null }));
     let lever = 0, lights = 0, free = 1, busy = false, pulling = null;
+    let chance = 0, reach = 0, jack = null;   // 熱い演出：チャンス予告・リーチ・大当たり（始まった時刻）
+    const sparks = [];
     x.draw((c, t, W, H, u) => {
+      const now = performance.now();
       const g = c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, H * 0.8); g.addColorStop(0, '#2a0a2a'); g.addColorStop(1, '#05020a'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      // 大当たり：台の後ろに虹の光が回る
+      if (jack) { const k = (now - jack.t0) / 1000; if (k < 3.2) { const a = Math.min(1, k * 3) * Math.min(1, (3.2 - k) * 2); for (let i = 0; i < 18; i++) { c.save(); c.translate(W / 2, H * 0.33); c.rotate(t * 0.6 + (i / 18) * TAU); c.fillStyle = `hsla(${i * 20 + t * 120},95%,62%,${(jack.big ? 0.45 : 0.28) * a})`; c.beginPath(); c.moveTo(0, 0); c.lineTo(H, -H * 0.08); c.lineTo(H, H * 0.08); c.fill(); c.restore(); } } }
+      // リーチ：まわりが暗くなり、赤い光が脈打つ
+      if (reach) { const k = (now - reach) / 1000; c.fillStyle = `rgba(0,0,0,${Math.min(0.55, k * 1.5)})`; c.fillRect(0, 0, W, H); const p = 0.5 + 0.5 * Math.sin(t * 12); const eg = c.createRadialGradient(W / 2, H / 2, H * 0.2, W / 2, H / 2, H * 0.7); eg.addColorStop(0, 'rgba(255,0,40,0)'); eg.addColorStop(1, `rgba(255,0,40,${0.35 * p})`); c.fillStyle = eg; c.fillRect(0, 0, W, H); }
       // 台とレバーをまとめて、画面の真ん中に置く
       const bw = W * 0.66, bh = H * 0.33, bx = (W - bw) / 2, by = H * 0.17;   // 台そのものを真ん中に（レバーは右にはみ出す）
       c.fillStyle = '#b01828'; c.beginPath(); c.roundRect(bx, by, bw, bh, 16 * u); c.fill(); c.strokeStyle = '#ffd84a'; c.lineWidth = 4 * u; c.stroke();
       // まわりの電球（当たると速く光る）
-      const sp = lights > 0 ? 18 : 4, nb = 13;
+      const sp = reach || lights > 0 ? 18 : chance ? 12 : 4, nb = 13;
+      // リーチ・チャンスの間は、台のふちが虹色・赤に点滅する
+      if (reach || chance) { c.strokeStyle = reach ? (Math.floor(t * 10) % 2 ? '#ff2040' : '#ffd84a') : `hsl(${t * 400 % 360},95%,60%)`; c.lineWidth = 8 * u; c.beginPath(); c.roundRect(bx - 4 * u, by - 4 * u, bw + 8 * u, bh + 8 * u, 18 * u); c.stroke(); }
       for (let i = 0; i < nb; i++) for (const yy of [by + 8 * u, by + bh - 8 * u]) { const px = bx + 14 * u + (i / (nb - 1)) * (bw - 28 * u); const on = (Math.floor(t * sp) + i + (yy > by + 20 * u ? 1 : 0)) % 3 === 0; c.fillStyle = on ? '#fff6a0' : '#6a4a10'; c.beginPath(); c.arc(px, yy, 3.5 * u, 0, TAU); c.fill(); }
       c.fillStyle = '#ffd84a'; c.font = `${Math.round(18 * u)}px 'Press Start 2P', monospace`; c.textAlign = 'center'; fillC(c, 'LUCKY', bx + bw / 2, by + 30 * u);
       // リールの窓（3つを台の中央にそろえる）
@@ -1338,7 +1371,18 @@ Object.assign(SCENES, {
         if (r.v > 0) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(rx, ry, rw, rh); }
         const sh = c.createLinearGradient(0, ry, 0, ry + rh); sh.addColorStop(0, 'rgba(0,0,0,0.45)'); sh.addColorStop(0.25, 'rgba(0,0,0,0)'); sh.addColorStop(0.75, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.45)'); c.fillStyle = sh; c.fillRect(rx, ry, rw, rh);
         c.restore(); c.strokeStyle = '#1a0a10'; c.lineWidth = 3 * u; c.strokeRect(rx, ry, rw, rh);
+        // リーチ中、最後のリールを光らせる
+        if (reach && i === 2 && r.v > 0) { c.strokeStyle = `rgba(255,${200 + 55 * Math.sin(t * 20)},80,0.95)`; c.lineWidth = 5 * u; c.strokeRect(rx - 3 * u, ry - 3 * u, rw + 6 * u, rh + 6 * u); }
       });
+      // 文字の演出：チャンス!? ／ リーチ！ ／ 大当たり
+      const big = (txt, y, col, sc) => { c.save(); c.translate(W / 2, y); c.scale(sc, sc); c.font = `${Math.round(30 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.lineWidth = 8 * u; c.strokeStyle = '#1a0010'; strokeC(c, txt, 0, 0); c.fillStyle = col; fillC(c, txt, 0, 0); c.restore(); };
+      if (chance) { const k = (now - chance) / 1000; if (k < 1.1) big('チャンス!?', by + bh + 30 * u, `hsl(${t * 500 % 360},95%,65%)`, 0.8 + back(k / 0.3) * 0.3); }
+      if (reach) { const k = (now - reach) / 1000; big('リーチ！', by + bh + 30 * u, Math.floor(t * 8) % 2 ? '#ff3050' : '#ffe14a', 1 + 0.08 * Math.sin(t * 14) + (k < 0.25 ? (0.25 - k) * 3 : 0)); }
+      if (jack) { const k = (now - jack.t0) / 1000; if (k < 3.2) big(jack.big ? '大当たり！！' : 'そろった！', by + bh + 30 * u, jack.big ? `hsl(${t * 600 % 360},95%,65%)` : '#ffe14a', back(k / 0.35) * (1 + 0.05 * Math.sin(t * 10))); }
+      // 当たりの火花（コメットが飛び散る）
+      for (const sp2 of sparks) { sp2.x += sp2.vx; sp2.y += sp2.vy; sp2.vy += 0.25 * u; sp2.life -= 1 / 60; if (sp2.life > 0) drawComet(c, sp2.x, sp2.y, 6 * u, sp2.h, t * 5, sp2.life * 6); }
+      while (sparks.length && sparks[0].life <= 0) sparks.shift();
+      if (jack && jack.burst) { jack.burst = false; for (let i = 0; i < (jack.big ? 70 : 36); i++) { const a = Math.random() * TAU, v = (4 + Math.random() * 8) * u; sparks.push({ x: W / 2, y: by + bh * 0.5, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5 * u, life: 1.2 + Math.random() * 0.8, h: COMET_HUES[i % 5] }); } }
       c.strokeStyle = 'rgba(255,60,60,0.7)'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(bx + 8 * u, ry + rh / 2); c.lineTo(bx + bw - 8 * u, ry + rh / 2); c.stroke();
       // レバー：右の横腹から。玉を下へ引きおろす（lever 0＝上、1＝下）
       const px = bx + bw + 6 * u, py = by + bh * 0.55, L = bh * 0.42, th = lever * Math.PI;
@@ -1388,12 +1432,23 @@ Object.assign(SCENES, {
       let out;
       if (r < 0.06) out = [0, 0, 0]; else if (r < 0.14) out = [1, 1, 1]; else if (r < 0.26) { const s0 = 2 + Math.floor(Math.random() * 2); out = [s0, s0, s0]; } else if (r < 0.3) out = [4, 4, 4];
       else { const a = Math.floor(Math.random() * 5), b = Math.floor(Math.random() * 5); let cc = Math.floor(Math.random() * 5); if (a === b && b === cc) cc = (cc + 1) % 5; out = [a, b, cc]; }
+      const [a, b, cc] = out, three = a === b && b === cc;
+      // チャンス予告：そろうときは、ときどき回る前に台が虹色に光る（はずれでも、たまに光る＝ガセ）
+      if ((three && a !== 4 && Math.random() < 0.6) || (!three && Math.random() < 0.08)) { chance = performance.now(); x.sfx('ev_reach'); x.flash('#fff', 0.25, 0.5); await wait(1100); chance = 0; }
       reels.forEach((rl) => { rl.v = 14; rl.bounce = 0; });
       x.sfx('ev_dice');
-      for (let i = 0; i < 3; i++) { await wait(i ? 550 : 800); const rl = reels[i]; const base = Math.ceil(rl.pos) + 5 * 2; rl.stop = base + ((out[i] - base) % 5 + 5) % 5; }
-      await wait(900);
-      const [a, b, cc] = out;
+      const stopAt = (i, cyc = 2) => { const rl = reels[i]; const base = Math.ceil(rl.pos) + 5 * cyc; rl.stop = base + ((out[i] - base) % 5 + 5) % 5; };
+      await wait(800); stopAt(0);
+      await wait(550); stopAt(1);
+      if (a === b) {
+        // リーチ：最後のリールはゆっくり回り、心臓の音が鳴る
+        await wait(350); reach = performance.now(); x.sfx('ev_reach'); x.shake(6, 0.3);
+        reels[2].v = 7;
+        for (let k = 0; k < 4; k++) { await wait(450); x.sfx('ev_heart'); }
+        reels[2].v = 4; stopAt(2, 1); await wait(1600); reach = 0;
+      } else { await wait(550); stopAt(2); await wait(900); }
       let msg, good = true;
+      if (three && a !== 4) { jack = { t0: performance.now(), big: a === 0, burst: true }; x.sfx(a === 0 ? 'ev_jackpot' : 'ev_win'); x.flash(a === 0 ? '#fff6a0' : '#fff', 0.5, a === 0 ? 1 : 0.6); if (a === 0) x.shake(20, 0.7); }
       if (a === b && b === cc) {
         lights = 2;
         if (a === 0) { msg = '777！ 大当たり！'; x.sfx('gssr'); x.flash('#fff6a0', 0.6); const ch = x.api.roll({ count: 1, floor: 'mythic', noCurse: true })[0]; if (ch) { const card = x.card(ch); card.classList.add('evu-pop'); x.api.give(ch); res.appendChild(card); } }
@@ -1557,13 +1612,14 @@ Object.assign(SCENES, {
       // 舞う砂
       for (let i = 0; i < 30; i++) { const a = t * 0.5 + i * 0.7, r = (60 + (i % 5) * 18) * u; c.fillStyle = `rgba(255,224,140,${0.3 + 0.3 * Math.sin(t * 2 + i)})`; c.fillRect(tx + Math.cos(a) * r, ty + Math.sin(a) * r * 0.6, 2 * u, 2 * u); }
     });
-    const owned = x.api.ownedSkills();
+    // 手放す候補は、持っているスキルから3つ（ランダム）
+    const owned = x.api.ownedSkills().sort(() => Math.random() - 0.5).slice(0, 3);
     // 何をするかを、手順の表で見せる（いまの手順を光らせる）
     const note = x.html(`<div class="evu-sheet evu-steps">
       <div class="evu-sheet-h">スキルの取りかえ</div>
-      <div class="evu-sheet-r st1 now"><span>① 手放すスキルを 1つ選ぶ</span><b class="mk"></b></div>
-      <div class="evu-sheet-r st2"><span>② 代わりのスキルを 3枚から選ぶ</span><b class="mk"></b></div>
-      <div class="evu-sheet-f">レベルはそのまま引きつぐ（例：Lv4 を渡すと、新しいスキルも Lv4）</div>
+      <div class="evu-sheet-r st1 now"><span>① 手放すスキルを 3つから選ぶ</span><b class="mk"></b></div>
+      <div class="evu-sheet-r st2"><span>② 別のスキルに ランダムで変わる</span><b class="mk"></b></div>
+      <div class="evu-sheet-f">変わったスキルは、レベルが <b>1つ上がる</b>（例：Lv2 を渡すと Lv3）</div>
     </div>`);
     const list = x.html('<div class="evu-plates"></div>');
     owned.forEach((k) => { const b = skillPlate(x, k.id, k.evo ? `${k.lv}・進化` : k.lv, 'evu-plate-btn'); b.addEventListener('click', () => step2(k, b)); list.appendChild(b); });
@@ -1572,27 +1628,27 @@ Object.assign(SCENES, {
     async function step2(k, plate) {
       if (list.classList.contains('chosen')) return;
       list.classList.add('chosen'); plate.classList.add('on'); x.foot();
-      const pool = x.api.roll({ count: 6, onlySkill: true, noCurse: true, floor: 'rare' }).filter((ch) => ch.kind === 'skill' && !x.s.skills[ch.id]).slice(0, 3);
+      const pool = x.api.roll({ count: 8, onlySkill: true, noCurse: true }).filter((ch) => ch.kind === 'skill' && !x.s.skills[ch.id]);
       await wait(400); list.remove();
       if (!pool.length) { note.replaceWith(x.html('<div class="evu-note">「…いまは、取りかえられるスキルが無いようだ」</div>')); x.foot(x.ok(() => x.done())); return; }
       note.querySelector('.st1').classList.remove('now'); note.querySelector('.st1').classList.add('done');
-      note.querySelector('.st1 span').textContent = `① ${x.skillName(k.id)}（Lv${k.lv}）を手放す`;
+      note.querySelector('.st1 span').textContent = `① ${x.skillName(k.id)}（Lv${k.lv}）を手放した`;
       note.querySelector('.st2').classList.add('now');
-      x.body.appendChild(x.html(`<div class="evu-hint static">どれも <b>Lv${Math.max(1, k.lv)}</b> で受けとる</div>`));
-      const wrap = x.html('<div class="evu-pick3"></div>');
-      pool.forEach((ch, i) => {
-        const card = x.card(ch); card.classList.add('evu-pickcard'); card.style.animationDelay = `${i * 0.12}s`;
-        card.addEventListener('click', async () => {
-          if (wrap.classList.contains('chosen')) return; wrap.classList.add('chosen'); card.classList.add('on');
-          sand = 0.01; x.sfx('ev_wish'); for (let q = 0; q <= 40; q++) { sand = q / 40; await wait(16); }
-          x.api.swapSkill(k.id, ch.id); x.flash('#cfe8ff', 0.5, 0.7);
-          note.querySelector('.st2').classList.remove('now'); note.querySelector('.st2').classList.add('done');
-          note.querySelector('.st2 span').textContent = `② ${x.skillName(ch.id)}（Lv${Math.max(1, k.lv)}）を受けとった`;
-          await wait(500); x.foot(x.ok(() => x.done()));
-        });
-        wrap.appendChild(card);
-      });
-      x.body.appendChild(wrap); x.fit(wrap);
+      // 名前がくるくる入れかわり、砂時計がひっくり返って、1つに止まる
+      const pick = pickOne(pool), newLv = Math.min(SKILL_MAX, Math.max(1, k.lv) + 1);
+      const roll = x.html('<div class="evu-skplate evu-rollplate"><b>？</b><small>Lv?</small></div>');
+      x.body.appendChild(roll);
+      const names = pool.map((c) => x.skillName(c.id)).concat(Object.values(SKILL_BY_ID).slice(0, 12).map((v) => v.name));
+      x.sfx('ev_wish');
+      for (let q = 0; q < 26; q++) { roll.querySelector('b').textContent = names[(q * 7) % names.length]; sand = q / 26; if (q % 3 === 0) x.sfx('ev_coin', { pitch: 1.6 + (q % 2) * 0.2 }); await wait(40 + q * 6); }
+      const lv = x.api.swapSkill(k.id, pick.id, 1) || newLv;
+      x.flash('#cfe8ff', 0.5, 0.7); x.sfx('gsr');
+      const card = x.card({ id: pick.id, kind: 'skill', rarity: rarityOfLevel(lv, SKILL_MAX) });
+      const sm = card.querySelector('.card-name small:not(.card-from)'); if (sm) sm.innerHTML = `Lv${lv}`;
+      card.classList.add('evu-pop'); roll.replaceWith(card); x.fit(x.body);
+      note.querySelector('.st2').classList.remove('now'); note.querySelector('.st2').classList.add('done');
+      note.querySelector('.st2 span').textContent = `② ${x.skillName(pick.id)}（Lv${lv}）になった`;
+      await wait(500); x.foot(x.ok(() => x.done()));
     }
   },
 });
