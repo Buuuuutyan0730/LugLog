@@ -2,8 +2,8 @@
 //   画面が暗くなる → そのプレイで描いた線（分身の通り道）を、描いた順に光る線で描き直していく（だんだん速く）
 //   → 何百本も重なって1枚の絵になる → 絵が少し引いて、題名と記録が出る → クレジットが1つずつ出る → 続けるボタン
 //   data = { trails: [[x, y, x, y, ...], ...]（ステージの座標）, world: { w, h }, ghosts, phase, time, score }
-import { ghostColor } from './theme.js?v=20261126164827';
-import { LOGO_TRAIL } from './screens.js?v=20261126164827';
+import { ghostColor } from './theme.js?v=20261126165728';
+import { LOGO_TRAIL } from './screens.js?v=20261126165728';
 
 // 題字：ホームと同じロゴ（光の軌跡つき）。出す瞬間に入れて、軌跡が描かれる動きをそこから始める
 const LOGO = `<div class="logo-wrap">${LOGO_TRAIL}<div class="logo-main" data-t="LugLog"><span>Lug</span><span class="lg2">Log</span></div></div>`;

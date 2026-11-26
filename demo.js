@@ -1,8 +1,8 @@
 // ホームなどの後ろで流す「自動で遊ぶ様子」。本物のゲームを、決まった動きの指で動かす
-import { CONFIG } from './config.js?v=20261126164827';
-import { createGame, DT } from './game.js?v=20261126164827';
+import { CONFIG } from './config.js?v=20261126165728';
+import { createGame, DT } from './game.js?v=20261126165728';
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261126164827';
+import { SKILL_ROADS } from './skilldefs.js?v=20261126165728';
 
 // 流すたびに、ちがう組み合わせのスキルで遊ぶ（毎回同じにならないように）
 const BUILDS = [
@@ -53,6 +53,9 @@ export function createDemo() {
   function step() {
     const s = g.state;
     if (s.over || s.time > 45) restart();   // 45秒ごとに、別の組み合わせで流しなおす
+    // ボスのフェーズに入ったら流しなおす（ボスの登場や撃破の演出は、本番の画面の進め方でしか進まず、止まったまま残るため）
+    if (s.bossPhase || s.bossIntro || s.bossDown) restart();
+    s.slowT = 0;
     if (s.mode === 'select' || s.mode === 'returning') { s.choices = PICK; g.chooseSkill(0); }
     const C = CONFIG.experiments.control, keep = C.value;
     C.value = 'follow';   // 自動の指は「指の位置へ向かう」動きで動かす
