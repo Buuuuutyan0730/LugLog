@@ -1,11 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127033728';
-import { playSound } from './audio.js?v=20261127033728';
-import { CURSE_BY_ID } from './talents.js?v=20261127033728';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127033728';
-import { rarityOfLevel } from './ui.js?v=20261127033728';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127034514';
+import { playSound } from './audio.js?v=20261127034514';
+import { CURSE_BY_ID } from './talents.js?v=20261127034514';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127034514';
+import { rarityOfLevel } from './ui.js?v=20261127034514';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -890,12 +890,16 @@ Object.assign(SCENES, {
       if (!fl) tapHint(c, W / 2, cy - R - 10 * u, u, t, 'はじく');
       if (!fl) { const k = (t % 2.4) / 2.4; if (k < 0.15) { c.fillStyle = `rgba(255,255,255,${1 - k / 0.15})`; c.save(); c.translate(W / 2 + R * 0.5, cy - R * 0.5); c.rotate(Math.PI / 4); c.fillRect(-12 * u, -2 * u, 24 * u, 4 * u); c.fillRect(-2 * u, -12 * u, 4 * u, 24 * u); c.restore(); } }
     });
-    const note = x.html('<div class="evu-note"><b class="ok">表</b>ならレアなカードを1枚。<b class="ng">裏</b>ならHPが半分に</div>');
+    const note = x.html(`<div class="evu-sheet">
+      <div class="evu-sheet-h">結果</div>
+      <div class="evu-sheet-r"><span>表</span><b>レアなカードを 1枚</b></div>
+      <div class="evu-sheet-r bad"><span>裏</span><b>HPが 半分に</b></div>
+      <div class="evu-sheet-f">コインをタップして はじく</div>
+    </div>`);
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
     const onCoin = (px, py) => { const g = x._geo; return !fl && g && Math.hypot(px - g.x, py - g.y) < g.r; };
     x.tap((px, py) => { if (onCoin(px, py)) flip(); }, onCoin);
     x.foot(x.back());
-    const note0 = note; note0.innerHTML = 'コインをはじく。' + note0.innerHTML;
     const flip = async () => {
       x.foot(); const res = Math.random() < 0.5; fl = { t0: performance.now(), res }; x.sfx('ev_flip');
       await wait(1300); x.sfx('ev_coin', { pitch: 1.4 }); await wait(500);
@@ -1445,8 +1449,11 @@ Object.assign(SCENES, {
         await wait(350); reach = performance.now(); x.sfx('ev_reach'); x.shake(6, 0.3);
         reels[2].v = 7;
         for (let k = 0; k < 4; k++) { await wait(450); x.sfx('ev_heart'); }
-        reels[2].v = 4; stopAt(2, 1); await wait(1600); reach = 0;
-      } else { await wait(550); stopAt(2); await wait(900); }
+        reels[2].v = 4; stopAt(2, 1);
+      } else { await wait(550); stopAt(2); }
+      // 3つとも本当に止まるまで待ってから、結果を出す
+      while (reels.some((rl) => rl.v > 0)) await wait(50);
+      await wait(350); reach = 0;
       let msg, good = true;
       if (three && a !== 4) { jack = { t0: performance.now(), big: a === 0, burst: true }; x.sfx(a === 0 ? 'ev_jackpot' : 'ev_win'); x.flash(a === 0 ? '#fff6a0' : '#fff', 0.5, a === 0 ? 1 : 0.6); if (a === 0) x.shake(20, 0.7); }
       if (a === b && b === cc) {
@@ -1612,42 +1619,34 @@ Object.assign(SCENES, {
       // 舞う砂
       for (let i = 0; i < 30; i++) { const a = t * 0.5 + i * 0.7, r = (60 + (i % 5) * 18) * u; c.fillStyle = `rgba(255,224,140,${0.3 + 0.3 * Math.sin(t * 2 + i)})`; c.fillRect(tx + Math.cos(a) * r, ty + Math.sin(a) * r * 0.6, 2 * u, 2 * u); }
     });
-    // 手放す候補は、持っているスキルから3つ（ランダム）
+    // 手放す候補は、持っているスキルから3つ（ランダム）。旅人が話しかけてくる（闇市の商人と同じ、せりふの吹き出し）
     const owned = x.api.ownedSkills().sort(() => Math.random() - 0.5).slice(0, 3);
-    // 何をするかを、手順の表で見せる（いまの手順を光らせる）
-    const note = x.html(`<div class="evu-sheet evu-steps">
-      <div class="evu-sheet-h">スキルの取りかえ</div>
-      <div class="evu-sheet-r st1 now"><span>① 手放すスキルを 3つから選ぶ</span><b class="mk"></b></div>
-      <div class="evu-sheet-r st2"><span>② 別のスキルに ランダムで変わる</span><b class="mk"></b></div>
-      <div class="evu-sheet-f">変わったスキルは、レベルが <b>1つ上がる</b>（例：Lv2 を渡すと Lv3）</div>
-    </div>`);
+    const say = x.html('<div class="evu-note evu-say evu-talk">「どれか1つ、時の流れに返してみないか。<br>かわりに別の力を…少し強くして渡そう」</div>');
     const list = x.html('<div class="evu-plates"></div>');
     owned.forEach((k) => { const b = skillPlate(x, k.id, k.evo ? `${k.lv}・進化` : k.lv, 'evu-plate-btn'); b.addEventListener('click', () => step2(k, b)); list.appendChild(b); });
-    x.body.append(x.html('<div class="evu-spacer"></div>'), note, list);
+    x.body.append(x.html('<div class="evu-spacer"></div>'), say, list);
     x.foot(x.back());
+    const talk = (h) => { say.innerHTML = h; say.classList.remove('evu-talk'); void say.offsetWidth; say.classList.add('evu-talk'); };
     async function step2(k, plate) {
       if (list.classList.contains('chosen')) return;
       list.classList.add('chosen'); plate.classList.add('on'); x.foot();
       const pool = x.api.roll({ count: 8, onlySkill: true, noCurse: true }).filter((ch) => ch.kind === 'skill' && !x.s.skills[ch.id]);
       await wait(400); list.remove();
-      if (!pool.length) { note.replaceWith(x.html('<div class="evu-note">「…いまは、取りかえられるスキルが無いようだ」</div>')); x.foot(x.ok(() => x.done())); return; }
-      note.querySelector('.st1').classList.remove('now'); note.querySelector('.st1').classList.add('done');
-      note.querySelector('.st1 span').textContent = `① ${x.skillName(k.id)}（Lv${k.lv}）を手放した`;
-      note.querySelector('.st2').classList.add('now');
+      if (!pool.length) { talk('「…いまは、渡せる力が無いようだ」'); x.foot(x.ok(() => x.done())); return; }
+      talk(`「${x.skillName(k.id)}か。…では、砂をひっくり返そう」`);
       // 名前がくるくる入れかわり、砂時計がひっくり返って、1つに止まる
-      const pick = pickOne(pool), newLv = Math.min(SKILL_MAX, Math.max(1, k.lv) + 1);
+      const pick = pickOne(pool);
       const roll = x.html('<div class="evu-skplate evu-rollplate"><b>？</b><small>Lv?</small></div>');
       x.body.appendChild(roll);
       const names = pool.map((c) => x.skillName(c.id)).concat(Object.values(SKILL_BY_ID).slice(0, 12).map((v) => v.name));
       x.sfx('ev_wish');
       for (let q = 0; q < 26; q++) { roll.querySelector('b').textContent = names[(q * 7) % names.length]; sand = q / 26; if (q % 3 === 0) x.sfx('ev_coin', { pitch: 1.6 + (q % 2) * 0.2 }); await wait(40 + q * 6); }
-      const lv = x.api.swapSkill(k.id, pick.id, 1) || newLv;
+      const lv = x.api.swapSkill(k.id, pick.id, 1) || Math.min(SKILL_MAX, Math.max(1, k.lv) + 1);
       x.flash('#cfe8ff', 0.5, 0.7); x.sfx('gsr');
-      const card = x.card({ id: pick.id, kind: 'skill', rarity: rarityOfLevel(lv, SKILL_MAX) });
+      const r0 = rarityOfLevel(lv, SKILL_MAX), card = x.card({ id: pick.id, kind: 'skill', rarity: r0 === 'mythic' ? 'super' : r0 });   // mythic で作ると「進化」の見た目になるため
       const sm = card.querySelector('.card-name small:not(.card-from)'); if (sm) sm.innerHTML = `Lv${lv}`;
       card.classList.add('evu-pop'); roll.replaceWith(card); x.fit(x.body);
-      note.querySelector('.st2').classList.remove('now'); note.querySelector('.st2').classList.add('done');
-      note.querySelector('.st2 span').textContent = `② ${x.skillName(pick.id)}（Lv${lv}）になった`;
+      talk(`「${x.skillName(k.id)}は、${x.skillName(pick.id)}（Lv${lv}）になった。<br>…大事に使うといい」`);
       await wait(500); x.foot(x.ok(() => x.done()));
     }
   },

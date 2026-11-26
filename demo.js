@@ -1,8 +1,8 @@
 // ホームなどの後ろで流す「自動で遊ぶ様子」。本物のゲームを、決まった動きの指で動かす
-import { CONFIG } from './config.js?v=20261127033728';
-import { createGame, DT } from './game.js?v=20261127033728';
+import { CONFIG } from './config.js?v=20261127034514';
+import { createGame, DT } from './game.js?v=20261127034514';
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261127033728';
+import { SKILL_ROADS } from './skilldefs.js?v=20261127034514';
 
 // 流すたびに、ちがう組み合わせのスキルで遊ぶ（毎回同じにならないように）
 const BUILDS = [

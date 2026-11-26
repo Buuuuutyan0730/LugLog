@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127033728';
-import { spawnPop, stepParticle } from './pops.js?v=20261127033728';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127033728';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127033728';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127033728';
+import { CONFIG } from './config.js?v=20261127034514';
+import { spawnPop, stepParticle } from './pops.js?v=20261127034514';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127034514';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127034514';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127034514';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;

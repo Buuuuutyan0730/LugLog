@@ -1,9 +1,9 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127033728';
-import { makeForms } from './forms.js?v=20261127033728';
-import { CONFIG } from './config.js?v=20261127033728';
-import { drawComet } from './events.js?v=20261127033728';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127034514';
+import { makeForms } from './forms.js?v=20261127034514';
+import { CONFIG } from './config.js?v=20261127034514';
+import { drawComet } from './events.js?v=20261127034514';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {

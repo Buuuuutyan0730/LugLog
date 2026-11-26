@@ -1,9 +1,9 @@
-import { EVENTS } from './events.js?v=20261127033728';
+import { EVENTS } from './events.js?v=20261127034514';
 // 試作用の調整パネル。CONFIG の項目から自動で組み立てる。
 // 値は CONFIG を直接書き換えるので、ゲームにはすぐ反映される。
 
-import { SKILL_ROADS } from './skilldefs.js?v=20261127033728';
-import { CATS } from './preview.js?v=20261127033728';
+import { SKILL_ROADS } from './skilldefs.js?v=20261127034514';
+import { CATS } from './preview.js?v=20261127034514';
 
 // スキルの数値の名前（設定の項目名 → 日本語）。ないものは項目名のまま出す
 const PARAM = {
