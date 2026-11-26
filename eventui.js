@@ -1,11 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127034514';
-import { playSound } from './audio.js?v=20261127034514';
-import { CURSE_BY_ID } from './talents.js?v=20261127034514';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127034514';
-import { rarityOfLevel } from './ui.js?v=20261127034514';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127034938';
+import { playSound } from './audio.js?v=20261127034938';
+import { CURSE_BY_ID } from './talents.js?v=20261127034938';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127034938';
+import { rarityOfLevel } from './ui.js?v=20261127034938';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -1446,10 +1446,13 @@ Object.assign(SCENES, {
       await wait(550); stopAt(1);
       if (a === b) {
         // リーチ：最後のリールはゆっくり回り、心臓の音が鳴る
+        // じっくり見せる：だんだん遅くなり、最後はゆっくり1コマずつ。止まるまで心臓の音
         await wait(350); reach = performance.now(); x.sfx('ev_reach'); x.shake(6, 0.3);
-        reels[2].v = 7;
-        for (let k = 0; k < 4; k++) { await wait(450); x.sfx('ev_heart'); }
-        reels[2].v = 4; stopAt(2, 1);
+        reels[2].v = 9;
+        for (const v of [7, 5.5, 4, 3]) { await wait(650); x.sfx('ev_heart'); reels[2].v = v; }
+        await wait(650); x.sfx('ev_heart');
+        reels[2].v = 2.6; stopAt(2, 1);
+        (async () => { while (reels[2].v > 0 && !x.dead) { await wait(700); if (reels[2].v > 0) x.sfx('ev_heart'); } })();
       } else { await wait(550); stopAt(2); }
       // 3つとも本当に止まるまで待ってから、結果を出す
       while (reels.some((rl) => rl.v > 0)) await wait(50);
@@ -1622,9 +1625,16 @@ Object.assign(SCENES, {
     // 手放す候補は、持っているスキルから3つ（ランダム）。旅人が話しかけてくる（闇市の商人と同じ、せりふの吹き出し）
     const owned = x.api.ownedSkills().sort(() => Math.random() - 0.5).slice(0, 3);
     const say = x.html('<div class="evu-note evu-say evu-talk">「どれか1つ、時の流れに返してみないか。<br>かわりに別の力を…少し強くして渡そう」</div>');
-    const list = x.html('<div class="evu-plates"></div>');
-    owned.forEach((k) => { const b = skillPlate(x, k.id, k.evo ? `${k.lv}・進化` : k.lv, 'evu-plate-btn'); b.addEventListener('click', () => step2(k, b)); list.appendChild(b); });
+    // ふつうのスキルカードで、縦に3枚ならべる（レベルは今のレベルを出す）
+    const list = x.html('<div class="evu-pick3"></div>');
+    owned.forEach((k, i) => {
+      const r0 = k.evo ? 'mythic' : rarityOfLevel(k.lv, SKILL_MAX);
+      const b = x.card({ id: k.id, kind: 'skill', rarity: r0 === 'mythic' && !k.evo ? 'super' : r0 }); b.classList.add('evu-pickcard'); b.style.animationDelay = `${0.3 + i * 0.12}s`;
+      const sm = b.querySelector('.card-name small:not(.card-from)'); if (sm) sm.innerHTML = `Lv${k.lv}`;
+      b.addEventListener('click', () => step2(k, b)); list.appendChild(b);
+    });
     x.body.append(x.html('<div class="evu-spacer"></div>'), say, list);
+    x.fit(list);
     x.foot(x.back());
     const talk = (h) => { say.innerHTML = h; say.classList.remove('evu-talk'); void say.offsetWidth; say.classList.add('evu-talk'); };
     async function step2(k, plate) {
