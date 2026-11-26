@@ -3,7 +3,7 @@
 //   good：青い光がふわっと広がり、きらきらが上る／rare：虹の光線が回る／super：金の光線と紙ふぶき、白く光る
 //   luck：紫の渦と「？」が回り、紋章がコインのように回ってから止まる
 //   bad：暗く赤く沈み、画面が揺れて、紋章のまわりにひびが走る／bad の rare：真っ黒に近く、赤く脈打ち、文字がノイズで乱れる
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127034938';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127035235';
 
 const TAU = Math.PI * 2;
 const clamp = (v) => Math.max(0, Math.min(1, v));

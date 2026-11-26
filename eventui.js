@@ -1,11 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127034938';
-import { playSound } from './audio.js?v=20261127034938';
-import { CURSE_BY_ID } from './talents.js?v=20261127034938';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127034938';
-import { rarityOfLevel } from './ui.js?v=20261127034938';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127035235';
+import { playSound } from './audio.js?v=20261127035235';
+import { CURSE_BY_ID } from './talents.js?v=20261127035235';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127035235';
+import { rarityOfLevel } from './ui.js?v=20261127035235';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -1447,7 +1447,9 @@ Object.assign(SCENES, {
       if (a === b) {
         // リーチ：最後のリールはゆっくり回り、心臓の音が鳴る
         // じっくり見せる：だんだん遅くなり、最後はゆっくり1コマずつ。止まるまで心臓の音
-        await wait(350); reach = performance.now(); x.sfx('ev_reach'); x.shake(6, 0.3);
+        // 2つ目の絵柄がちゃんと止まって、そろってから「リーチ！」
+        while (reels[0].v > 0 || reels[1].v > 0) await wait(30);
+        await wait(300); reach = performance.now(); x.sfx('ev_reach'); x.shake(6, 0.3);
         reels[2].v = 9;
         for (const v of [7, 5.5, 4, 3]) { await wait(650); x.sfx('ev_heart'); reels[2].v = v; }
         await wait(650); x.sfx('ev_heart');
