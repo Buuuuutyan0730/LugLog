@@ -21,7 +21,7 @@ export const EVENTS = [
   { id: 'chests', kind: 'luck', rar: 'common', name: '宝箱えらび', mark: '箱', line: '3つのうち1つは、ミミック' },
   { id: 'omikuji', kind: 'luck', rar: 'common', name: 'おみくじ', mark: '籤', line: '大吉か、それとも…' },
   { id: 'potion', kind: 'luck', rar: 'common', name: 'ふしぎな薬', mark: '薬', line: '飲んでみる？　何が起きるかは分からない' },
-  { id: 'coin', kind: 'luck', rar: 'uncommon', name: '運命のコイン', mark: '銭', line: '表ならレアなカード、裏ならHPが半分' },
+  { id: 'coin', kind: 'luck', rar: 'uncommon', name: 'コイントス', mark: '銭', line: '表ならレアなカード、裏ならHPが半分' },
   { id: 'roulette', kind: 'luck', rar: 'uncommon', name: 'ルーレット', mark: '輪', line: '回して、止まった場所で運命が決まる' },
   { id: 'dice', kind: 'luck', rar: 'uncommon', name: '丁半ばくち', mark: '丁', line: 'コメットを賭けて、丁か半か' },
   // 悪いできごと

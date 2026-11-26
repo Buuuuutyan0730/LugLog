@@ -1,10 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127030557';
-import { playSound } from './audio.js?v=20261127030557';
-import { CURSE_BY_ID } from './talents.js?v=20261127030557';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127030557';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127032308';
+import { playSound } from './audio.js?v=20261127032308';
+import { CURSE_BY_ID } from './talents.js?v=20261127032308';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127032308';
+import { rarityOfLevel } from './ui.js?v=20261127032308';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -190,8 +191,8 @@ const SCENES = {
       // 提灯の列（左から順に灯る）
       c.strokeStyle = '#2a1a10'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(0, H * 0.06); c.quadraticCurveTo(W / 2, H * 0.12, W, H * 0.06); c.stroke();
       for (let i = 0; i < L; i++) { const px = W * (i + 0.5) / L, py = H * 0.06 + Math.sin(Math.PI * (i + 0.5) / L) * H * 0.045; lantern(c, px, py + 26 * u, 13 * u, t, clamp((t - 0.15 - i * 0.12) / 0.25), i); }
-      // 屋台の屋根とのれん
-      const top = H * 0.2;
+      // 屋台の屋根とのれん：商品（カードの棚）のすぐ上に合わせて描く（画面の高さが変わってもずれない）
+      const wr = x.rect(stallWrap), top = wr ? wr.y - 54 * u : H * 0.2;
       c.fillStyle = '#3a1f12'; c.fillRect(W * 0.06, top, W * 0.88, 14 * u);
       for (let i = 0; i < 6; i++) { const nx = W * 0.08 + i * W * 0.14; c.fillStyle = i % 2 ? '#a3181e' : '#f3ead8'; const wav = Math.sin(t * 2 + i) * 2 * u; c.fillRect(nx, top + 14 * u, W * 0.13, 30 * u + wav); }
       c.fillStyle = '#1b0f08'; c.font = `${Math.round(16 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -202,7 +203,8 @@ const SCENES = {
     });
     const choices = x.api.roll({ count: 3, floor: 'rare', noCurse: true });
     const wrap = x.html('<div class="evu-stall"></div>');
-    x.body.append(wrap);
+    const stallWrap = wrap;
+    x.body.append(x.html('<div class="evu-spacer s"></div>'), wrap);
     choices.forEach((ch, i) => {
       const price = PRICE[ch.rarity] || 5;
       const row = x.html(`<div class="evu-shelf" style="animation-delay:${0.9 + i * 0.15}s"></div>`);
@@ -223,7 +225,7 @@ const SCENES = {
     x.fit(wrap);
     const sh = x.hint('値札をタップで購入（何枚でも）');
     x.foot(x.back());
-    x._bought = () => { sh.textContent = 'ほかの値札も買える'; x.foot(x.ok(() => x.done())); };
+    x._bought = () => { sh.textContent = 'ほかの値札も買える'; };
   },
 
   // ---------------- ミニガチャ：カプセルの機械。最初の1回はタダ。レバーを回すとカプセルが転がり出て、割れる ----------------
@@ -237,8 +239,8 @@ const SCENES = {
     x.draw((c, t, W, H, u) => {
       const g = c.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.35, H * 0.7); g.addColorStop(0, '#2a1436'); g.addColorStop(1, '#07040f'); c.fillStyle = g; c.fillRect(0, 0, W, H);
       // 光の点（遊園地っぽく）
-      for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU, on = (Math.floor(t * 6) + i) % 3 === 0; c.fillStyle = on ? '#ffd84a' : '#5a4420'; c.beginPath(); c.arc(W / 2 + Math.cos(a) * 128 * u, H * 0.3 + Math.sin(a) * 118 * u, 3 * u, 0, TAU); c.fill(); }
-      const cx = W / 2, cy = H * 0.27, R = 78 * u;
+      for (let i = 0; i < 24; i++) { const a = (i / 24) * TAU, on = (Math.floor(t * 6) + i) % 3 === 0; c.fillStyle = on ? '#ffd84a' : '#5a4420'; c.beginPath(); c.arc(W / 2 + Math.cos(a) * 118 * u, H * 0.27 + Math.sin(a) * 108 * u, 3 * u, 0, TAU); c.fill(); }
+      const cx = W / 2, cy = H * 0.24, R = 70 * u;
       const sx = shake > 0 ? (Math.random() - 0.5) * shake * u : 0;
       c.save(); c.translate(sx, 0);
       // ガラスの玉の中のカプセル（はねる）
@@ -288,6 +290,7 @@ const SCENES = {
     let busy = false;
     const pull = async (times) => {
       if (busy) return;
+      if (!caps.length) { x.toast('カプセルが売り切れ…', 'bad'); return; }
       const cost = st.free > 0 ? 0 : 3 * times;
       if (x.s.comets < cost) { x.toast('コメットが足りない…', 'bad'); x.sfx('ev_coin', { pitch: 0.6 }); return; }
       busy = true;
@@ -297,8 +300,8 @@ const SCENES = {
         const ch = x.api.roll({ count: 1, noCurse: true })[0];
         if (!ch) break;
         res.innerHTML = '';
-        // レバー：ぐるっと回す・機械がゆれる
-        x.sfx('ev_crank'); shake = 8;
+        // レバー：ぐるっと回す・機械がゆれる。いちばん上のカプセルが1つ減る
+        x.sfx('ev_crank'); shake = 8; caps.pop();
         for (let f = 0; f < 20; f++) { crank += 0.16; await wait(16); }
         const h = { normal: 210, rare: 140, super: 275, mythic: 48 }[ch.rarity];
         drop = { t0: performance.now(), h, col: RAR_COL[ch.rarity] };
@@ -386,14 +389,15 @@ const SCENES = {
       const b = x.html(`<button class="evu-orb" style="--oc:rgb(${o.col.join(',')})"><b>${o.name}</b><small>${o.sub}</small></button>`);
       b.addEventListener('click', async () => {
         if (chosen >= 0) return;
-        chosen = i; row.classList.add('chosen'); b.classList.add('on');
+        chosen = i; row.classList.add('chosen'); b.classList.add('on'); note.remove();
         x.sfx('ev_spring', { pitch: 1.2 });
         await wait(800);
         splash = 1; x.sfx('ev_capsule', { pitch: 0.7 });
         if (o.key === 'hp') x.api.hpUp(0.15);
         if (o.key === 'heal') x.api.heal(1);
         if (o.key === 'comet') x.api.addComets(6);
-        x.toast(`${o.name}：${o.sub}`);
+        row.replaceWith(x.html(`<div class="evu-big" style="color:rgb(${o.col.join(',')})">${o.name}</div>`));
+        x.body.appendChild(x.html(`<div class="evu-note">${o.sub}</div>`));
         await wait(900);
         x.foot(x.ok(() => x.done()));
       });
@@ -509,7 +513,9 @@ const SCENES = {
 
   // ---------------- 待ち伏せ：暗い茂みに、赤い目が次々と開く。大きな2つの影が立ち上がる ----------------
   ambush(x) {
-    x.api.next('ambush', 2);
+    const N = 2 + Math.floor(Math.random() * 3);   // 待ちかまえる中ボスの数（2〜4体）
+    x.api.next('ambush', N);
+    const spots = Array.from({ length: N }, (_, i) => [(i + 0.5) / N, i * 1.3]);
     const eyes = Array.from({ length: 22 }, (_, i) => ({ x: Math.random(), y: 0.55 + Math.random() * 0.4, d: 0.3 + Math.random() * 1.6, s: 0.6 + Math.random() * 0.8, b: Math.random() * 6 }));
     wait(1300).then(() => x.sfx('ev_ambush'));
     x.draw((c, t, W, H, u) => {
@@ -517,8 +523,8 @@ const SCENES = {
       const vg = c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, H * 0.7); vg.addColorStop(0, 'rgba(70,0,10,0.4)'); vg.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = vg; c.fillRect(0, 0, W, H);
       // 大きな2つの影（中ボス）：下からゆっくり立ち上がる
       const rise = ease((t - 1.2) / 1.2);
-      for (const [sx, ph] of [[0.3, 0], [0.7, 1.3]]) {
-        const bx = W * sx, by = H * 0.78 - rise * H * 0.3 + Math.sin(t * 1.5 + ph) * 3 * u, br = 62 * u;
+      for (const [sx, ph] of spots) {
+        const bx = W * sx, by = H * 0.78 - rise * H * 0.3 + Math.sin(t * 1.5 + ph) * 3 * u, br = (N > 3 ? 44 : N > 2 ? 52 : 62) * u;
         c.save(); c.shadowColor = `rgba(255,30,40,${0.9 * rise})`; c.shadowBlur = 26 * u;
         c.fillStyle = '#14030a'; c.beginPath();
         for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU - Math.PI / 2, rr = br * (i % 2 ? 0.82 : 1.08) * (1 + 0.04 * Math.sin(t * 3 + i)); c.lineTo(bx + Math.cos(a) * rr, by + Math.sin(a) * rr); }
@@ -546,7 +552,7 @@ const SCENES = {
     x.body.append(x.html('<div class="evu-spacer"></div>'));
     (async () => {
       await wait(2300);
-      x.body.append(x.html('<div class="evu-big bad">待ち伏せだ！</div>'), x.html('<div class="evu-note">次のフェーズ、中ボスが2体待ちかまえている</div>'));
+      x.body.append(x.html('<div class="evu-big bad">待ち伏せだ！</div>'), x.html(`<div class="evu-note">次のフェーズ、中ボスが <b>${N}体</b> 待ちかまえている</div>`));
       x.foot(x.ok(() => x.done()));
     })();
   },
@@ -722,8 +728,8 @@ Object.assign(SCENES, {
       if (sealId) { x.api.next('seal', sealId); woe('封印', `次のフェーズ、${x.skillName(sealId)} が使えない`); } else woe('封印', 'お札が飛んできた…が、封じるものがなかった');
       await wait(300); x.sfx('ev_seal');
       await wait(1100); strike();
-      x._t3 = x.time(); stage = 3; x.api.next('ambush', 2); x.sfx('ev_ambush');
-      woe('待ち伏せ', '次のフェーズ、中ボスが2体');
+      x._t3 = x.time(); stage = 3; const nA = 2 + Math.floor(Math.random() * 3); x.api.next('ambush', nA); x.sfx('ev_ambush');
+      woe('待ち伏せ', `次のフェーズ、中ボスが${nA}体`);
       await wait(900);
       x.foot(x.ok(() => x.done()));
     })();
@@ -753,11 +759,14 @@ Object.assign(SCENES, {
         // 中身の札（開いたあと）
         if (S.shown) { const lab = k === 'card' ? 'レアカード' : k === 'comet' ? 'コメット×8' : 'ミミック'; c.fillStyle = k === 'mimic' ? '#a01020' : k === 'card' ? '#5a3ab0' : '#1a6ab0'; c.beginPath(); c.roundRect(W * xs[i] - 46 * u, baseY + 46 * u, 92 * u, 24 * u, 6 * u); c.fill(); c.fillStyle = '#fff'; c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, lab, W * xs[i], baseY + 58 * u); }
       });
-      if (picked < 0) { const i = Math.floor(t / 1.2) % 3; tapHint(c, W * xs[i], baseY - 50 * u, u, t, 'えらぶ'); }
+      if (picked < 0) {
+        for (let i = 0; i < 3; i++) tapHint(c, W * xs[i], baseY - 46 * u, u, t + i * 0.35, '');
+        c.fillStyle = '#fff'; c.strokeStyle = '#10142a'; c.lineWidth = 3 * u; c.font = `${Math.round(15 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; strokeC(c, 'ひとつ選んで 開ける', W / 2, baseY - 82 * u); fillC(c, 'ひとつ選んで 開ける', W / 2, baseY - 82 * u);
+      }
     });
     const hit = (px, py) => { const g = x._geo; if (!g || picked >= 0) return -1; for (let i = 0; i < 3; i++) if (Math.abs(px - g.W * xs[i]) < g.s * 0.7 && py > g.baseY - g.s * 0.6 && py < g.baseY + g.s * 0.5) return i; return -1; };
     x.tap((px, py) => { const i = hit(px, py); if (i >= 0) choose(i); }, (px, py) => hit(px, py) >= 0);
-    const note = x.html('<div class="evu-note">宝箱をひとつ選んで開ける。3つのうち1つは、ミミック</div>');
+    const note = x.html('<div class="evu-note">3つのうち1つは、ミミック</div>');
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
     x.foot(x.back());
     const reveal = (i) => { st[i].shown = 1; };
@@ -824,11 +833,12 @@ Object.assign(SCENES, {
         if (drunk < 0) for (let k = 0; k < 3; k++) { const p = (t * 0.4 + k / 3 + i * 0.2) % 1; c.fillStyle = `rgba(${r},${gg},${b},${0.3 * (1 - p)})`; c.beginPath(); c.arc(bx + Math.sin(t * 2 + k + i) * 8 * u, by - 76 * u - p * 60 * u, (4 + p * 8) * u, 0, TAU); c.fill(); }
       });
       x._geo = { W, u, by: H * 0.58 };
-      if (drunk < 0) { c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; cols.forEach(([r, gg, b], i) => { c.fillStyle = `rgb(${r},${gg},${b})`; fillC(c, ['赤', '緑', '青'][i] + 'の小びん', W * (0.25 + i * 0.25), H * 0.58 + 26 * u); }); tapHint(c, W * (0.25 + (Math.floor(t / 1.2) % 3) * 0.25), H * 0.58 - 96 * u, u, t, 'のむ'); }
+      if (drunk < 0) { c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; cols.forEach(([r, gg, b], i) => { c.fillStyle = `rgb(${r},${gg},${b})`; fillC(c, ['赤', '緑', '青'][i] + 'の小びん', W * (0.25 + i * 0.25), H * 0.58 + 26 * u); }); for (let i = 0; i < 3; i++) tapHint(c, W * (0.25 + i * 0.25), H * 0.58 - 92 * u, u, t + i * 0.35, '');
+        c.fillStyle = '#fff'; c.strokeStyle = '#10142a'; c.lineWidth = 3 * u; c.font = `${Math.round(15 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; strokeC(c, '1本えらんで 飲む', W / 2, H * 0.58 - 126 * u); fillC(c, '1本えらんで 飲む', W / 2, H * 0.58 - 126 * u); }
       // 飲んだあと：画面がその色に染まり、泡がのぼる
       if (tint > 0) { const [r, gg, b] = cols[drunk]; c.fillStyle = `rgba(${r},${gg},${b},${0.25 * tint})`; c.fillRect(0, 0, W, H); for (let k = 0; k < 30; k++) { const p = (t * 0.5 + k * 0.033) % 1; c.fillStyle = `rgba(${r},${gg},${b},${0.6 * (1 - p) * tint})`; c.beginPath(); c.arc(W * ((k * 0.618) % 1), H * (1 - p), (3 + (k % 4)) * u, 0, TAU); c.fill(); } }
     });
-    const note = x.html('<div class="evu-note">小びんを1本えらんで飲む。何が起きるかは、飲んでから</div>');
+    const note = x.html('<div class="evu-note">何が起きるかは、飲んでからのお楽しみ</div>');
     const hitB = (px, py) => { const g = x._geo; if (!g || drunk >= 0) return -1; for (let i = 0; i < 3; i++) if (Math.abs(px - g.W * (0.25 + i * 0.25)) < 34 * g.u && py > g.by - 80 * g.u && py < g.by + 10 * g.u) return i; return -1; };
     x.tap((px, py) => { const i = hitB(px, py); if (i >= 0) drink(i); }, (px, py) => hitB(px, py) >= 0);
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
@@ -937,12 +947,18 @@ Object.assign(SCENES, {
     });
     const hitS = (px, py) => { const g = x._geo; if (!g || busy || !bet) return null; for (const [k, fx] of [['丁', 0.22], ['半', 0.78]]) if (Math.abs(px - g.W * fx) < 34 * g.u && Math.abs(py - g.cy) < 40 * g.u) return k; return null; };
     x.tap((px, py) => { const k = hitS(px, py); if (k) roll(k); }, (px, py) => !!hitS(px, py));
-    const info = x.html('<div class="evu-note">賭けるコメットを選んで、布の上の「丁」か「半」をさわる。当たれば倍</div>');
-    const bets = x.html('<div class="evu-bets"></div>');
+    const info = x.html(`<div class="evu-sheet evu-dicesheet">
+      <div class="evu-sheet-h">賭け方</div>
+      <div class="evu-sheet-r"><span>① 賭けるコメット</span><span class="evu-bets"></span></div>
+      <div class="evu-sheet-r"><span>② 布の札をタップ</span><b>丁＝偶数 ／ 半＝奇数</b></div>
+      <div class="evu-sheet-r"><span>当たり</span><b>賭けた分の 2倍 が戻る</b></div>
+      <div class="evu-sheet-r bad"><span>はずれ</span><b>賭けた分はなくなる</b></div>
+    </div>`);
+    const bets = info.querySelector('.evu-bets');
     const res = x.html('<div class="evu-dres"></div>');
     [2, 5, 10].forEach((n) => { const b = x.html(`<button class="evu-chip" data-n="${n}">${x.cometImg(COMET_HUES[n % 5])}<b>${n}</b></button>`); b.addEventListener('click', () => { if (busy) return; bet = n; sync(); }); bets.appendChild(b); });
     const sync = () => { bets.querySelectorAll('.evu-chip').forEach((b) => { const n = Number(b.dataset.n); b.classList.toggle('on', n === bet); b.disabled = x.s.comets < n; }); if (bet > x.s.comets) bet = 0; };
-    x.body.append(x.html('<div class="evu-spacer"></div>'), res, info, bets);
+    x.body.append(x.html('<div class="evu-spacer"></div>'), res, info);
     x.foot(x.back());
     sync();
     async function roll(sd) {
@@ -1050,7 +1066,7 @@ Object.assign(SCENES, {
       // きらめき（十字の光）
       for (let i = 0; i < 12; i++) { const o = Math.max(0, Math.sin(t * 2.6 + i * 1.9)); if (o < 0.3) continue; const px = W * (0.18 + ((i * 0.37) % 1) * 0.64), py = top + ((i * 0.53) % 1) * (base - top) * 0.9; const L = 9 * u * o; c.fillStyle = `rgba(255,255,240,${o})`; c.beginPath(); c.moveTo(px, py - L); c.lineTo(px + L * 0.18, py); c.lineTo(px, py + L); c.lineTo(px - L * 0.18, py); c.fill(); c.beginPath(); c.moveTo(px - L, py); c.lineTo(px, py + L * 0.18); c.lineTo(px + L, py); c.lineTo(px, py - L * 0.18); c.fill(); }
     });
-    x.body.append(x.html('<div class="evu-spacer"></div>'), x.html('<div class="evu-note gold">次のフェーズの15秒間、宝箱と金色の敵があふれ出す<br><small>宝箱を壊すと コメット ／ 金色の敵は かけら5倍</small></div>'));
+    x.body.append(x.html('<div class="evu-spacer"></div>'), x.html('<div class="evu-note gold">次のフェーズ、宝箱と金色の敵があふれ出す<br><small>宝箱を壊すと コメット ／ 金色の敵は かけら5倍</small></div>'));
     x.foot(x.ok(() => { x.api.next('hoard', 1); x.done(); }));
   },
 
@@ -1075,36 +1091,44 @@ Object.assign(SCENES, {
   // ---------------- 流れ星：笹に短冊。願いを書いた1枚に、星が落ちる → そのスキルが最大に ----------------
   shooting(x) {
     x.sfx('ev_star');
-    const list = x.api.ownedSkills().filter((k) => !k.evo).slice(0, 6);
-    let hit = null;
+    const list = x.api.ownedSkills().filter((k) => !k.evo).slice(0, 5);
+    let hit = null, wrap = null;
     x.draw((c, t, W, H, u) => {
       nightSky(c, W, H, t, '#01020c', '#0a1438', 120, 4);
       // 天の川
-      c.save(); c.translate(W / 2, H * 0.3); c.rotate(-0.5); const mw = c.createLinearGradient(0, -40 * u, 0, 40 * u); mw.addColorStop(0, 'rgba(160,180,255,0)'); mw.addColorStop(0.5, 'rgba(180,200,255,0.18)'); mw.addColorStop(1, 'rgba(160,180,255,0)'); c.fillStyle = mw; c.fillRect(-W, -40 * u, W * 2, 80 * u); c.restore();
+      c.save(); c.translate(W / 2, H * 0.24); c.rotate(-0.5); const mw = c.createLinearGradient(0, -40 * u, 0, 40 * u); mw.addColorStop(0, 'rgba(160,180,255,0)'); mw.addColorStop(0.5, 'rgba(180,200,255,0.18)'); mw.addColorStop(1, 'rgba(160,180,255,0)'); c.fillStyle = mw; c.fillRect(-W, -40 * u, W * 2, 80 * u); c.restore();
       // 流れ星（いくつも）
-      for (let i = 0; i < 4; i++) { const k = ((t * 0.5 + i * 0.27) % 1.6); if (k > 1) continue; const sx = W * (1.1 - k * 1.2) + i * 30 * u, sy = H * (0.02 + k * 0.35) + i * 20 * u; const g = c.createLinearGradient(sx, sy, sx + 80 * u, sy - 26 * u); g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.strokeStyle = g; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + 80 * u, sy - 26 * u); c.stroke(); }
-      // 笹
-      c.strokeStyle = '#1e4a24'; c.lineWidth = 6 * u; c.beginPath(); c.moveTo(W * 0.08, H); c.quadraticCurveTo(W * 0.02, H * 0.5, W * 0.15, H * 0.36); c.stroke();
-      c.fillStyle = '#2a6a30'; for (let i = 0; i < 9; i++) { const lx = W * (0.06 + (i % 3) * 0.05), ly = H * (0.4 + i * 0.05); c.save(); c.translate(lx, ly); c.rotate(-0.6 + Math.sin(t + i) * 0.1); c.beginPath(); c.ellipse(16 * u, 0, 18 * u, 4 * u, 0, 0, TAU); c.fill(); c.restore(); }
+      for (let i = 0; i < 4; i++) { const k = ((t * 0.5 + i * 0.27) % 1.6); if (k > 1) continue; const sx = W * (1.1 - k * 1.2) + i * 30 * u, sy = H * (0.02 + k * 0.3) + i * 20 * u; const g = c.createLinearGradient(sx, sy, sx + 80 * u, sy - 26 * u); g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(255,255,255,0)'); c.strokeStyle = g; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(sx, sy); c.lineTo(sx + 80 * u, sy - 26 * u); c.stroke(); }
+      // 笹：左に太い竹。短冊の少し上に、横へのびる枝（風でゆれる）
+      const wr = x.rect(wrap), by = wr ? wr.y - 16 * u : H * 0.4, sway = Math.sin(t * 1.3) * 3 * u;
+      c.strokeStyle = '#1e4a24'; c.lineWidth = 9 * u; c.beginPath(); c.moveTo(W * 0.06, H); c.lineTo(W * 0.06, by - 60 * u); c.stroke();
+      c.strokeStyle = '#123018'; c.lineWidth = 2 * u; for (let k = 0; k < 8; k++) { const ny = H - k * 60 * u; c.beginPath(); c.moveTo(W * 0.06 - 5 * u, ny); c.lineTo(W * 0.06 + 5 * u, ny); c.stroke(); }
+      c.strokeStyle = '#2a6a30'; c.lineWidth = 4 * u; c.beginPath(); c.moveTo(W * 0.06, by + 6 * u); c.quadraticCurveTo(W * 0.5, by - 6 * u + sway, W * 0.96, by + sway * 1.6); c.stroke();
+      c.fillStyle = '#2f7a36'; for (let i = 0; i < 12; i++) { const lx = W * (0.1 + i * 0.075), ly = by - 2 * u + sway * (i / 12); c.save(); c.translate(lx, ly); c.rotate((i % 2 ? 0.5 : -0.4) + Math.sin(t * 2 + i) * 0.15); c.beginPath(); c.ellipse(12 * u, 0, 14 * u, 3.4 * u, 0, 0, TAU); c.fill(); c.restore(); }
+      // 短冊をつるす糸
+      if (wrap) for (const el of wrap.children) { const r = x.rect(el); if (!r) continue; c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 1.2 * u; c.beginPath(); c.moveTo(r.x + r.w / 2, by); c.lineTo(r.x + r.w / 2, r.y + 2 * u); c.stroke(); }
       // 願いがかなう星：短冊へ落ちる
       if (hit) { const k = clamp((performance.now() - hit.t0) / 700); const r = x.rect(hit.el); if (r) { const ex = r.x + r.w / 2, ey = r.y + r.h * 0.3, sx = W * 1.1, sy = -40 * u; const px = sx + (ex - sx) * ease(k), py = sy + (ey - sy) * ease(k); c.strokeStyle = 'rgba(255,240,180,0.8)'; c.lineWidth = 4 * u; c.beginPath(); c.moveTo(px, py); c.lineTo(px + 120 * u * (1 - k * 0.5), py - 60 * u * (1 - k * 0.5)); c.stroke(); c.fillStyle = '#fff'; c.beginPath(); c.arc(px, py, 7 * u, 0, TAU); c.fill(); if (k >= 1) { const q = (performance.now() - hit.t0 - 700) / 1000; if (q < 1) { rays(c, ex, ey, 160 * u * q, t, 16, '255,240,170', 1 - q); } } } }
     });
-    const note = x.html('<div class="evu-note">願いを1つ。選んだスキルが、一気に最大レベルへ</div>');
-    const wrap = x.html('<div class="evu-tanzaku"></div>');
-    const HUES = ['#ff8aa8', '#8ad8ff', '#ffe08a', '#a8ff9a', '#d8a8ff', '#ffb080'];
+    const note = x.html('<div class="evu-note">願いを1つ。短冊をタップすると、そのスキルが一気に最大レベルへ</div>');
+    wrap = x.html('<div class="evu-tanzaku"></div>');
     list.forEach((k, i) => {
-      const max = k.lv >= SKILL_MAX;
-      const b = x.html(`<button class="evu-tz" style="--tz:${HUES[i % 6]};animation-delay:${0.5 + i * 0.1}s"><b>${x.skillName(k.id)}</b><small>Lv${k.lv} → ${max ? '進化' : 'MAX'}</small></button>`);
+      const max = k.lv >= SKILL_MAX, rar = rarityOfLevel(k.lv, SKILL_MAX);
+      // スキルのカードを、縦長の短冊にしたもの（上に絵、名前は縦書き、下にレベル）
+      const icon = x.card({ id: k.id, kind: 'skill', rarity: rar }).querySelector('.card-icon');
+      const b = x.html(`<button class="evu-tzc r-${rar}" style="animation-delay:${0.4 + i * 0.12}s, ${i * 0.37}s"><span class="evu-tzc-ic"></span><b>${x.skillName(k.id)}</b><small>Lv${k.lv}<br>↓<br>${max ? '進化' : 'MAX'}</small></button>`);
+      if (icon) { icon.querySelector('.card-rarity')?.remove(); b.querySelector('.evu-tzc-ic').appendChild(icon); }
       b.addEventListener('click', async () => {
         if (hit) return; hit = { el: b, t0: performance.now() }; wrap.classList.add('chosen'); b.classList.add('on'); note.remove();
         x.sfx('ev_star', { pitch: 1.2 });
         await wait(700); x.sfx('ev_wish'); x.flash('#fff6c8', 0.5, 0.7); x.api.maxSkill(k.id);
-        b.querySelector('small').textContent = max ? '進化した！' : 'Lv MAX！';
+        b.querySelector('small').innerHTML = max ? '進化<br>した！' : 'Lv<br>MAX！';
         await wait(800); x.foot(x.ok(() => x.done()));
       });
       wrap.appendChild(b);
     });
-    x.body.append(x.html('<div class="evu-spacer s"></div>'), wrap, note);
+    x.body.append(x.html('<div class="evu-spacer"></div>'), wrap, x.html('<div class="evu-spacer s"></div>'), note);
+    x.fit(wrap);
   },
 
   // ---------------- 七福神：金の波に宝船。最高のカード3枚から、好きな1枚 ----------------
@@ -1534,7 +1558,13 @@ Object.assign(SCENES, {
       for (let i = 0; i < 30; i++) { const a = t * 0.5 + i * 0.7, r = (60 + (i % 5) * 18) * u; c.fillStyle = `rgba(255,224,140,${0.3 + 0.3 * Math.sin(t * 2 + i)})`; c.fillRect(tx + Math.cos(a) * r, ty + Math.sin(a) * r * 0.6, 2 * u, 2 * u); }
     });
     const owned = x.api.ownedSkills();
-    const note = x.html('<div class="evu-note">「どのスキルを、時の流れに返すかね？」<br><small>返したスキルと同じレベルで、別のスキルがもらえる</small></div>');
+    // 何をするかを、手順の表で見せる（いまの手順を光らせる）
+    const note = x.html(`<div class="evu-sheet evu-steps">
+      <div class="evu-sheet-h">スキルの取りかえ</div>
+      <div class="evu-sheet-r st1 now"><span>① 手放すスキルを 1つ選ぶ</span><b class="mk"></b></div>
+      <div class="evu-sheet-r st2"><span>② 代わりのスキルを 3枚から選ぶ</span><b class="mk"></b></div>
+      <div class="evu-sheet-f">レベルはそのまま引きつぐ（例：Lv4 を渡すと、新しいスキルも Lv4）</div>
+    </div>`);
     const list = x.html('<div class="evu-plates"></div>');
     owned.forEach((k) => { const b = skillPlate(x, k.id, k.evo ? `${k.lv}・進化` : k.lv, 'evu-plate-btn'); b.addEventListener('click', () => step2(k, b)); list.appendChild(b); });
     x.body.append(x.html('<div class="evu-spacer"></div>'), note, list);
@@ -1544,8 +1574,11 @@ Object.assign(SCENES, {
       list.classList.add('chosen'); plate.classList.add('on'); x.foot();
       const pool = x.api.roll({ count: 6, onlySkill: true, noCurse: true, floor: 'rare' }).filter((ch) => ch.kind === 'skill' && !x.s.skills[ch.id]).slice(0, 3);
       await wait(400); list.remove();
-      if (!pool.length) { note.innerHTML = '「…いまは、ふさわしいものが無いようだ」'; x.foot(x.ok(() => x.done())); return; }
-      note.innerHTML = `「<b>${x.skillName(k.id)}</b>（Lv${k.lv}）の代わりに、どれを持っていく？」`;
+      if (!pool.length) { note.replaceWith(x.html('<div class="evu-note">「…いまは、取りかえられるスキルが無いようだ」</div>')); x.foot(x.ok(() => x.done())); return; }
+      note.querySelector('.st1').classList.remove('now'); note.querySelector('.st1').classList.add('done');
+      note.querySelector('.st1 span').textContent = `① ${x.skillName(k.id)}（Lv${k.lv}）を手放す`;
+      note.querySelector('.st2').classList.add('now');
+      x.body.appendChild(x.html(`<div class="evu-hint static">どれも <b>Lv${Math.max(1, k.lv)}</b> で受けとる</div>`));
       const wrap = x.html('<div class="evu-pick3"></div>');
       pool.forEach((ch, i) => {
         const card = x.card(ch); card.classList.add('evu-pickcard'); card.style.animationDelay = `${i * 0.12}s`;
@@ -1553,7 +1586,8 @@ Object.assign(SCENES, {
           if (wrap.classList.contains('chosen')) return; wrap.classList.add('chosen'); card.classList.add('on');
           sand = 0.01; x.sfx('ev_wish'); for (let q = 0; q <= 40; q++) { sand = q / 40; await wait(16); }
           x.api.swapSkill(k.id, ch.id); x.flash('#cfe8ff', 0.5, 0.7);
-          note.innerHTML = `<b>${x.skillName(k.id)}</b> → <b>${x.skillName(ch.id)}</b>（Lv${Math.max(1, k.lv)}）`;
+          note.querySelector('.st2').classList.remove('now'); note.querySelector('.st2').classList.add('done');
+          note.querySelector('.st2 span').textContent = `② ${x.skillName(ch.id)}（Lv${Math.max(1, k.lv)}）を受けとった`;
           await wait(500); x.foot(x.ok(() => x.done()));
         });
         wrap.appendChild(card);

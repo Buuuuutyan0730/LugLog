@@ -2458,3 +2458,27 @@ body.previewing .evu { z-index: 8; }
 .evu-dres { flex-direction: column; gap: 2cqw; }
 .evu-top { margin-bottom: auto; }
 .evu.tapall .evu-body > * { pointer-events: none; }
+/* 結果の大きな文字を、タイトルと絵のあいだの空きに置く（コイントス） */
+.evu-big.evu-top { position: absolute; left: 0; right: 0; top: 26%; margin: 0; }
+.evu-dicesheet .evu-chip { pointer-events: auto; }
+.evu-dicesheet .evu-bets { display: flex; gap: 1.6cqw; }
+.evu-dicesheet .evu-chip { padding: 0.6cqw 2cqw 0.6cqw 0.8cqw; background: rgba(40, 24, 10, 0.85); }
+/* 流れ星：スキルのカードを縦長にした短冊。上を糸でつるし、風でゆれる */
+.evu-tanzaku { padding-left: 6cqw; gap: 2.2cqw; flex-wrap: nowrap; }
+.evu-tzc { --rc: #9fb0ff; width: 15.5cqw; height: 54cqw; display: flex; flex-direction: column; align-items: center; gap: 1.4cqw; padding: 1.6cqw 0.8cqw 2cqw; font-family: inherit; color: #fff; background: linear-gradient(180deg, #2a2f5a, #161a36); border: 0.8cqw solid var(--rc); border-radius: 1.2cqw; box-shadow: 0 0 3cqw -1cqw var(--rc), 0 1.2cqw 0 var(--ink); cursor: pointer; transform-origin: 50% -2cqw; animation: evuTz 0.6s both, evuWind 2.8s ease-in-out infinite; }
+.evu-tzc.r-rare { --rc: #4cf08a; } .evu-tzc.r-super { --rc: #c7a6ff; } .evu-tzc.r-mythic { --rc: #ffd84a; }
+.evu-tzc-ic { width: 12cqw; height: 12cqw; display: flex; align-items: center; justify-content: center; }
+.evu-tzc-ic .card-icon { width: 12cqw; height: 12cqw; margin: 0; position: relative; }
+.evu-tzc-ic .card-icon svg { width: 100%; height: 100%; }
+.evu-tzc b { flex: 1; writing-mode: vertical-rl; font-size: 3.8cqw; font-weight: normal; letter-spacing: 0.1em; overflow: hidden; }
+.evu-tzc small { font-size: 2.4cqw; text-align: center; line-height: 1.25; color: #dfe6ff; }
+.evu-tanzaku.chosen .evu-tzc:not(.on) { opacity: 0.3; pointer-events: none; transition: opacity 0.4s; }
+.evu-tzc.on { pointer-events: none; box-shadow: 0 0 6cqw 1cqw #fff6c0, 0 1.2cqw 0 var(--ink); background: linear-gradient(180deg, #5a4a10, #2a2008); }
+@keyframes evuWind { 0%, 100% { rotate: -2.5deg; } 50% { rotate: 3deg; } }
+.evu-steps .evu-sheet-r { padding: 0.8cqw 1.4cqw; border-radius: 1.2cqw; color: #8a7a60; }
+.evu-steps .evu-sheet-r.now { color: #3a2410; background: #ffe9a0; animation: evuPulse 1.6s ease-in-out infinite; }
+.evu-steps .evu-sheet-r.done { color: #2a6a30; }
+.evu-steps .evu-sheet-r.done .mk::after { content: '✓'; color: #2a8a3a; }
+.evu-steps .evu-sheet-r.now .mk::after { content: '◀ いま'; color: #a01818; font-size: 2.8cqw; }
+.evu-hint.static { margin-top: 0; animation: evuFade 0.4s both; }
+.evu-hint b { color: var(--gold); font-weight: normal; }
