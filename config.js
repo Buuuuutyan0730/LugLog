@@ -66,7 +66,7 @@ export const CONFIG = {
   //   chance：ボス以外のフェーズをクリアしたとき、起きる確率。from：このフェーズから起きる
   //   kindWeight：分類の割合。rarWeight：分類ごとの、レア度の割合。ready：中身ができているもの（これだけが起きる）
   events: {
-    chance: 0.2, from: 2,
+    every: 10, at: 5,   // できごとが起きるフェーズ：5・15・25…（クリアしたとき。ボスのフェーズとボスの後には起きない）
     kindWeight: { good: 6, luck: 2, bad: 2 },
     rarWeight: { good: { common: 60, uncommon: 28, rare: 10, super: 2 }, luck: { common: 60, uncommon: 40 }, bad: { common: 85, rare: 15 } },
     ready: ['stall', 'minigacha', 'spring', 'altar', 'thief', 'ambush', 'seal', 'kyo', 'chests', 'potion', 'coin', 'dice', 'trial', 'hoard', 'golden', 'shooting', 'fortune', 'stray', 'blackmarket', 'slot', 'roulette', 'omikuji', 'traveler'],

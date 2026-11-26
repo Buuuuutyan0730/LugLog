@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127041040';
-import { spawnPop, stepParticle } from './pops.js?v=20261127041040';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127041040';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127041040';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127041040';
+import { CONFIG } from './config.js?v=20261127041327';
+import { spawnPop, stepParticle } from './pops.js?v=20261127041327';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127041327';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127041327';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127041327';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -3445,9 +3445,9 @@ export function createGame() {
     s.score += PH.clearBonus * s.phase;
     s.choices = rollChoices(s, { afterBoss });
     s.choiceAfterBoss = afterBoss;   // 引き直すときも同じ決まりで引く
-    // できごと：ボス以外のフェーズをクリアしたとき、ときどきカード選びの代わりに起きる
+    // できごと：フェーズ5・15・25…（10ごと。ボスのフェーズ10・20…とその後は除く）をクリアしたとき、カード選びの代わりに起きる
     s.event = null;
-    if (!afterBoss && !s.tuto && !s.test && !s.demo && (s.forceEvent || (s.phase >= EV.from && Math.random() < EV.chance))) {
+    if (!afterBoss && !s.tuto && !s.test && !s.demo && (s.forceEvent || s.phase % EV.every === EV.at)) {
       s.event = { id: s.forceEvent || pickEventId(), seen: false };
       s.forceEvent = null;
       s.eventCount++;
