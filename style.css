@@ -2269,7 +2269,8 @@ body.previewing .evfx { z-index: 8; }
 body.previewing .evu { z-index: 8; }
 .evu-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .evu-head { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 1cqw; padding-top: 5cqw; text-shadow: 0 0.6cqw 0 var(--ink); animation: evuHead 0.6s cubic-bezier(.2, .9, .3, 1.3) both; }
-.evu-tag { font-size: 3cqw; letter-spacing: 0.3em; padding: 0.6cqw 3cqw; border-radius: 9cqw; background: rgba(0, 0, 0, 0.45); border: 0.4cqw solid rgba(255, 255, 255, 0.25); }
+/* 種類（良い・悪い・レア）の札は出さない */
+.evu-tag { display: none; font-size: 3cqw; letter-spacing: 0.3em; padding: 0.6cqw 3cqw; border-radius: 9cqw; background: rgba(0, 0, 0, 0.45); border: 0.4cqw solid rgba(255, 255, 255, 0.25); }
 .evu-title { font-size: 9cqw; font-weight: normal; letter-spacing: 0.12em; }
 .evu[data-kind="good"] .evu-tag { color: #ffe9a0; border-color: rgba(255, 216, 74, 0.6); }
 .evu[data-kind="luck"] .evu-tag { color: #b8f7ff; border-color: rgba(120, 230, 255, 0.6); }
@@ -2279,11 +2280,16 @@ body.previewing .evu { z-index: 8; }
 .evu-wallet { position: absolute; z-index: 3; left: 3cqw; top: 3cqw; display: flex; align-items: center; gap: 1cqw; padding: 0.6cqw 2.6cqw 0.6cqw 0.6cqw; border-radius: 9cqw; background: rgba(0, 0, 0, 0.55); border: 0.5cqw solid var(--ink); }
 .evu-wallet canvas { width: 7cqw; height: 7cqw; }
 .evu-wallet b { font-family: 'Press Start 2P', monospace; font-weight: normal; font-size: 3.4cqw; color: #fff; }
-.evu-body { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3cqw; padding: 3cqw 5cqw 7cqw; min-height: 0; }
+.evu-body { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3cqw; padding: 3cqw 5cqw 25cqw; min-height: 0; pointer-events: none; }
+/* 本文の空いた所は、下の絵（キャンバス）をさわれるように通す */
+.evu-body > * { pointer-events: auto; }
+.evu-body > .evu-spacer, .evu-body > .evu-note, .evu-body > .evu-big { pointer-events: none; }
 .evu-spacer { flex: 1; }
 .evu-spacer.s { flex: 0.35; }
-.evu-note { font-size: 3.6cqw; text-align: center; color: #dfe6ff; text-shadow: 0 0.5cqw 0 var(--ink); background: rgba(0, 0, 0, 0.4); padding: 1.2cqw 3cqw; border-radius: 2cqw; animation: evuFade 0.5s 0.6s both; }
-.evu-foot { display: flex; gap: 3cqw; justify-content: center; flex-wrap: wrap; margin-top: auto; animation: evuFade 0.5s 0.8s both; }
+.evu-note { font-size: 3.6cqw; line-height: 1.45; text-align: center; color: #eef2ff; text-shadow: 0 0.5cqw 0 var(--ink); background: rgba(8, 8, 20, 0.86); border: 0.4cqw solid rgba(255, 255, 255, 0.18); padding: 1.6cqw 3.6cqw; border-radius: 2cqw; animation: evuFade 0.5s 0.6s both; }
+/* 下のボタン：どのできごとも同じ場所（画面の下）・同じ大きさ。左が「戻る」、右が「OK」 */
+.evu-foot { position: absolute; z-index: 3; left: 0; right: 0; bottom: 6cqw; display: flex; gap: 5cqw; justify-content: center; }
+.evu-foot > .evu-btn { width: 36cqw; animation: evuFade 0.4s both; }
 .evu-foot.busy { pointer-events: none; opacity: 0.5; }
 .evu-btn { font-size: 4.4cqw; padding: 2.4cqw 6cqw; }
 .evu-btn.dim, .evu-btn:disabled { opacity: 0.4; pointer-events: none; }
@@ -2429,3 +2435,4 @@ body.previewing .evu { z-index: 8; }
 .evu-body { overflow-y: auto; scrollbar-width: none; }
 .evu-sayrow { display: flex; align-items: center; gap: 2cqw; width: 100%; justify-content: space-between; }
 .evu-leave { font-size: 3.4cqw !important; padding: 1.6cqw 3.4cqw !important; animation: evuFade 0.5s 0.8s both; }
+.evu-pick3 .evu-card { zoom: 0.86; }

@@ -29,7 +29,6 @@ export const EVENTS = [
   { id: 'ambush', kind: 'bad', rar: 'common', name: '待ち伏せ', mark: '伏', line: '次のフェーズ、中ボスが2体待ちかまえている' },
   { id: 'seal', kind: 'bad', rar: 'common', name: '封印', mark: '封', line: 'スキルが1つ、次のフェーズの間だけ使えない' },
   { id: 'kyo', kind: 'bad', rar: 'rare', name: '大凶', mark: '凶', line: '盗っ人・待ち伏せ・封印が、まとめて来る' },
-  { id: 'mimic', kind: 'bad', rar: 'rare', name: 'ミミック', mark: '擬', line: 'その宝箱、本物じゃない' },
 ];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 export const KIND_LABEL = { good: '良いできごと', luck: '運しだい', bad: '悪いできごと' };

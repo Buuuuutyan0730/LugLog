@@ -1,10 +1,10 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261126185639';
-import { playSound } from './audio.js?v=20261126185639';
-import { CURSE_BY_ID } from './talents.js?v=20261126185639';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126185639';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127024812';
+import { playSound } from './audio.js?v=20261127024812';
+import { CURSE_BY_ID } from './talents.js?v=20261127024812';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127024812';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -14,20 +14,47 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const RAR_COL = { normal: '#9fb0ff', rare: '#4cf08a', super: '#c7a6ff', mythic: 'rainbow' };
 const PRICE = { normal: 3, rare: 5, super: 8, mythic: 12 };
 const cometIcon = (n) => `<i class="evu-ci" data-n="${n}"></i>`;
+// 文字を「見た目の真ん中」に置く（フォントによって、middle だと上下左右にずれるため、字の形の大きさを測って合わせる）
+function textPos(c, s, x, y) {
+  const al = c.textAlign; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  const m = c.measureText(s), L = m.actualBoundingBoxLeft || 0, R = m.actualBoundingBoxRight || m.width, A = m.actualBoundingBoxAscent || 0, D = m.actualBoundingBoxDescent || 0;
+  const gx = al === 'right' || al === 'end' ? x - R : al === 'left' || al === 'start' ? x + L : x - (R - L) / 2;
+  return [al, gx, y + (A - D) / 2];
+}
+// 「ここをさわる」の目印：上下にはねる矢印と、ひとこと
+function tapHint(c, x, y, u, t, label = 'タップ') {
+  const b = Math.abs(Math.sin(t * 4)) * 6 * u;
+  c.save(); c.globalAlpha = 0.95;
+  c.fillStyle = '#fff'; c.strokeStyle = '#10142a'; c.lineWidth = 3 * u; c.lineJoin = 'round';
+  c.beginPath(); c.moveTo(x, y - b); c.lineTo(x - 9 * u, y - 12 * u - b); c.lineTo(x + 9 * u, y - 12 * u - b); c.closePath(); c.stroke(); c.fill();
+  c.font = `${Math.round(12 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center';
+  c.strokeText !== undefined && strokeC(c, label, x, y - 22 * u - b); fillC(c, label, x, y - 22 * u - b);
+  c.restore();
+}
+function fillC(c, s, x, y) { const [al, gx, gy] = textPos(c, s, x, y); c.fillText(s, gx, gy); c.textAlign = al; }
+function strokeC(c, s, x, y) { const [al, gx, gy] = textPos(c, s, x, y); c.strokeText(s, gx, gy); c.textAlign = al; }
 
 export function createEventUI(stage, hud) {
   const root = document.createElement('div');
   root.className = 'evu';
   root.innerHTML = `<canvas class="evu-bg"></canvas>
-    <div class="evu-head"><span class="evu-tag"></span><b class="evu-title"></b></div>
+    <div class="evu-head"><b class="evu-title"></b></div>
     <div class="evu-wallet"><canvas width="48" height="48"></canvas><b>0</b></div>
     <div class="evu-body"></div>
+    <div class="evu-foot"></div>
     <div class="evu-toast"></div>`;
   stage.appendChild(root);
   const cv = root.querySelector('.evu-bg'), c = cv.getContext('2d');
-  const body = root.querySelector('.evu-body'), toastEl = root.querySelector('.evu-toast');
+  const body = root.querySelector('.evu-body'), footEl = root.querySelector('.evu-foot'), toastEl = root.querySelector('.evu-toast');
   const wallet = root.querySelector('.evu-wallet'), wc = wallet.querySelector('canvas').getContext('2d');
   let cur = null, raf = 0;
+  // 絵（キャンバス）を直接さわる：宝箱・コイン・レバーなど。座標はキャンバスの画素
+  const toCv = (e) => { const b = cv.getBoundingClientRect(), k = cv.width / Math.max(1, b.width); return [(e.clientX - b.left) * k, (e.clientY - b.top) * k]; };
+  let dragging = null;
+  cv.addEventListener('pointerdown', (e) => { if (!cur) return; const [px, py] = toCv(e); if (cur.drag && cur.drag.down && cur.drag.down(px, py)) { dragging = cur.drag; cv.setPointerCapture(e.pointerId); return; } if (cur.tap) cur.tap(px, py); });
+  cv.addEventListener('pointermove', (e) => { if (!cur) return; const [px, py] = toCv(e); if (dragging) { dragging.move && dragging.move(px, py); return; } cv.style.cursor = cur.hot && cur.hot(px, py) ? 'pointer' : ''; });
+  const endDrag = (e) => { if (!dragging) return; const [px, py] = toCv(e); const d = dragging; dragging = null; d.up && d.up(px, py); };
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
 
   function frame(now) {
     if (!cur) return;
@@ -54,16 +81,15 @@ export function createEventUI(stage, hud) {
     root.dataset.kind = ev.kind; root.dataset.ev = id;
     const r = root.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-    root.querySelector('.evu-tag').textContent = KIND_LABEL[ev.kind] + (RAR_LABEL[ev.rar] ? `・${RAR_LABEL[ev.rar]}` : '');
     root.querySelector('.evu-title').textContent = ev.name;
-    body.innerHTML = '';
+    body.innerHTML = ''; footEl.innerHTML = ''; cv.style.cursor = ''; dragging = null;
     cur = { s, api, ev, t0: performance.now(), shown: s.comets, draw: null, onDone };
     wallet.querySelector('b').textContent = s.comets;
     raf = requestAnimationFrame(frame);
     const ctx = makeCtx(cur);
     (SCENES[id] || SCENES.stall)(ctx);
   }
-  function close() { cancelAnimationFrame(raf); cur = null; root.classList.remove('show'); root.style.transform = ''; body.innerHTML = ''; }
+  function close() { cancelAnimationFrame(raf); cur = null; root.classList.remove('show'); root.style.transform = ''; body.innerHTML = ''; footEl.innerHTML = ''; }
 
   // 各できごとに渡す道具
   function makeCtx(C) {
@@ -87,7 +113,13 @@ export function createEventUI(stage, hud) {
       flash(col = '#fff', d = 0.4, a = 1) { C.flash = { col, d, a, t0: performance.now() }; },
       shake(px = 14, d = 0.4) { C.shake = { px, d, t0: performance.now() }; },
       skillName: (id) => (SKILL_BY_ID[id] ? SKILL_BY_ID[id].name : id),
-      foot(...btns) { const f = document.createElement('div'); f.className = 'evu-foot'; f.append(...btns); body.appendChild(f); return f; },
+      // 下のボタン：どのできごとも同じ場所・同じ2種類（戻る＝やめる／OK＝進む・受ける）
+      foot(...btns) { footEl.innerHTML = ''; footEl.append(...btns); return { remove() { footEl.innerHTML = ''; } }; },
+      ok(fn) { return ctx.btn('OK', 'evu-ok', fn); },
+      back(fn) { return ctx.btn('戻る', 'btn-sub evu-back', fn || (() => ctx.done())); },
+      // 絵を直接さわる（tap：押したとき、hot：指が乗ると押せる形に、drag：引っぱる）
+      tap(fn, hot) { C.tap = fn; C.hot = hot || null; },
+      drag(o) { C.drag = o; },
       wait,
     };
     return ctx;
@@ -119,7 +151,7 @@ function lantern(c, x, y, r, t, lit, i) {
   c.strokeStyle = `rgba(0,0,0,0.35)`; c.lineWidth = 1;
   for (let k = -2; k <= 2; k++) { c.beginPath(); c.ellipse(0, k * r * 0.32, r * 0.8 * Math.cos(Math.asin(clamp(Math.abs(k) * 0.32, 0, 0.99))), r * 0.06, 0, 0, TAU); c.stroke(); }
   c.fillStyle = '#1a0e08'; c.fillRect(-r * 0.45, -r * 1.08, r * 0.9, r * 0.18); c.fillRect(-r * 0.45, r * 0.9, r * 0.9, r * 0.18);
-  if (lit > 0.5) { c.fillStyle = `rgba(40,10,0,${0.7 * lit})`; c.font = `${Math.round(r * 0.9)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('祭', 0, 0); }
+  if (lit > 0.5) { c.fillStyle = `rgba(40,10,0,${0.7 * lit})`; c.font = `${Math.round(r * 0.9)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '祭', 0, 0); }
   c.restore();
 }
 function firefly(c, W, H, t, n, col = '255,220,120') {
@@ -150,7 +182,7 @@ const SCENES = {
       c.fillStyle = '#3a1f12'; c.fillRect(W * 0.06, top, W * 0.88, 14 * u);
       for (let i = 0; i < 6; i++) { const nx = W * 0.08 + i * W * 0.14; c.fillStyle = i % 2 ? '#a3181e' : '#f3ead8'; const wav = Math.sin(t * 2 + i) * 2 * u; c.fillRect(nx, top + 14 * u, W * 0.13, 30 * u + wav); }
       c.fillStyle = '#1b0f08'; c.font = `${Math.round(16 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText('屋　台', W / 2, top + 30 * u);
+      fillC(c, '屋　台', W / 2, top + 30 * u);
       // 台
       c.fillStyle = '#5a3216'; c.fillRect(W * 0.04, H * 0.9, W * 0.92, H * 0.1);
       firefly(c, W, H, t, 14);
@@ -170,15 +202,15 @@ const SCENES = {
         if (x.s.comets < price) { tag.classList.remove('shake'); void tag.offsetWidth; tag.classList.add('shake'); x.sfx('ev_coin', { pitch: 0.6 }); x.toast('コメットが足りない…', 'bad'); return; }
         x.api.addComets(-price); x.api.give(ch); x.sfx('ev_buy');
         row.classList.add('sold'); tag.innerHTML = '<b class="evu-sold">売り切れ</b>';
-        x.toast('お買い上げ！');
+        x.toast('お買い上げ！'); x._bought && x._bought();
         wrap.querySelectorAll('.evu-price').forEach((b) => b._sync && b._sync());
       });
       tag._sync = sync; sync();
       row.append(card, tag); wrap.appendChild(row);
     });
     x.fit(wrap);
-    const go = x.btn('店を出る', 'btn-sub', () => x.done());
-    x.body.appendChild(x.html('<div class="evu-foot"></div>')).appendChild(go);
+    x.foot(x.back());
+    x._bought = () => x.foot(x.ok(() => x.done()));
   },
 
   // ---------------- ミニガチャ：カプセルの機械。最初の1回はタダ。レバーを回すとカプセルが転がり出て、割れる ----------------
@@ -211,18 +243,21 @@ const SCENES = {
       // 本体
       c.fillStyle = '#d8283a'; c.fillRect(cx - R * 0.95, cy + R * 0.85, R * 1.9, R * 1.05);
       c.strokeStyle = '#7a0f18'; c.lineWidth = 3 * u; c.strokeRect(cx - R * 0.95, cy + R * 0.85, R * 1.9, R * 1.05);
-      c.fillStyle = '#fff'; c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.fillText('ミニガチャ', cx, cy + R * 1.08);
+      // 値段の札
+      c.fillStyle = '#fff4d0'; c.fillRect(cx - R * 0.85, cy + R * 1.3, R * 0.75, R * 0.36); c.fillStyle = '#7a1010'; c.font = `${Math.round(11 * u)}px DotGothic16, sans-serif`; fillC(c, st.free ? '1回 タダ' : '1回 ★3', cx - R * 0.475, cy + R * 1.48);
       // レバー（回る）
       c.save(); c.translate(cx + R * 0.45, cy + R * 1.45); c.rotate(crank);
       c.fillStyle = '#f3f3f3'; c.beginPath(); c.arc(0, 0, 14 * u, 0, TAU); c.fill(); c.fillStyle = '#999'; c.fillRect(-3 * u, -14 * u, 6 * u, 28 * u); c.restore();
       // 出口
-      c.fillStyle = '#300'; c.beginPath(); c.arc(cx - R * 0.45, cy + R * 1.5, 13 * u, 0, TAU); c.fill();
+      c.fillStyle = '#300'; c.beginPath(); c.arc(cx, cy + R * 1.72, 12 * u, 0, TAU); c.fill();
       c.restore();
+      x._crank = [cx + R * 0.45, cy + R * 1.45, 34 * u];
+      if (!busy) tapHint(c, cx + R * 0.45, cy + R * 1.45 - 20 * u, u, t, 'まわす');
       if (shake > 0) shake = Math.max(0, shake - 0.4);
       // 出てきたカプセル：転がって、ゆれて、割れる
       if (drop) {
         const k = (performance.now() - drop.t0) / 1000;
-        const ox = cx - R * 0.45, oy = cy + R * 1.5, tx = cx, ty = H * 0.62;
+        const ox = cx, oy = cy + R * 1.72, tx = cx, ty = H * 0.6;
         const p = ease(k / 0.7), px = ox + (tx - ox) * p, py = oy + (ty - oy) * p - Math.sin(p * Math.PI) * 50 * u;
         const wob = k > 0.7 && k < 1.5 ? Math.sin(k * 30) * 0.25 * clamp((k - 0.7) / 0.3) : 0;
         const opened = k > 1.5 ? clamp((k - 1.5) / 0.25) : 0;
@@ -236,15 +271,14 @@ const SCENES = {
       }
     });
     const res = x.html('<div class="evu-gres"></div>');
-    const note = x.html('<div class="evu-note">最初の1回はタダ。あとは コメット3個で1回</div>');
-    const bar = x.html('<div class="evu-foot evu-gbar"></div>');
+    const note = x.html('<div class="evu-note">レバーをまわすと1回。最初はタダ、あとは コメット3個</div>');
     const RAR = ['normal', 'rare', 'super', 'mythic'];
     let busy = false;
     const pull = async (times) => {
       if (busy) return;
-      const cost = st.free > 0 ? 0 : times === 5 ? 12 : 3 * times;
+      const cost = st.free > 0 ? 0 : 3 * times;
       if (x.s.comets < cost) { x.toast('コメットが足りない…', 'bad'); x.sfx('ev_coin', { pitch: 0.6 }); return; }
-      busy = true; bar.classList.add('busy');
+      busy = true;
       if (st.free > 0) { st.free = 0; } else x.api.addComets(-cost);
       if (cost) x.sfx('ev_coin');
       for (let k = 0; k < times; k++) {
@@ -266,15 +300,12 @@ const SCENES = {
         await wait(times > 1 ? 900 : 500);
         drop = null;
       }
-      busy = false; bar.classList.remove('busy'); sync();
+      busy = false; x.foot(x.ok(() => x.done()));
     };
-    const b1 = x.btn(`1回　${'<i class="evu-cost">タダ</i>'}`, '', () => pull(1));
-    const b5 = x.btn('5回　<i class="evu-cost">12</i>', 'btn-sub', () => pull(5));
-    const go = x.btn('やめる', 'btn-sub', () => x.done());
-    const sync = () => { b1.querySelector('.evu-cost').textContent = st.free ? 'タダ' : '3'; b1.disabled = !st.free && x.s.comets < 3; b5.disabled = st.free > 0 || x.s.comets < 12; b5.classList.toggle('dim', b5.disabled); b1.classList.toggle('dim', b1.disabled); };
-    sync();
-    bar.append(b1, b5, go);
-    x.body.append(x.html('<div class="evu-spacer"></div>'), res, note, bar);
+    const onCrank = (px, py) => { const k = x._crank; return k && Math.hypot(px - k[0], py - k[1]) < k[2]; };
+    x.tap((px, py) => { if (onCrank(px, py)) pull(1); }, onCrank);
+    x.foot(x.back());
+    x.body.append(x.html('<div class="evu-spacer"></div>'), res, note);
   },
 
   // ---------------- 泉：月夜の森の泉。光の玉が3つ浮かび、1つを選ぶと泉に溶けて効く ----------------
@@ -352,12 +383,11 @@ const SCENES = {
         if (o.key === 'comet') x.api.addComets(6);
         x.toast(`${o.name}：${o.sub}`);
         await wait(900);
-        foot.appendChild(x.btn('すすむ', '', () => x.done()));
+        x.foot(x.ok(() => x.done()));
       });
       row.appendChild(b);
     });
-    const foot = x.html('<div class="evu-foot"></div>');
-    x.body.append(x.html('<div class="evu-spacer"></div>'), note, row, foot);
+    x.body.append(x.html('<div class="evu-spacer"></div>'), note, row);
   },
 
   // ---------------- 呪いの祭壇：石の祭壇に紫の炎。呪いを受ければ、伏せた2枚のカードが開く ----------------
@@ -376,14 +406,14 @@ const SCENES = {
       c.beginPath(); c.arc(0, 0, 120 * u, 0, TAU); c.stroke(); c.beginPath(); c.arc(0, 0, 100 * u, 0, TAU); c.stroke();
       c.fillStyle = 'rgba(210,140,255,0.7)'; c.font = `${Math.round(12 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
       const glyph = '呪縛贄禍怨冥魔契';
-      for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; c.save(); c.rotate(a); c.fillText(glyph[i % glyph.length], 0, -110 * u); c.restore(); }
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; c.save(); c.rotate(a); fillC(c, glyph[i % glyph.length], 0, -110 * u); c.restore(); }
       for (let i = 0; i < 5; i++) { const a = (i / 5) * TAU * 2; c.beginPath(); c.moveTo(Math.cos(a - Math.PI / 2) * 100 * u, Math.sin(a - Math.PI / 2) * 100 * u); const b = ((i + 1) / 5) * TAU * 2; c.lineTo(Math.cos(b - Math.PI / 2) * 100 * u, Math.sin(b - Math.PI / 2) * 100 * u); c.stroke(); }
       c.restore();
       // 祭壇
       const ax = ccx, ay = cr ? cr.y + cr.h + 16 * u : H * 0.5, half = cr ? cr.w / 2 + 16 * u : 150 * u;
       c.fillStyle = '#1c1a22'; c.fillRect(ax - half - 12 * u, ay - 30 * u, (half + 12 * u) * 2, 30 * u); c.fillStyle = '#2a2632'; c.fillRect(ax - half - 22 * u, ay, (half + 22 * u) * 2, 12 * u);
       c.strokeStyle = '#4a3a5a'; c.lineWidth = 1.5 * u; c.strokeRect(ax - half - 12 * u, ay - 30 * u, (half + 12 * u) * 2, 30 * u);
-      c.fillStyle = 'rgba(150,90,200,0.5)'; c.font = `${Math.round(10 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('― 贄を捧げよ ―', ax, ay - 15 * u);
+      c.fillStyle = 'rgba(150,90,200,0.5)'; c.font = `${Math.round(10 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '― 贄を捧げよ ―', ax, ay - 15 * u);
       // ろうそくと紫の炎
       for (const [sx, hh] of [[-1, 70], [1, 70], [-0.86, 44], [0.86, 44]]) {
         const cx = ax + sx * half, cy = ay - 30 * u - hh * u;
@@ -403,9 +433,8 @@ const SCENES = {
     const rw = x.html('<div class="evu-rewards"></div>');
     rewards.forEach((ch) => { const back = x.html('<div class="evu-facedown"><span>？</span></div>'); back._ch = ch; rw.appendChild(back); });
     const note = x.html('<div class="evu-note">この呪いを受ければ、伏せた2枚が手に入る</div>');
-    const foot = x.html('<div class="evu-foot"></div>');
-    const yes = x.btn('呪いを受ける', 'evu-danger', async () => {
-      yes.disabled = no.disabled = true; foot.classList.add('busy');
+    const yes = x.ok(async () => {
+      x.foot();
       accepted = performance.now();
       x.sfx('ev_curse'); curseCard.classList.add('absorb');
       x.api.curse(curse.id);
@@ -417,11 +446,10 @@ const SCENES = {
         await wait(500);
       }
       x.toast(`呪い「${CURSE_BY_ID[curse.id].name}」と引きかえに、2枚を手に入れた`);
-      foot.innerHTML = ''; foot.appendChild(x.btn('すすむ', '', () => x.done()));
+      x.foot(x.ok(() => x.done()));
     });
-    const no = x.btn('立ち去る', 'btn-sub', () => x.done());
-    foot.append(yes, no);
-    x.body.append(x.html('<div class="evu-spacer s"></div>'), curseCard, note, rw, foot);
+    x.foot(x.back(), yes);
+    x.body.append(x.html('<div class="evu-spacer s"></div>'), curseCard, note, rw);
     x.fit(x.body);
   },
 
@@ -462,7 +490,7 @@ const SCENES = {
       x.sfx('ev_coin'); await wait(500); x.sfx('ev_coin', { pitch: 0.85 }); await wait(500); x.sfx('ev_coin', { pitch: 0.7 });
       await wait(400);
       x.body.append(x.html(`<div class="evu-big bad">コメットを <b>${n}</b> 個<br>盗まれた！</div>`), x.html(`<div class="evu-note">${before} → ${before - n}</div>`));
-      const f = x.html('<div class="evu-foot"></div>'); f.appendChild(x.btn('くやしい…', 'btn-sub', () => x.done())); x.body.appendChild(f);
+      x.foot(x.ok(() => x.done()));
     })();
   },
 
@@ -506,7 +534,7 @@ const SCENES = {
     (async () => {
       await wait(2300);
       x.body.append(x.html('<div class="evu-big bad">待ち伏せだ！</div>'), x.html('<div class="evu-note">次のフェーズ、中ボスが2体待ちかまえている</div>'));
-      const f = x.html('<div class="evu-foot"></div>'); f.appendChild(x.btn('受けて立つ', 'evu-danger', () => x.done())); x.body.appendChild(f);
+      x.foot(x.ok(() => x.done()));
     })();
   },
 };
@@ -577,7 +605,7 @@ function ofuda(c, x, y, s, rot, ch, a = 1) {
   c.save(); c.translate(x, y); c.rotate(rot); c.globalAlpha = a;
   c.fillStyle = '#f6efd8'; c.fillRect(-s * 0.22, -s * 0.6, s * 0.44, s * 1.2);
   c.strokeStyle = '#b81818'; c.lineWidth = s * 0.03; c.strokeRect(-s * 0.18, -s * 0.55, s * 0.36, s * 1.1);
-  c.fillStyle = '#b81818'; c.font = `${Math.round(s * 0.32)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ch, 0, -s * 0.18);
+  c.fillStyle = '#b81818'; c.font = `${Math.round(s * 0.32)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, ch, 0, -s * 0.18);
   c.strokeStyle = '#b81818'; c.lineWidth = s * 0.02; c.beginPath(); for (let k = 0; k < 5; k++) { c.moveTo(-s * 0.1, s * (0.12 + k * 0.08)); c.lineTo(s * 0.1, s * (0.16 + k * 0.08)); } c.stroke();
   c.restore();
 }
@@ -634,7 +662,7 @@ Object.assign(SCENES, {
       await wait(500); plate.classList.add('chained'); x.sfx('ev_chain');
       await wait(700);
       x.body.append(x.html(`<div class="evu-note">次のフェーズの間、<b>${x.skillName(pick.id)}</b> が使えない</div>`), x.html('<div class="evu-spacer"></div>'));
-      x.foot(x.btn('しかたない', 'btn-sub', () => x.done()));
+      x.foot(x.ok(() => x.done()));
     })();
   },
 
@@ -656,7 +684,7 @@ Object.assign(SCENES, {
         c.fillStyle = '#f4ead0'; c.fillRect(-36 * u, 0, 72 * u, len);
         c.strokeStyle = '#a00'; c.lineWidth = 2 * u; c.strokeRect(-30 * u, 6 * u, 60 * u, len - 12 * u);
         c.fillStyle = '#c00000'; c.font = `${Math.round(46 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-        if (un > 0.6) { c.globalAlpha = clamp((un - 0.6) / 0.4); c.fillText('大', 0, len * 0.33); c.fillText('凶', 0, len * 0.68); c.globalAlpha = 1; }
+        if (un > 0.6) { c.globalAlpha = clamp((un - 0.6) / 0.4); fillC(c, '大', 0, len * 0.33); fillC(c, '凶', 0, len * 0.68); c.globalAlpha = 1; }
         c.fillStyle = '#3a1a10'; c.fillRect(-40 * u, -6 * u, 80 * u, 8 * u); c.fillRect(-40 * u, len - 2 * u, 80 * u, 8 * u);
         c.restore();
       }
@@ -684,34 +712,8 @@ Object.assign(SCENES, {
       x._t3 = x.time(); stage = 3; x.api.next('ambush', 2); x.sfx('ev_ambush');
       woe('待ち伏せ', '次のフェーズ、中ボスが2体');
       await wait(900);
-      x.foot(x.btn('…ついてない', 'evu-danger', () => x.done()));
+      x.foot(x.ok(() => x.done()));
     })();
-  },
-
-  // ---------------- ミミック：光る宝箱。開けるしかない。開けたら、牙 ----------------
-  mimic(x) {
-    let lid = 0, bit = 0;
-    x.draw((c, t, W, H, u) => {
-      const g = c.createRadialGradient(W / 2, H * 0.55, 0, W / 2, H * 0.55, H * 0.7); g.addColorStop(0, bit ? '#3a0410' : '#2a2210'); g.addColorStop(1, '#050304'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-      // スポットライト
-      c.fillStyle = bit ? 'rgba(255,40,40,0.08)' : 'rgba(255,240,200,0.08)'; c.beginPath(); c.moveTo(W * 0.45, 0); c.lineTo(W * 0.55, 0); c.lineTo(W * 0.8, H * 0.7); c.lineTo(W * 0.2, H * 0.7); c.fill();
-      const jit = bit ? Math.sin(t * 40) * 3 * u : lid > 0 ? Math.sin(t * 60) * 2 * u : 0;
-      const sc = 130 * u * (bit ? 1 + 0.04 * Math.sin(t * 8) : 1);
-      bigChest(c, W / 2 + jit, H * 0.56 + (bit ? Math.abs(Math.sin(t * 6)) * -14 * u : 0), sc, bit ? 0.7 + 0.25 * Math.sin(t * 7) : lid, !!bit, t, bit ? 0 : 1);
-      // きらきら（開ける前）
-      if (!bit) for (let i = 0; i < 8; i++) { const a = t * 1.5 + i, r = (70 + 20 * Math.sin(t * 2 + i)) * u; const o = Math.max(0, Math.sin(t * 4 + i * 2)); c.fillStyle = `rgba(255,240,180,${o})`; c.save(); c.translate(W / 2 + Math.cos(a) * r * 1.4, H * 0.5 + Math.sin(a) * r * 0.6); c.rotate(Math.PI / 4); c.fillRect(-3 * u, -3 * u, 6 * u, 6 * u); c.restore(); }
-    });
-    const note = x.html('<div class="evu-note">ぴかぴかの宝箱を見つけた！</div>');
-    x.body.append(x.html('<div class="evu-spacer"></div>'), x.html('<div class="evu-spacer"></div>'), note);
-    const f = x.foot(x.btn('開ける', '', async () => {
-      f.remove(); x.sfx('ev_chest', { pitch: 0.6 });
-      lid = 0.01; await wait(700);
-      bit = 1; x.sfx('ev_bite'); x.flash('#ff1a2a', 0.5, 0.8); x.shake(26, 0.7); x.api.next('mimic', 1);
-      note.remove();
-      x.body.append(x.html('<div class="evu-big bad">ミミックだ！</div>'), x.html('<div class="evu-note">次のフェーズ、倒すまでコメットを奪われる<br><small>倒せば、奪われた分におまけをつけて取り返せる</small></div>'));
-      await wait(700);
-      x.foot(x.btn('やってやる', 'evu-danger', () => x.done()));
-    }));
   },
 
   // ---------------- 宝箱えらび：たいまつの部屋に3つの宝箱。1つはミミック ----------------
@@ -727,23 +729,28 @@ Object.assign(SCENES, {
       // たいまつ
       for (const tx of [0.08, 0.92]) { const fx = W * tx, fy = H * 0.3, fl = 1 + 0.2 * Math.sin(t * 17 + tx * 9); const g = c.createRadialGradient(fx, fy, 0, fx, fy, 120 * u); g.addColorStop(0, 'rgba(255,160,60,0.35)'); g.addColorStop(1, 'rgba(255,120,40,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H); c.fillStyle = '#3a2410'; c.fillRect(fx - 3 * u, fy, 6 * u, 30 * u); c.fillStyle = '#ffb040'; c.beginPath(); c.ellipse(fx, fy - 6 * u * fl, 6 * u, 12 * u * fl, 0, 0, TAU); c.fill(); c.fillStyle = '#fff2b0'; c.beginPath(); c.ellipse(fx, fy - 3 * u, 3 * u, 6 * u, 0, 0, TAU); c.fill(); }
       // 床
-      const lr0 = x.rect(labels); c.fillStyle = '#16121a'; c.fillRect(0, lr0 ? lr0.y - 50 * u : H * 0.62, W, H);
-      const lr = x.rect(labels), baseY = lr ? lr.y - 30 * u : H * 0.56;
+      const baseY = H * 0.5;
+      c.fillStyle = '#16121a'; c.fillRect(0, baseY - 20 * u, W, H);
+      x._geo = { baseY, s: 70 * u, W };
       kinds.forEach((k, i) => {
         const S = st[i], mim = k === 'mimic' && S.open;
         const hover = picked < 0 ? Math.sin(t * 2 + i) * 3 * u : 0;
         const jit = mim ? Math.sin(t * 40) * 2 * u : 0;
         bigChest(c, W * xs[i] + jit, baseY + hover, 70 * u, mim ? 0.7 + 0.25 * Math.sin(t * 8) : S.lid, mim, t, picked === i && k !== 'mimic' ? 1 : 0);
+        // 中身の札（開いたあと）
+        if (S.shown) { const lab = k === 'card' ? 'レアカード' : k === 'comet' ? 'コメット×8' : 'ミミック'; c.fillStyle = k === 'mimic' ? '#a01020' : k === 'card' ? '#5a3ab0' : '#1a6ab0'; c.beginPath(); c.roundRect(W * xs[i] - 46 * u, baseY + 46 * u, 92 * u, 24 * u, 6 * u); c.fill(); c.fillStyle = '#fff'; c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, lab, W * xs[i], baseY + 58 * u); }
       });
+      if (picked < 0) { const i = Math.floor(t / 1.2) % 3; tapHint(c, W * xs[i], baseY - 50 * u, u, t, 'えらぶ'); }
     });
-    const labels = x.html('<div class="evu-chestlabels"></div>');
-    kinds.forEach((k, i) => { const b = x.html(`<button class="evu-chestbtn" style="left:${xs[i] * 100}%">この箱</button>`); b.addEventListener('click', () => choose(i)); labels.appendChild(b); });
-    const note = x.html('<div class="evu-note">3つのうち1つは、ミミック</div>');
-    x.body.append(x.html('<div class="evu-spacer"></div>'), labels, note);
-    const reveal = (i) => { const k = kinds[i]; const txt = k === 'card' ? 'レアなカード' : k === 'comet' ? 'コメット ×8' : 'ミミック'; const b = labels.children[i]; b.textContent = txt; b.className = `evu-chestbtn shown k-${k}`; };
+    const hit = (px, py) => { const g = x._geo; if (!g || picked >= 0) return -1; for (let i = 0; i < 3; i++) if (Math.abs(px - g.W * xs[i]) < g.s * 0.7 && py > g.baseY - g.s * 0.6 && py < g.baseY + g.s * 0.5) return i; return -1; };
+    x.tap((px, py) => { const i = hit(px, py); if (i >= 0) choose(i); }, (px, py) => hit(px, py) >= 0);
+    const note = x.html('<div class="evu-note">宝箱をひとつ選んで開ける。3つのうち1つは、ミミック</div>');
+    x.body.append(x.html('<div class="evu-spacer"></div>'), note);
+    x.foot(x.back());
+    const reveal = (i) => { st[i].shown = 1; };
     const openLid = async (i) => { for (let f = 0; f <= 12; f++) { st[i].lid = f / 12; await wait(16); } };
     async function choose(i) {
-      if (picked >= 0) return; picked = i; labels.classList.add('chosen'); labels.children[i].classList.add('on');
+      if (picked >= 0) return; picked = i; x.foot();
       x.sfx('ev_chest');
       const k = kinds[i];
       for (let f = 0; f < 18; f++) { st[i].lid = f % 2 ? 0.04 : 0; await wait(30); }   // ガタガタ…
@@ -760,7 +767,7 @@ Object.assign(SCENES, {
       await wait(800);
       // 残りの箱も開けて、何が入っていたか見せる
       for (let j = 0; j < 3; j++) if (j !== i) { if (kinds[j] === 'mimic') { st[j].open = 1; st[j].lid = 0.8; } else openLid(j); reveal(j); await wait(250); }
-      x.foot(x.btn('すすむ', k === 'mimic' ? 'evu-danger' : '', () => x.done()));
+      x.foot(x.ok(() => x.done()));
     }
   },
 
@@ -798,22 +805,23 @@ Object.assign(SCENES, {
         for (let k = 0; k < 4; k++) { const p = (t * 0.8 + k * 0.25 + i * 0.1) % 1; c.fillStyle = 'rgba(255,255,255,0.6)'; c.beginPath(); c.arc(Math.sin(k * 3 + t) * 8 * u, -10 * u - p * 30 * u * lvl, 2 * u, 0, TAU); c.fill(); }
         c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 1.5 * u; c.beginPath(); c.arc(0, -26 * u, 24 * u, 0, TAU); c.stroke();
         c.fillStyle = '#7a4a20'; c.fillRect(-8 * u, -72 * u, 16 * u, 8 * u);
-        c.fillStyle = '#f0e6c8'; c.fillRect(-14 * u, -34 * u, 28 * u, 14 * u); c.fillStyle = '#5a3a20'; c.font = `${Math.round(10 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('？', 0, -27 * u);
+        c.fillStyle = '#f0e6c8'; c.fillRect(-14 * u, -34 * u, 28 * u, 14 * u); c.fillStyle = '#5a3a20'; c.font = `${Math.round(10 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '？', 0, -27 * u);
         c.restore(); c.globalAlpha = 1;
         // 上る湯気
         if (drunk < 0) for (let k = 0; k < 3; k++) { const p = (t * 0.4 + k / 3 + i * 0.2) % 1; c.fillStyle = `rgba(${r},${gg},${b},${0.3 * (1 - p)})`; c.beginPath(); c.arc(bx + Math.sin(t * 2 + k + i) * 8 * u, by - 76 * u - p * 60 * u, (4 + p * 8) * u, 0, TAU); c.fill(); }
       });
+      x._geo = { W, u, by: H * 0.58 };
+      if (drunk < 0) { c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; cols.forEach(([r, gg, b], i) => { c.fillStyle = `rgb(${r},${gg},${b})`; fillC(c, ['赤', '緑', '青'][i] + 'の小びん', W * (0.25 + i * 0.25), H * 0.58 + 26 * u); }); tapHint(c, W * (0.25 + (Math.floor(t / 1.2) % 3) * 0.25), H * 0.58 - 96 * u, u, t, 'のむ'); }
       // 飲んだあと：画面がその色に染まり、泡がのぼる
       if (tint > 0) { const [r, gg, b] = cols[drunk]; c.fillStyle = `rgba(${r},${gg},${b},${0.25 * tint})`; c.fillRect(0, 0, W, H); for (let k = 0; k < 30; k++) { const p = (t * 0.5 + k * 0.033) % 1; c.fillStyle = `rgba(${r},${gg},${b},${0.6 * (1 - p) * tint})`; c.beginPath(); c.arc(W * ((k * 0.618) % 1), H * (1 - p), (3 + (k % 4)) * u, 0, TAU); c.fill(); } }
     });
-    const row = x.html('<div class="evu-orbs"></div>');
-    const note = x.html('<div class="evu-note">1本だけ、飲んでみる？</div>');
-    cols.forEach((col, i) => { const b = x.html(`<button class="evu-orb" style="--oc:rgb(${col.join(',')})"><b>${['赤', '緑', '青'][i]}の小びん</b><small>飲む</small></button>`); b.addEventListener('click', () => drink(i, b)); row.appendChild(b); });
-    const skip = x.btn('やめておく', 'btn-sub', () => x.done());
-    x.body.append(x.html('<div class="evu-spacer"></div>'), note, row);
-    const f = x.foot(skip);
-    async function drink(i, b) {
-      if (drunk >= 0) return; drunk = i; x._d0 = performance.now(); row.classList.add('chosen'); b.classList.add('on'); f.remove();
+    const note = x.html('<div class="evu-note">小びんを1本えらんで飲む。何が起きるかは、飲んでから</div>');
+    const hitB = (px, py) => { const g = x._geo; if (!g || drunk >= 0) return -1; for (let i = 0; i < 3; i++) if (Math.abs(px - g.W * (0.25 + i * 0.25)) < 34 * g.u && py > g.by - 80 * g.u && py < g.by + 10 * g.u) return i; return -1; };
+    x.tap((px, py) => { const i = hitB(px, py); if (i >= 0) drink(i); }, (px, py) => hitB(px, py) >= 0);
+    x.body.append(x.html('<div class="evu-spacer"></div>'), note);
+    x.foot(x.back());
+    async function drink(i) {
+      if (drunk >= 0) return; drunk = i; x._d0 = performance.now(); x.foot();
       await wait(500); x.sfx('ev_potion');
       await wait(900);
       const good = Math.random() < 0.55, r = pickOne(good ? GOOD : BAD);
@@ -821,9 +829,9 @@ Object.assign(SCENES, {
       if (r.mod) x.api.next('potion', { ...r.mod, name: r.name, sub: r.sub });
       if (r.now) r.now(x.api);
       x.sfx(good ? 'ev_win' : 'ev_lose'); if (!good) x.shake(10, 0.4);
-      note.remove(); row.remove();
+      note.remove();
       x.body.append(x.html(`<div class="evu-big ${good ? '' : 'bad'}">${r.name}</div>`), x.html(`<div class="evu-note">${r.sub}</div>`));
-      x.foot(x.btn(good ? 'ぷはー！' : 'うぇ…', good ? '' : 'btn-sub', () => x.done()));
+      x.foot(x.ok(() => x.done()));
     }
   },
 
@@ -851,15 +859,21 @@ Object.assign(SCENES, {
       const cg = c.createRadialGradient(-R * 0.3, -R * 0.3, 0, 0, 0, R); cg.addColorStop(0, face > 0 ? '#fff6b0' : '#d8d8e0'); cg.addColorStop(1, face > 0 ? '#c88a10' : '#5a5a6a');
       c.fillStyle = cg; c.beginPath(); c.arc(0, 0, R, 0, TAU); c.fill();
       c.strokeStyle = face > 0 ? '#8a5a00' : '#33333f'; c.lineWidth = 4 * u; c.beginPath(); c.arc(0, 0, R * 0.82, 0, TAU); c.stroke();
-      c.fillStyle = face > 0 ? '#8a5a00' : '#2a2a34'; c.font = `${Math.round(44 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(face > 0 ? '表' : '裏', 0, 2 * u);
+      c.fillStyle = face > 0 ? '#8a5a00' : '#2a2a34'; c.font = `${Math.round(44 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, face > 0 ? '表' : '裏', 0, 0);
       c.restore();
       // きらり
+      x._geo = { x: W / 2, y: cy, r: R * 1.2 };
+      if (!fl) tapHint(c, W / 2, cy - R - 10 * u, u, t, 'はじく');
       if (!fl) { const k = (t % 2.4) / 2.4; if (k < 0.15) { c.fillStyle = `rgba(255,255,255,${1 - k / 0.15})`; c.save(); c.translate(W / 2 + R * 0.5, cy - R * 0.5); c.rotate(Math.PI / 4); c.fillRect(-12 * u, -2 * u, 24 * u, 4 * u); c.fillRect(-2 * u, -12 * u, 4 * u, 24 * u); c.restore(); } }
     });
     const note = x.html('<div class="evu-note"><b class="ok">表</b>ならレアなカードを1枚。<b class="ng">裏</b>ならHPが半分に</div>');
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
-    const f = x.foot(x.btn('コインをはじく', '', async () => {
-      f.remove(); const res = Math.random() < 0.5; fl = { t0: performance.now(), res }; x.sfx('ev_flip');
+    const onCoin = (px, py) => { const g = x._geo; return !fl && g && Math.hypot(px - g.x, py - g.y) < g.r; };
+    x.tap((px, py) => { if (onCoin(px, py)) flip(); }, onCoin);
+    x.foot(x.back());
+    const note0 = note; note0.innerHTML = 'コインをはじく。' + note0.innerHTML;
+    const flip = async () => {
+      x.foot(); const res = Math.random() < 0.5; fl = { t0: performance.now(), res }; x.sfx('ev_flip');
       await wait(1300); x.sfx('ev_coin', { pitch: 1.4 }); await wait(500);
       note.remove();
       if (res) {
@@ -871,8 +885,8 @@ Object.assign(SCENES, {
         x.sfx('ev_lose'); x.flash('#ff1a2a', 0.5, 0.6); x.shake(16, 0.5); x.api.hurt(0.5);
         x.body.append(x.html('<div class="evu-big bad">裏…</div>'), x.html('<div class="evu-note">HPが半分になった</div>'));
       }
-      x.foot(x.btn('すすむ', res ? '' : 'btn-sub', () => x.done()));
-    }), x.btn('やめておく', 'btn-sub', () => x.done()));
+      x.foot(x.ok(() => x.done()));
+    };
   },
 
   // ---------------- 丁半ばくち：畳の上、つぼを振って伏せる。丁（偶数）か半（奇数）か ----------------
@@ -898,23 +912,28 @@ Object.assign(SCENES, {
       c.fillStyle = '#2a1404'; c.fillRect(-48 * u, 16 * u, 96 * u, 6 * u);
       c.restore();
       // 丁・半の文字（布の両側）
-      c.font = `${Math.round(26 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillStyle = side === '丁' ? '#c01818' : 'rgba(60,40,20,0.45)'; c.fillText('丁', W * 0.2, cy);
-      c.fillStyle = side === '半' ? '#c01818' : 'rgba(60,40,20,0.45)'; c.fillText('半', W * 0.8, cy);
+      // 丁・半の札（さわって賭ける）
+      x._geo = { cy, W, u };
+      for (const [k, fx] of [['丁', 0.22], ['半', 0.78]]) {
+        const on = side === k, can = !busy && bet > 0;
+        c.fillStyle = on ? '#c01818' : can ? '#fbf6ea' : 'rgba(251,246,234,0.5)'; c.strokeStyle = '#3a2410'; c.lineWidth = 3 * u;
+        c.beginPath(); c.roundRect(W * fx - 26 * u, cy - 30 * u, 52 * u, 60 * u, 6 * u); c.fill(); c.stroke();
+        c.fillStyle = on ? '#fff' : '#8a1010'; c.font = `${Math.round(34 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, k, W * fx, cy);
+        if (can && !side) tapHint(c, W * fx, cy - 36 * u, u, t + (fx > 0.5 ? 0.4 : 0), k === '丁' ? '偶数' : '奇数');
+      }
     });
-    const info = x.html('<div class="evu-note">コメットを賭けて、丁（偶数）か半（奇数）か。当たれば倍</div>');
+    const hitS = (px, py) => { const g = x._geo; if (!g || busy || !bet) return null; for (const [k, fx] of [['丁', 0.22], ['半', 0.78]]) if (Math.abs(px - g.W * fx) < 34 * g.u && Math.abs(py - g.cy) < 40 * g.u) return k; return null; };
+    x.tap((px, py) => { const k = hitS(px, py); if (k) roll(k); }, (px, py) => !!hitS(px, py));
+    const info = x.html('<div class="evu-note">賭けるコメットを選んで、布の上の「丁」か「半」をさわる。当たれば倍</div>');
     const bets = x.html('<div class="evu-bets"></div>');
-    const sides = x.html('<div class="evu-sides"></div>');
     const res = x.html('<div class="evu-dres"></div>');
     [2, 5, 10].forEach((n) => { const b = x.html(`<button class="evu-chip" data-n="${n}">${x.cometImg(COMET_HUES[n % 5])}<b>${n}</b></button>`); b.addEventListener('click', () => { if (busy) return; bet = n; sync(); }); bets.appendChild(b); });
-    const bC = x.btn('丁', 'evu-sidebtn', () => roll('丁')), bH = x.btn('半', 'evu-sidebtn', () => roll('半'));
-    sides.append(bC, bH);
-    const sync = () => { bets.querySelectorAll('.evu-chip').forEach((b) => { const n = Number(b.dataset.n); b.classList.toggle('on', n === bet); b.disabled = x.s.comets < n; }); if (bet > x.s.comets) bet = 0; bC.disabled = bH.disabled = !bet || busy; bC.classList.toggle('dim', bC.disabled); bH.classList.toggle('dim', bH.disabled); };
-    x.body.append(x.html('<div class="evu-spacer"></div>'), res, info, bets, sides);
-    const f = x.foot(x.btn('帰る', 'btn-sub', () => x.done()));
+    const sync = () => { bets.querySelectorAll('.evu-chip').forEach((b) => { const n = Number(b.dataset.n); b.classList.toggle('on', n === bet); b.disabled = x.s.comets < n; }); if (bet > x.s.comets) bet = 0; };
+    x.body.append(x.html('<div class="evu-spacer"></div>'), res, info, bets);
+    x.foot(x.back());
     sync();
     async function roll(sd) {
-      if (busy || !bet) return; busy = true; side = sd; sync(); res.innerHTML = '';
+      if (busy || !bet) return; busy = true; side = sd; sync(); res.innerHTML = ''; x.foot();
       x.api.addComets(-bet); x.sfx('ev_coin');
       // つぼを下ろして、振る
       for (let k = 0; k <= 10; k++) { bowl.up = 1 - k / 10; await wait(16); }
@@ -927,7 +946,7 @@ Object.assign(SCENES, {
       const sum = dv[0] + dv[1], out = sum % 2 === 0 ? '丁' : '半', win = out === sd;
       if (win) { x.api.addComets(bet * 2); x.sfx('ev_win'); } else x.sfx('ev_lose');
       res.innerHTML = `<div class="evu-call ${win ? 'win' : 'lose'}">${dv[0]}・${dv[1]}の${out}！　${win ? `コメット +${bet}` : `コメット −${bet}`}</div>`;
-      busy = false; side = null; sync();
+      busy = false; side = null; sync(); x.foot(x.ok(() => x.done()));
     }
   },
 
@@ -943,7 +962,7 @@ Object.assign(SCENES, {
       // 掛け軸
       const sy = H * 0.2, sh = H * 0.22;
       c.fillStyle = '#e8dcbc'; c.fillRect(W * 0.78 - 26 * u, sy, 52 * u, sh); c.fillStyle = '#2a1a10'; c.fillRect(W * 0.78 - 31 * u, sy - 5 * u, 62 * u, 6 * u); c.fillRect(W * 0.78 - 31 * u, sy + sh, 62 * u, 6 * u);
-      c.fillStyle = '#1a1010'; c.font = `${Math.round(24 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; for (let i = 0; i < 3; i++) c.fillText('心技体'[i], W * 0.78, sy + sh * (0.2 + i * 0.3));
+      c.fillStyle = '#1a1010'; c.font = `${Math.round(24 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; for (let i = 0; i < 3; i++) fillC(c, '心技体'[i], W * 0.78, sy + sh * (0.2 + i * 0.3));
       // 大きな影（中ボス）：呼吸するように揺れる
       const by = H * 0.5, br = 72 * u * (1 + 0.03 * Math.sin(t * 2));
       c.save(); c.shadowColor = rung ? 'rgba(255,200,60,0.8)' : 'rgba(255,255,255,0.15)'; c.shadowBlur = 30 * u; c.fillStyle = '#0a0606';
@@ -957,38 +976,68 @@ Object.assign(SCENES, {
     });
     const note = x.html(`<div class="evu-note">次のフェーズのはじめに、強い中ボスが出る。<br><b>${T}秒</b>以内に倒せば コメット <b>+${R}</b></div>`);
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
-    const f = x.foot(x.btn('挑む', '', async () => {
-      f.remove(); rung = performance.now(); x.sfx('ev_gong'); x.shake(8, 0.5); x.api.next('trial', 1);
-      x.body.appendChild(x.html('<div class="evu-big">いざ、勝負！</div>'));
-      await wait(900); x.foot(x.btn('すすむ', '', () => x.done()));
-    }), x.btn('やめておく', 'btn-sub', () => x.done()));
+    x.foot(x.back(), x.ok(async () => {
+      x.foot(); rung = performance.now(); x.sfx('ev_gong'); x.shake(8, 0.5); x.api.next('trial', 1);
+      note.remove(); x.body.appendChild(x.html('<div class="evu-big">いざ、勝負！</div>'));
+      await wait(1400); x.done();
+    }));
   },
 
-  // ---------------- 宝の山：洞窟の口から、金貨があふれ出す ----------------
+  // ---------------- 宝の山：岩の洞窟の奥、光る金貨の山。宝石・王冠・宝箱がうもれ、金貨がこぼれ落ちる ----------------
   hoard(x) {
     x.sfx('ev_gold');
-    const coins = [];
+    // 山の金貨（奥から手前へ、少しずつ重なる）。毎回同じ形にするため、決まった並びで作る
+    const pile = [];
+    for (let row = 0; row < 11; row++) { const n = 6 + row * 2; for (let i = 0; i < n; i++) { const fx = (i + 0.5) / n, sp = 0.1 + row * 0.038; pile.push({ fx: 0.5 + (fx - 0.5) * sp * 2, row, tone: (i * 7 + row * 3) % 5, tilt: ((i * 13 + row * 5) % 7 - 3) * 0.12 }); } }
+    const gems = [[0.36, 4, '#ff3a5a'], [0.62, 6, '#3ad0ff'], [0.47, 8, '#5aff8a'], [0.7, 9, '#c06aff'], [0.28, 9, '#ffd84a']];
+    const falls = Array.from({ length: 10 }, (_, i) => ({ d: i * 0.37, side: i % 2 ? 1 : -1, s: 0.8 + (i % 3) * 0.2 }));
     x.draw((c, t, W, H, u) => {
-      c.fillStyle = '#0a0806'; c.fillRect(0, 0, W, H);
-      // 洞窟の口
-      const cx = W / 2, cy = H * 0.52;
-      const g = c.createRadialGradient(cx, cy, 0, cx, cy, W * 0.5); g.addColorStop(0, 'rgba(255,200,80,0.55)'); g.addColorStop(0.5, 'rgba(160,100,20,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-      c.fillStyle = '#1a140c'; c.beginPath(); c.moveTo(0, 0); c.lineTo(W, 0); c.lineTo(W, H); c.lineTo(W * 0.88, H); c.quadraticCurveTo(W * 0.9, H * 0.25, cx, H * 0.22); c.quadraticCurveTo(W * 0.1, H * 0.25, W * 0.12, H); c.lineTo(0, H); c.fill();
-      // 金の山
-      c.fillStyle = '#c89018'; c.beginPath(); c.moveTo(W * 0.12, H * 0.8); c.quadraticCurveTo(cx, H * 0.38, W * 0.88, H * 0.8); c.lineTo(W * 0.88, H); c.lineTo(W * 0.12, H); c.fill();
-      for (let i = 0; i < 70; i++) { const px = W * (0.15 + ((i * 0.618) % 1) * 0.7), base = H * 0.8 - Math.sin(((px - W * 0.12) / (W * 0.76)) * Math.PI) * H * 0.2; const py = base + ((i * 0.37) % 1) * H * 0.18; c.fillStyle = i % 3 ? '#ffd84a' : '#ffec9a'; c.beginPath(); c.ellipse(px, py, 7 * u, 3.5 * u, 0, 0, TAU); c.fill(); }
-      // 宝箱と王冠
-      bigChest(c, W * 0.3, H * 0.66, 46 * u, 1, false, t, 0.6);
-      bigChest(c, W * 0.72, H * 0.7, 40 * u, 0, false, t, 0.3);
-      // 降ってくる金貨
-      if (Math.random() < 0.5) coins.push({ x: Math.random() * W, y: -10, vy: 2 + Math.random() * 3, s: Math.random() * 6 });
-      for (const k of coins) { k.y += k.vy * u; k.vy += 0.08; const sx = Math.abs(Math.cos(t * 6 + k.s)); c.fillStyle = '#ffd84a'; c.beginPath(); c.ellipse(k.x, k.y, 6 * u * Math.max(0.15, sx), 6 * u, 0, 0, TAU); c.fill(); }
-      while (coins.length && coins[0].y > H) coins.shift();
-      // きらめき
-      for (let i = 0; i < 10; i++) { const o = Math.max(0, Math.sin(t * 3 + i * 1.7)); c.fillStyle = `rgba(255,255,255,${o})`; const px = W * (0.2 + ((i * 0.37) % 1) * 0.6), py = H * (0.55 + ((i * 0.53) % 1) * 0.3); c.fillRect(px - 6 * u * o, py - 1, 12 * u * o, 2); c.fillRect(px - 1, py - 6 * u * o, 2, 12 * u * o); }
+      const cx = W / 2, top = H * 0.3, base = H * 0.66;
+      // 洞窟の奥：金色の照り返し
+      c.fillStyle = '#0b0805'; c.fillRect(0, 0, W, H);
+      const g = c.createRadialGradient(cx, base - 40 * u, 0, cx, base - 40 * u, W * 0.75); g.addColorStop(0, 'rgba(255,196,80,0.55)'); g.addColorStop(0.45, 'rgba(150,90,20,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      // 岩の天井と壁（でこぼこの縁、照り返しで縁が金色）
+      const rock = (pts, col, edge) => { c.fillStyle = col; c.beginPath(); pts.forEach(([px, py], i) => (i ? c.lineTo(px * W, py * H) : c.moveTo(px * W, py * H))); c.closePath(); c.fill(); if (edge) { c.strokeStyle = edge; c.lineWidth = 2 * u; c.stroke(); } };
+      rock([[0, 0], [1, 0], [1, 0.62], [0.93, 0.5], [0.95, 0.36], [0.86, 0.24], [0.74, 0.19], [0.6, 0.15], [0.44, 0.16], [0.3, 0.2], [0.17, 0.26], [0.08, 0.38], [0.06, 0.52], [0, 0.6]], '#1c140c', 'rgba(255,190,90,0.35)');
+      rock([[0, 0], [1, 0], [1, 0.4], [0.9, 0.18], [0.7, 0.1], [0.5, 0.08], [0.3, 0.1], [0.12, 0.18], [0, 0.42]], '#120c07');
+      // つらら（上から垂れる岩）
+      for (const [fx, len] of [[0.22, 0.05], [0.37, 0.035], [0.55, 0.045], [0.68, 0.03], [0.8, 0.05]]) { c.fillStyle = '#1c140c'; c.beginPath(); c.moveTo(W * fx - 9 * u, H * 0.17); c.lineTo(W * fx, H * (0.17 + len)); c.lineTo(W * fx + 9 * u, H * 0.17); c.fill(); }
+      // 床
+      c.fillStyle = '#16100a'; c.fillRect(0, base, W, H - base);
+      // 金貨の山：奥の段から描く。下の段ほど広く、明るい
+      c.fillStyle = '#6a4206'; c.beginPath(); c.moveTo(W * 0.04, base + 10 * u); c.quadraticCurveTo(cx, top - 30 * u, W * 0.96, base + 10 * u); c.fill();
+      const TONE = ['#ffd84a', '#ffe680', '#f0b820', '#ffcc30', '#fff0a8'];
+      for (const p of pile) {
+        const ry = top + (p.row / 10) * (base - top), half = Math.abs(p.fx - 0.5) * 2;
+        const py = ry + half * half * (base - top) * 0.55 * (1 - p.row / 14);
+        if (py > base + 6 * u) continue;
+        const px = p.fx * W, r = (7 + p.row * 0.4) * u;
+        c.fillStyle = '#8a5a08'; c.beginPath(); c.ellipse(px, py + 1.5 * u, r, r * 0.48, p.tilt, 0, TAU); c.fill();
+        c.fillStyle = TONE[p.tone]; c.beginPath(); c.ellipse(px, py, r, r * 0.45, p.tilt, 0, TAU); c.fill();
+        c.strokeStyle = 'rgba(140,90,0,0.5)'; c.lineWidth = 1 * u; c.beginPath(); c.ellipse(px, py, r * 0.62, r * 0.27, p.tilt, 0, TAU); c.stroke();
+      }
+      // 宝石
+      for (const [fx, row, col] of gems) { const px = W * fx, py = top + (row / 10) * (base - top) + 4 * u, r = 8 * u; c.fillStyle = col; c.beginPath(); c.moveTo(px, py - r); c.lineTo(px + r * 0.8, py - r * 0.2); c.lineTo(px, py + r); c.lineTo(px - r * 0.8, py - r * 0.2); c.closePath(); c.fill(); c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.moveTo(px - r * 0.3, py - r * 0.5); c.lineTo(px, py - r * 0.85); c.lineTo(px + r * 0.1, py - r * 0.3); c.fill(); }
+      // 王冠（いただき）
+      const kx = cx, ky = top - 6 * u + Math.sin(t * 1.5) * 1.5 * u;
+      c.fillStyle = '#ffd84a'; c.strokeStyle = '#8a5a00'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(kx - 22 * u, ky + 10 * u); c.lineTo(kx - 24 * u, ky - 10 * u); c.lineTo(kx - 12 * u, ky); c.lineTo(kx, ky - 16 * u); c.lineTo(kx + 12 * u, ky); c.lineTo(kx + 24 * u, ky - 10 * u); c.lineTo(kx + 22 * u, ky + 10 * u); c.closePath(); c.fill(); c.stroke();
+      for (const [dx, col] of [[-12, '#ff3a5a'], [0, '#3ad0ff'], [12, '#5aff8a']]) { c.fillStyle = col; c.beginPath(); c.arc(kx + dx * u, ky + 4 * u, 2.6 * u, 0, TAU); c.fill(); }
+      // うもれた宝箱（左右）と、立てかけた剣
+      bigChest(c, W * 0.2, base + 4 * u, 44 * u, 1, false, t, 0.7);
+      bigChest(c, W * 0.8, base + 6 * u, 38 * u, 0, false, t, 0.3);
+      c.save(); c.translate(W * 0.66, top + 40 * u); c.rotate(0.35); c.fillStyle = '#d8dce8'; c.fillRect(-2.5 * u, -46 * u, 5 * u, 46 * u); c.fillStyle = '#8a5a00'; c.fillRect(-10 * u, 0, 20 * u, 4 * u); c.fillRect(-2 * u, 4 * u, 4 * u, 12 * u); c.restore();
+      // 山からこぼれ落ちる金貨（ころころ転がる）
+      for (const f of falls) {
+        const k = ((t * 0.45 * f.s + f.d) % 1.4); if (k > 1) continue;
+        const sx = cx + f.side * (10 + k * W * 0.4), sy = top + 8 * u + (base - top) * (k * k * 0.9) - Math.abs(Math.sin(k * 14)) * 8 * u * (1 - k);
+        const sq = Math.abs(Math.cos(t * 8 + f.d * 9));
+        c.fillStyle = '#ffd84a'; c.beginPath(); c.ellipse(sx, sy, 6 * u * Math.max(0.2, sq), 6 * u, 0, 0, TAU); c.fill();
+      }
+      // きらめき（十字の光）
+      for (let i = 0; i < 12; i++) { const o = Math.max(0, Math.sin(t * 2.6 + i * 1.9)); if (o < 0.3) continue; const px = W * (0.18 + ((i * 0.37) % 1) * 0.64), py = top + ((i * 0.53) % 1) * (base - top) * 0.9; const L = 9 * u * o; c.fillStyle = `rgba(255,255,240,${o})`; c.beginPath(); c.moveTo(px, py - L); c.lineTo(px + L * 0.18, py); c.lineTo(px, py + L); c.lineTo(px - L * 0.18, py); c.fill(); c.beginPath(); c.moveTo(px - L, py); c.lineTo(px, py + L * 0.18); c.lineTo(px + L, py); c.lineTo(px, py - L * 0.18); c.fill(); }
     });
-    x.body.append(x.html('<div class="evu-spacer"></div>'), x.html('<div class="evu-note">次のフェーズ、15秒間 宝箱と金色の敵があふれ出す！<br><small>宝箱を壊すとコメット、金色の敵はかけら5倍</small></div>'));
-    setTimeout(() => x.foot(x.btn('突入！', '', () => { x.api.next('hoard', 1); x.done(); })), 700);
+    x.body.append(x.html('<div class="evu-spacer"></div>'), x.html('<div class="evu-note gold">次のフェーズの15秒間、宝箱と金色の敵があふれ出す<br><small>宝箱を壊すと コメット ／ 金色の敵は かけら5倍</small></div>'));
+    x.foot(x.ok(() => { x.api.next('hoard', 1); x.done(); }));
   },
 
   // ---------------- 黄金の時間：まぶしい白、回る金の光、すべてが金色に ----------------
@@ -1003,10 +1052,10 @@ Object.assign(SCENES, {
       for (let i = 0; i < 50; i++) { const p = (t * 0.2 + i * 0.02) % 1, px = W * ((i * 0.618) % 1) + Math.sin(t + i) * 20 * u, py = H * (1 - p); const o = Math.sin(p * Math.PI); c.fillStyle = `rgba(255,255,220,${o})`; c.save(); c.translate(px, py); c.rotate(t * 2 + i); c.fillRect(-3 * u, -1 * u, 6 * u, 2 * u); c.fillRect(-1 * u, -3 * u, 2 * u, 6 * u); c.restore(); }
       // 金の太陽
       const R = 54 * u * (1 + 0.04 * Math.sin(t * 3)); c.fillStyle = '#fffbe0'; c.beginPath(); c.arc(W / 2, H * 0.42, R, 0, TAU); c.fill();
-      c.fillStyle = '#c88000'; c.font = `${Math.round(48 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('金', W / 2, H * 0.42 + 2 * u);
+      c.fillStyle = '#c88000'; c.font = `${Math.round(48 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '金', W / 2, H * 0.42);
     });
     x.body.append(x.html('<div class="evu-spacer"></div>'), x.html('<div class="evu-spacer s"></div>'), x.html('<div class="evu-note gold">次のフェーズ、敵がすべて金色に。<br>倒すと かけら 5倍！</div>'));
-    setTimeout(() => x.foot(x.btn('ゆくぞ', '', () => x.done())), 900);
+    x.foot(x.ok(() => x.done()));
   },
 
   // ---------------- 流れ星：笹に短冊。願いを書いた1枚に、星が落ちる → そのスキルが最大に ----------------
@@ -1037,7 +1086,7 @@ Object.assign(SCENES, {
         x.sfx('ev_star', { pitch: 1.2 });
         await wait(700); x.sfx('ev_wish'); x.flash('#fff6c8', 0.5, 0.7); x.api.maxSkill(k.id);
         b.querySelector('small').textContent = max ? '進化した！' : 'Lv MAX！';
-        await wait(800); x.foot(x.btn('ありがとう', '', () => x.done()));
+        await wait(800); x.foot(x.ok(() => x.done()));
       });
       wrap.appendChild(b);
     });
@@ -1054,11 +1103,11 @@ Object.assign(SCENES, {
       // 虹の輪
       for (let i = 0; i < 7; i++) { c.strokeStyle = `hsla(${i * 50 + t * 40},90%,65%,0.35)`; c.lineWidth = 6 * u; c.beginPath(); c.arc(W / 2, H * 0.36, (110 + i * 7) * u, Math.PI, 0); c.stroke(); }
       // 宝船
-      const by = H * 0.3 + Math.sin(t * 1.4) * 5 * u, bx = W / 2, rk = Math.sin(t * 1.4) * 0.04;
+      const by = H * 0.26 + Math.sin(t * 1.4) * 5 * u, bx = W / 2, rk = Math.sin(t * 1.4) * 0.04;
       c.save(); c.translate(bx, by); c.rotate(rk);
       c.fillStyle = '#a8180e'; c.fillRect(-4 * u, -90 * u, 8 * u, 90 * u);
       c.fillStyle = '#fff4d8'; c.beginPath(); c.moveTo(-58 * u, -86 * u); c.quadraticCurveTo(0, -96 * u + Math.sin(t * 2) * 4 * u, 58 * u, -86 * u); c.lineTo(52 * u, -18 * u); c.quadraticCurveTo(0, -24 * u, -52 * u, -18 * u); c.fill();
-      c.fillStyle = '#c01818'; c.font = `${Math.round(38 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('宝', 0, -52 * u);
+      c.fillStyle = '#c01818'; c.font = `${Math.round(38 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '宝', 0, -52 * u);
       c.fillStyle = '#6a2a0a'; c.beginPath(); c.moveTo(-90 * u, 0); c.lineTo(90 * u, 0); c.quadraticCurveTo(80 * u, 30 * u, 50 * u, 32 * u); c.lineTo(-50 * u, 32 * u); c.quadraticCurveTo(-80 * u, 30 * u, -90 * u, 0); c.fill();
       c.fillStyle = '#ffd84a'; c.fillRect(-90 * u, -4 * u, 180 * u, 6 * u);
       for (let i = 0; i < 7; i++) { c.fillStyle = `hsl(${i * 51},80%,60%)`; c.beginPath(); c.arc(-60 * u + i * 20 * u, -8 * u, 7 * u, 0, TAU); c.fill(); }
@@ -1075,7 +1124,7 @@ Object.assign(SCENES, {
       card.addEventListener('click', async () => {
         if (done) return; done = true; wrap.classList.add('chosen'); card.classList.add('on');
         x.api.give(ch); x.sfx('pickBig'); x.flash('#fff6c8', 0.5, 0.6);
-        await wait(700); const f = x.foot(x.btn('ありがたや', '', () => x.done())); fnote.replaceWith(f);
+        await wait(700); x.foot(x.ok(() => x.done()));
       });
       wrap.appendChild(card);
     });
@@ -1106,7 +1155,7 @@ function slotSym(c, x, y, s, i) {
   const S = SLOT[i]; c.save(); c.translate(x, y);
   if (S.k === '星') { drawComet(c, 0, 0, s * 0.36, 200, 0); }
   else if (S.k === '骨') { c.fillStyle = S.col; c.beginPath(); c.arc(0, -s * 0.05, s * 0.3, 0, TAU); c.fill(); c.fillRect(-s * 0.18, s * 0.12, s * 0.36, s * 0.16); c.fillStyle = '#1a1a24'; c.beginPath(); c.arc(-s * 0.12, -s * 0.06, s * 0.08, 0, TAU); c.arc(s * 0.12, -s * 0.06, s * 0.08, 0, TAU); c.fill(); }
-  else { c.fillStyle = S.col; c.strokeStyle = '#1a0a10'; c.lineWidth = s * 0.08; c.font = `${Math.round(s * 0.7)}px ${S.k === '7' ? "'Press Start 2P', monospace" : 'DotGothic16, sans-serif'}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.strokeText(S.k, 0, s * 0.04); c.fillText(S.k, 0, s * 0.04); }
+  else { c.fillStyle = S.col; c.strokeStyle = '#1a0a10'; c.lineWidth = s * 0.08; c.font = `${Math.round(s * 0.7)}px ${S.k === '7' ? "'Press Start 2P', monospace" : 'DotGothic16, sans-serif'}`; c.textAlign = 'center'; c.textBaseline = 'middle'; strokeC(c, S.k, 0, s * 0.04); fillC(c, S.k, 0, s * 0.04); }
   c.restore();
 }
 // ルーレットのます
@@ -1147,18 +1196,18 @@ Object.assign(SCENES, {
       else { const k = (performance.now() - joined) / 1000; happy = true; py -= Math.abs(Math.sin(k * 7)) * 26 * u * Math.max(0, 1 - k * 0.4); px = lx + (W * 0.5 - lx) * ease(k / 1.2); }
       palFig(c, px, py, 34 * u, t, happy, !joined);
       // ハート
-      if (joined) { const k = (performance.now() - joined) / 1000; for (let i = 0; i < 6; i++) { const p = clamp(k * 0.8 - i * 0.12); if (p <= 0 || p >= 1) continue; const hx = px + Math.sin(i * 2 + p * 4) * 40 * u, hy = py - 40 * u - p * 120 * u; c.fillStyle = `rgba(255,120,160,${1 - p})`; c.font = `${Math.round(18 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.fillText('♥', hx, hy); } }
+      if (joined) { const k = (performance.now() - joined) / 1000; for (let i = 0; i < 6; i++) { const p = clamp(k * 0.8 - i * 0.12); if (p <= 0 || p >= 1) continue; const hx = px + Math.sin(i * 2 + p * 4) * 40 * u, hy = py - 40 * u - p * 120 * u; c.fillStyle = `rgba(255,120,160,${1 - p})`; c.font = `${Math.round(18 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, '♥', hx, hy); } }
     });
     const lv = x.s.pal ? x.s.pal.lv : 0;
-    const note = x.html(`<div class="evu-note">ひとりぼっちの分身が、こっちを見ている…<br><small>${lv ? '連れていけば、今いる相棒と合わさって強くなる' : '連れていけば、本体のまわりを回って敵を撃ってくれる（このプレイの終わりまで）'}</small></div>`);
+    const note = x.html(`<div class="evu-note">ひとりぼっちの分身が、こっちを見ている…連れていく？<br><small>${lv ? '連れていけば、今いる相棒と合わさって強くなる' : '連れていけば、本体のまわりを回って敵を撃ってくれる（このプレイの終わりまで）'}</small></div>`);
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
-    const f = x.foot(x.btn('連れていく', '', async () => {
-      f.remove(); joined = performance.now(); x.sfx('born'); x.sfx('ev_win');
+    x.foot(x.back(), x.ok(async () => {
+      x.foot(); joined = performance.now(); x.sfx('born'); x.sfx('ev_win');
       const n = x.api.addPal();
       note.remove();
       x.body.append(x.html(`<div class="evu-big">${n > 1 ? `相棒が強くなった！<br><small class="evu-small">Lv${n}</small>` : '仲間になった！'}</div>`));
-      await wait(1000); x.foot(x.btn('いこう', '', () => x.done()));
-    }), x.btn('そっとしておく', 'btn-sub', () => x.done()));
+      await wait(1000); x.foot(x.ok(() => x.done()));
+    }));
   },
 
   // ---------------- 闇市：路地裏の紫のネオン。フードの商人。最高のカードは、高い ----------------
@@ -1178,7 +1227,7 @@ Object.assign(SCENES, {
       // 縦長のネオン看板（右の壁）
       const nx = W * 0.9, ny = H * 0.04;
       c.save(); c.shadowColor = '#c040ff'; c.shadowBlur = on ? 24 * u : 0; c.strokeStyle = on ? '#e8a8ff' : '#4a2a5a'; c.lineWidth = 2.5 * u; c.strokeRect(nx - 17 * u, ny, 34 * u, 92 * u);
-      c.fillStyle = on ? '#f4d8ff' : '#4a2a5a'; c.font = `${Math.round(24 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('闇', nx, ny + 26 * u); c.fillText('市', nx, ny + 64 * u); c.restore();
+      c.fillStyle = on ? '#f4d8ff' : '#4a2a5a'; c.font = `${Math.round(24 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '闇', nx, ny + 26 * u); fillC(c, '市', nx, ny + 64 * u); c.restore();
       // 商人：フードの影と光る目（せりふのすぐ上）
       const nr = x.rect(bnote), mx = W / 2, my = nr ? nr.y - 30 * u : H * 0.3;
       c.fillStyle = '#05030a'; c.beginPath(); c.moveTo(mx - 60 * u, my + 70 * u); c.quadraticCurveTo(mx - 50 * u, my - 40 * u, mx, my - 50 * u); c.quadraticCurveTo(mx + 50 * u, my - 40 * u, mx + 60 * u, my + 70 * u); c.fill();
@@ -1197,7 +1246,7 @@ Object.assign(SCENES, {
         if (row.classList.contains('sold')) return;
         if (x.s.comets < price) { tag.classList.remove('shake'); void tag.offsetWidth; tag.classList.add('shake'); x.sfx('ev_coin', { pitch: 0.6 }); x.toast('「金が足りないなら、帰りな」', 'bad'); return; }
         x.api.addComets(-price); fn(); x.sfx('ev_buy'); x.sfx('gsr');
-        row.classList.add('sold'); tag.innerHTML = '<b class="evu-sold">売約</b>'; x.toast('「毎度あり…ヒッヒ」');
+        row.classList.add('sold'); tag.innerHTML = '<b class="evu-sold">売約</b>'; x.toast('「毎度あり…ヒッヒ」'); x.foot(x.ok(() => x.done()));
         wrap.querySelectorAll('.evu-price').forEach((b) => b._sync && b._sync());
       });
       tag._sync = () => tag.classList.toggle('cant', x.s.comets < price && !row.classList.contains('sold')); tag._sync();
@@ -1217,56 +1266,68 @@ Object.assign(SCENES, {
     }
     x.body.appendChild(wrap); x.fit(wrap);
     // 立ち去るボタンは、せりふの横に（品が多くて下に入りきらないため）
-    const row = x.html('<div class="evu-sayrow"></div>'); bnote.replaceWith(row); row.append(bnote, x.btn('立ち去る', 'btn-sub evu-leave', () => x.done()));
+    x.foot(x.back());
   },
 
   // ---------------- スロット：ネオンの台。レバーを引くと3つのリールが回り、順に止まる ----------------
   slot(x) {
     x.sfx('ev_coin', { pitch: 1.5 });
     const reels = [0, 1, 2].map(() => ({ pos: Math.random() * 5, v: 0, stop: null }));
-    let lever = 0, lights = 0, free = 1, busy = false;
+    let lever = 0, lights = 0, free = 1, busy = false, pulling = null;
     x.draw((c, t, W, H, u) => {
       const g = c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, H * 0.8); g.addColorStop(0, '#2a0a2a'); g.addColorStop(1, '#05020a'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-      // 台
-      const bx = W * 0.1, by = H * 0.16, bw = W * 0.72, bh = H * 0.42;
+      // 台とレバーをまとめて、画面の真ん中に置く
+      const bw = W * 0.64, bh = H * 0.36, lw = 34 * u, bx = (W - bw - lw) / 2, by = H * 0.2;
       c.fillStyle = '#b01828'; c.beginPath(); c.roundRect(bx, by, bw, bh, 16 * u); c.fill(); c.strokeStyle = '#ffd84a'; c.lineWidth = 4 * u; c.stroke();
       // まわりの電球（当たると速く光る）
-      const sp = lights > 0 ? 18 : 4;
-      for (let i = 0; i < 26; i++) { const k = i / 26, px = k < 0.5 ? bx + bw * (k * 2) : bx + bw * (1 - (k - 0.5) * 2), py = k < 0.5 ? by + 6 * u : by + bh - 6 * u; const on = (Math.floor(t * sp) + i) % 3 === 0; c.fillStyle = on ? '#fff6a0' : '#6a4a10'; c.beginPath(); c.arc(px, py, 3.5 * u, 0, TAU); c.fill(); }
-      c.fillStyle = '#ffd84a'; c.font = `${Math.round(18 * u)}px 'Press Start 2P', monospace`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('LUCKY', bx + bw / 2, by + 30 * u);
-      // リールの窓
-      const rw = bw * 0.26, rh = bh * 0.52, ry = by + bh * 0.3;
+      const sp = lights > 0 ? 18 : 4, nb = 13;
+      for (let i = 0; i < nb; i++) for (const yy of [by + 8 * u, by + bh - 8 * u]) { const px = bx + 14 * u + (i / (nb - 1)) * (bw - 28 * u); const on = (Math.floor(t * sp) + i + (yy > by + 20 * u ? 1 : 0)) % 3 === 0; c.fillStyle = on ? '#fff6a0' : '#6a4a10'; c.beginPath(); c.arc(px, yy, 3.5 * u, 0, TAU); c.fill(); }
+      c.fillStyle = '#ffd84a'; c.font = `${Math.round(18 * u)}px 'Press Start 2P', monospace`; c.textAlign = 'center'; fillC(c, 'LUCKY', bx + bw / 2, by + 30 * u);
+      // リールの窓（3つを台の中央にそろえる）
+      const gap = bw * 0.03, rw = (bw - 28 * u - gap * 2) / 3, rh = bh * 0.56, ry = by + bh * 0.3, rx0 = bx + 14 * u;
       reels.forEach((r, i) => {
-        const rx = bx + bw * 0.08 + i * (rw + bw * 0.03);
+        const rx = rx0 + i * (rw + gap);
         if (r.v > 0) { r.pos += r.v / 60; if (r.stop != null && r.pos >= r.stop) { r.pos = r.stop; r.v = 0; r.stop = null; r.bounce = performance.now(); x.sfx('ev_bowl', { pitch: 2.2 }); } }
         c.save(); c.beginPath(); c.rect(rx, ry, rw, rh); c.clip();
         c.fillStyle = '#fbf6ea'; c.fillRect(rx, ry, rw, rh);
         const cell = rh / 1.6, bo = r.bounce ? Math.sin(clamp((performance.now() - r.bounce) / 200) * Math.PI) * 6 * u : 0;
-        for (let k = -1; k <= 2; k++) { const idx = ((Math.floor(r.pos) + k) % 5 + 5) % 5, off = (r.pos % 1) * cell; slotSym(c, rx + rw / 2, ry + rh / 2 + (k * cell) - off + bo, cell * 0.9, idx); }
+        for (let k = -1; k <= 2; k++) { const idx = ((Math.floor(r.pos) + k) % 5 + 5) % 5, off = (r.pos % 1) * cell; slotSym(c, rx + rw / 2, ry + rh / 2 + (k * cell) - off + bo, Math.min(cell, rw) * 0.9, idx); }
         if (r.v > 0) { c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(rx, ry, rw, rh); }
         const sh = c.createLinearGradient(0, ry, 0, ry + rh); sh.addColorStop(0, 'rgba(0,0,0,0.45)'); sh.addColorStop(0.25, 'rgba(0,0,0,0)'); sh.addColorStop(0.75, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.45)'); c.fillStyle = sh; c.fillRect(rx, ry, rw, rh);
         c.restore(); c.strokeStyle = '#1a0a10'; c.lineWidth = 3 * u; c.strokeRect(rx, ry, rw, rh);
       });
-      c.strokeStyle = 'rgba(255,60,60,0.7)'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(bx + 10 * u, ry + rh / 2); c.lineTo(bx + bw - 10 * u, ry + rh / 2); c.stroke();
-      // レバー
-      const lx = bx + bw + 16 * u, ly = by + bh * 0.4, la = -0.3 + lever * 1.6;
-      c.fillStyle = '#888'; c.fillRect(lx - 6 * u, ly - 4 * u, 12 * u, 50 * u);
-      c.save(); c.translate(lx, ly + 20 * u); c.rotate(la); c.fillStyle = '#ccc'; c.fillRect(-3 * u, -70 * u, 6 * u, 70 * u); c.fillStyle = '#e02020'; c.beginPath(); c.arc(0, -72 * u, 12 * u, 0, TAU); c.fill(); c.restore();
+      c.strokeStyle = 'rgba(255,60,60,0.7)'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(bx + 8 * u, ry + rh / 2); c.lineTo(bx + bw - 8 * u, ry + rh / 2); c.stroke();
+      // レバー：右の横腹から。玉を下へ引きおろす（lever 0＝上、1＝下）
+      const px = bx + bw + 6 * u, py = by + bh * 0.55, L = bh * 0.42, th = lever * Math.PI;
+      const kx = px + 14 * u + Math.sin(th) * 12 * u, ky = py - Math.cos(th) * L;
+      c.fillStyle = '#7a7a86'; c.beginPath(); c.roundRect(px - 6 * u, py - 16 * u, 16 * u, 32 * u, 4 * u); c.fill();
+      c.strokeStyle = '#d8d8e0'; c.lineWidth = 6 * u; c.lineCap = 'round'; c.beginPath(); c.moveTo(px + 6 * u, py); c.lineTo(kx, ky); c.stroke();
+      const kg = c.createRadialGradient(kx - 4 * u, ky - 4 * u, 0, kx, ky, 14 * u); kg.addColorStop(0, '#ff8a8a'); kg.addColorStop(1, '#c01010'); c.fillStyle = kg; c.beginPath(); c.arc(kx, ky, 13 * u, 0, TAU); c.fill();
+      x._lever = { kx, ky, top: py - L, L, u };
+      if (!busy && !pulling && lever < 0.05) tapHint(c, kx, ky - 18 * u, u, t, '下に引く');
+      // 値段
+      c.fillStyle = '#fff4d0'; c.font = `${Math.round(12 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; fillC(c, free ? '1回 タダ' : '1回 コメット3', bx + bw / 2, by + bh + 16 * u);
       if (lights > 0) lights -= 1 / 60;
+      // 手をはなしたら、レバーはばねで上へ戻る
+      if (!pulling && lever > 0) lever = Math.max(0, lever - 0.06);
     });
+    // レバー：玉をつかんで下へ。いちばん下まで引くと回る。軽くさわっただけでも、引きおろして回す
+    x.drag({
+      down(px, py) { const L = x._lever; if (!L || busy) return false; if (Math.hypot(px - L.kx, py - L.ky) > 30 * L.u) return false; pulling = { y0: py, l0: lever, moved: false }; return true; },
+      move(px, py) { if (!pulling) return; const L = x._lever; lever = clamp(pulling.l0 + (py - pulling.y0) / (L.L * 2)); if (Math.abs(py - pulling.y0) > 6) pulling.moved = true; if (lever >= 0.7) { pulling = null; lever = 1; spin(); } },
+      up() { if (!pulling) return; const tapped = !pulling.moved; pulling = null; if (tapped) (async () => { pulling = { auto: true }; for (let k = 0; k <= 10; k++) { lever = k / 10; await wait(16); } pulling = null; spin(); })(); },
+    });
+    x._hot = (px, py) => { const L = x._lever; return !!L && !busy && Math.hypot(px - L.kx, py - L.ky) < 30 * L.u; };
+    x.tap(() => {}, x._hot);
     const res = x.html('<div class="evu-dres"></div>');
-    const note = x.html('<div class="evu-note"><b>7 7 7</b> 最高のカード ／ <b>3つそろい</b> レアなカード ／ <b>星3つ</b> コメット+20<br><small>2つそろい コメット+4 ／ 骨3つは…　1回 コメット3（最初はタダ）</small></div>');
+    const note = x.html('<div class="evu-note"><b>777</b> 最高のカード ／ <b>3つそろい</b> レアなカード ／ <b>星3つ</b> コメット+20<br><small>2つそろい コメット+4 ／ 骨3つは…</small></div>');
     x.body.append(x.html('<div class="evu-spacer"></div>'), res, note);
-    const pullBtn = x.btn('レバーを引く　<i class="evu-cost">タダ</i>', '', () => spin());
-    x.foot(pullBtn, x.btn('やめる', 'btn-sub', () => x.done()));
-    const sync = () => { pullBtn.querySelector('.evu-cost').textContent = free ? 'タダ' : '3'; pullBtn.disabled = busy || (!free && x.s.comets < 3); pullBtn.classList.toggle('dim', pullBtn.disabled); };
-    sync();
+    x.foot(x.back());
     async function spin() {
-      if (busy) return; if (!free && x.s.comets < 3) return;
-      busy = true; sync(); res.innerHTML = '';
+      if (busy) return; if (!free && x.s.comets < 3) { x.toast('コメットが足りない…', 'bad'); x.sfx('ev_coin', { pitch: 0.6 }); return; }
+      busy = true; res.innerHTML = ''; x.foot();
       if (free) free = 0; else { x.api.addComets(-3); x.sfx('ev_coin'); }
-      for (let k = 0; k <= 8; k++) { lever = k / 8; await wait(16); } x.sfx('ev_crank');
-      for (let k = 0; k <= 8; k++) { lever = 1 - k / 8; await wait(16); }
+      x.sfx('ev_crank');
       // 結果を先に決める（レアのできごとなので、少し当たりやすい）
       const r = Math.random();
       let out;
@@ -1287,7 +1348,7 @@ Object.assign(SCENES, {
       } else if (a === b || b === cc || a === cc) { msg = '2つそろい　コメット +4'; x.api.addComets(4); x.sfx('ev_buy'); }
       else { msg = 'はずれ'; good = false; x.sfx('ev_lose'); }
       res.insertBefore(x.html(`<div class="evu-call ${good ? 'win' : 'lose'}">${msg}</div>`), res.firstChild); x.fit(res);
-      busy = false; sync();
+      busy = false; x.foot(x.ok(() => x.done()));
     }
   },
 
@@ -1296,8 +1357,8 @@ Object.assign(SCENES, {
     let ang = 0, vel = 0.3, target = null, done = false;
     x.draw((c, t, W, H, u) => {
       const g = c.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, H * 0.8); g.addColorStop(0, '#0a2a3a'); g.addColorStop(1, '#02060c'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-      rays(c, W / 2, H * 0.38, H * 0.7, t * 0.3, 16, '120,220,255', 0.06);
-      const cx = W / 2, cy = H * 0.38, R = Math.min(W * 0.42, H * 0.28);
+      rays(c, W / 2, H * 0.44, H * 0.7, t * 0.3, 16, '120,220,255', 0.06);
+      const cx = W / 2, cy = H * 0.44, R = Math.min(W * 0.38, H * 0.25);
       if (target != null) { const left = target - ang; const v = Math.max(0.004, left * 0.035); ang += Math.min(v, left); if (left <= 0.0005) { ang = target; target = null; x._stop && x._stop(); } }
       else if (!done) ang += vel / 60;
       // 外の輪と電球
@@ -1308,16 +1369,22 @@ Object.assign(SCENES, {
         const a0 = ang + i * seg - Math.PI / 2 - seg / 2;
         c.fillStyle = WHEEL[i].col; c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, R, a0, a0 + seg); c.closePath(); c.fill();
         c.strokeStyle = '#1a1008'; c.lineWidth = 2 * u; c.stroke();
-        c.save(); c.translate(cx, cy); c.rotate(a0 + seg / 2); c.fillStyle = WHEEL[i].ink; c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(WHEEL[i].name, R - 10 * u, 0); c.restore();
+        c.save(); c.translate(cx, cy); c.rotate(a0 + seg / 2); c.fillStyle = WHEEL[i].ink; c.font = `${Math.round(13 * u)}px DotGothic16, sans-serif`; c.textAlign = 'right'; c.textBaseline = 'middle'; fillC(c, WHEEL[i].name, R - 10 * u, 0); c.restore();
       }
       c.fillStyle = '#ffd84a'; c.beginPath(); c.arc(cx, cy, 18 * u, 0, TAU); c.fill(); c.strokeStyle = '#5a3a00'; c.lineWidth = 3 * u; c.stroke();
+      x._geo = { cx, cy, R, u };
+      if (target == null && !done && !spun) tapHint(c, cx, cy - R - 26 * u, u, t, 'まわす');
       // 針（上）
       c.fillStyle = '#fff'; c.strokeStyle = '#1a1008'; c.lineWidth = 2 * u; c.beginPath(); c.moveTo(cx, cy - R + 14 * u); c.lineTo(cx - 12 * u, cy - R - 22 * u); c.lineTo(cx + 12 * u, cy - R - 22 * u); c.closePath(); c.fill(); c.stroke();
     });
-    const note = x.html('<div class="evu-note">回すと、止まったますのことが起きる</div>');
+    const note = x.html('<div class="evu-note">輪をさわると回る。止まったますのことが起きる</div>');
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
-    const f = x.foot(x.btn('回す！', '', () => {
-      f.remove(); note.remove(); x.sfx('ev_crank');
+    const onWheel = (px, py) => { const g = x._geo; return !spun && g && Math.hypot(px - g.cx, py - g.cy) < g.R + 14 * g.u; };
+    let spun = false;
+    x.tap((px, py) => { if (onWheel(px, py)) go(); }, onWheel);
+    x.foot(x.back());
+    const go = () => {
+      spun = true; x.foot(); note.remove(); x.sfx('ev_crank');
       // 当たりのます（重みづけ）を決めて、そこで止まるように回す
       const W8 = [6, 18, 14, 10, 16, 10, 14, 12];
       let r = Math.random() * W8.reduce((a, b) => a + b, 0), pick = 0; for (let i = 0; i < 8; i++) { r -= W8[i]; if (r <= 0) { pick = i; break; } }
@@ -1337,9 +1404,9 @@ Object.assign(SCENES, {
         if (pick === 7) { x.api.hurt(0.3); good = false; x.sfx('ev_lose'); x.flash('#ff1a2a', 0.4, 0.5); x.shake(14, 0.4); }
         x.body.insertBefore(x.html(`<div class="evu-big ${good ? '' : 'bad'}">${w.name}${pick === 0 ? '！！' : ''}</div>`), x.body.querySelector('.evu-card'));
         x.body.appendChild(x.html(`<div class="evu-note">${w._sub || w.sub}</div>`)); delete w._sub;
-        await wait(600); x.foot(x.btn('すすむ', good ? '' : 'btn-sub', () => x.done()));
+        await wait(600); x.foot(x.ok(() => x.done()));
       };
-    }), x.btn('やめておく', 'btn-sub', () => x.done()));
+    };
   },
 
   // ---------------- おみくじ：神社。六角の箱を振ると棒が出て、くじが開く。大凶なら… ----------------
@@ -1363,9 +1430,11 @@ Object.assign(SCENES, {
       for (let i = 0; i < 24; i++) { const p = (t * 0.12 + i / 24) % 1; c.fillStyle = 'rgba(255,190,210,0.85)'; c.save(); c.translate(W * ((i * 0.618 + p * 0.3) % 1), H * p); c.rotate(t * 2 + i); c.beginPath(); c.ellipse(0, 0, 4 * u, 2.5 * u, 0, 0, TAU); c.fill(); c.restore(); }
       // 六角の箱
       const bx = W / 2 + (shake ? Math.sin(t * 40) * 10 * u : 0), by = H * 0.42 + (shake ? Math.cos(t * 33) * 6 * u : 0), rot = shake ? Math.sin(t * 25) * 0.4 : 0;
+      x._geo = { x: W / 2, y: H * 0.42, u };
+      if (!drawn) tapHint(c, W / 2, H * 0.42 - 74 * u, u, t, 'ふる');
       c.save(); c.translate(bx, by); c.rotate(rot + (stick ? Math.PI * 0.85 * clamp(stick * 3) : 0));
       c.fillStyle = '#8a5a2a'; c.fillRect(-26 * u, -60 * u, 52 * u, 120 * u); c.fillStyle = '#a8703a'; c.fillRect(-26 * u, -60 * u, 18 * u, 120 * u);
-      c.fillStyle = '#f6efd8'; c.fillRect(-14 * u, -40 * u, 28 * u, 70 * u); c.fillStyle = '#c01818'; c.font = `${Math.round(18 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('御', 0, -26 * u); c.fillText('籤', 0, -4 * u); c.fillText('箱', 0, 18 * u);
+      c.fillStyle = '#f6efd8'; c.fillRect(-14 * u, -40 * u, 28 * u, 70 * u); c.fillStyle = '#c01818'; c.font = `${Math.round(18 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, '御', 0, -26 * u); fillC(c, '籤', 0, -4 * u); fillC(c, '箱', 0, 18 * u);
       // 出てくる棒
       if (stick) { const k = clamp((stick - 0.3) * 2); c.fillStyle = '#e8d8a8'; c.fillRect(-3 * u, 60 * u, 6 * u, 50 * u * k); }
       c.restore();
@@ -1374,14 +1443,18 @@ Object.assign(SCENES, {
         const k = ease(slip), cx = W / 2, cy = H * 0.42, w = 90 * u, h = 220 * u * k;
         c.save(); c.translate(cx, cy);
         c.fillStyle = res.k === '大凶' ? '#1a0a0a' : '#fbf6ea'; c.fillRect(-w / 2, -h / 2, w, h); c.strokeStyle = res.k === '大凶' ? '#c00' : '#c01818'; c.lineWidth = 2 * u; c.strokeRect(-w / 2 + 6 * u, -h / 2 + 6 * u, w - 12 * u, h - 12 * u);
-        if (k > 0.8) { c.fillStyle = res.k === '大凶' ? '#ff2020' : res.col; c.font = `${Math.round(40 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; [...res.k].forEach((ch, i, arr) => c.fillText(ch, 0, (i - (arr.length - 1) / 2) * 50 * u)); }
+        if (k > 0.8) { c.fillStyle = res.k === '大凶' ? '#ff2020' : res.col; c.font = `${Math.round(40 * u)}px DotGothic16, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; [...res.k].forEach((ch, i, arr) => fillC(c, ch, 0, (i - (arr.length - 1) / 2) * 50 * u)); }
         c.restore();
       }
     });
-    const note = x.html('<div class="evu-note">おみくじを引いてみる？</div>');
+    const note = x.html('<div class="evu-note">箱をふって、おみくじを引く</div>');
     x.body.append(x.html('<div class="evu-spacer"></div>'), note);
-    const f = x.foot(x.btn('引く', '', async () => {
-      f.remove(); note.remove();
+    let drawn = false;
+    const onBox = (px, py) => { const g = x._geo; return !drawn && g && Math.abs(px - g.x) < 40 * g.u && Math.abs(py - g.y) < 70 * g.u; };
+    x.tap((px, py) => { if (onBox(px, py)) draw(); }, onBox);
+    x.foot(x.back());
+    const draw = async () => {
+      drawn = true; x.foot(); note.remove();
       shake = 1; x.sfx('ev_dice'); await wait(900); shake = 0;
       for (let k = 0; k <= 30; k++) { stick = k / 30; await wait(16); }
       x.sfx('ev_seal', { pitch: 1.5 });
@@ -1399,8 +1472,8 @@ Object.assign(SCENES, {
       const ch = res.fn(x.api);
       x.body.appendChild(x.html(`<div class="evu-note">${res.sub}</div>`));
       if (ch) { const card = x.card(ch); card.classList.add('evu-pop'); x.api.give(ch); x.body.appendChild(card); x.fit(x.body); }
-      await wait(500); x.foot(x.btn(good ? 'ありがたい' : 'うーん', good ? '' : 'btn-sub', () => x.done()));
-    }), x.btn('やめておく', 'btn-sub', () => x.done()));
+      await wait(500); x.foot(x.ok(() => x.done()));
+    };
   },
 
   // ---------------- 時の旅人：歯車と砂時計の旅人。スキルを1つ渡すと、同じレベルの別のスキルに変えてくれる ----------------
@@ -1414,7 +1487,7 @@ Object.assign(SCENES, {
       gear(W * 0.2, H * 0.18, 50 * u, 12, 0.3, 'rgba(160,200,255,0.25)'); gear(W * 0.85, H * 0.3, 70 * u, 16, -0.2, 'rgba(160,200,255,0.2)'); gear(W * 0.5, H * 0.1, 30 * u, 8, 0.6, 'rgba(255,220,140,0.3)');
       // 時計の文字盤（大きく、うっすら）
       c.strokeStyle = 'rgba(200,220,255,0.18)'; c.lineWidth = 2 * u; c.beginPath(); c.arc(W / 2, H * 0.3, 120 * u, 0, TAU); c.stroke();
-      for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; c.fillStyle = 'rgba(200,220,255,0.35)'; c.font = `${Math.round(12 * u)}px 'Press Start 2P', monospace`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'][i], W / 2 + Math.sin(a) * 105 * u, H * 0.3 - Math.cos(a) * 105 * u); }
+      for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; c.fillStyle = 'rgba(200,220,255,0.35)'; c.font = `${Math.round(12 * u)}px 'Press Start 2P', monospace`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillC(c, ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'][i], W / 2 + Math.sin(a) * 105 * u, H * 0.3 - Math.cos(a) * 105 * u); }
       c.strokeStyle = 'rgba(255,220,140,0.6)'; c.lineWidth = 3 * u; c.beginPath(); c.moveTo(W / 2, H * 0.3); c.lineTo(W / 2 + Math.sin(-t * 2) * 90 * u, H * 0.3 - Math.cos(-t * 2) * 90 * u); c.stroke();
       // 旅人：外套の影と、手に砂時計
       const tx = W / 2, ty = H * 0.3;
@@ -1433,13 +1506,13 @@ Object.assign(SCENES, {
     const list = x.html('<div class="evu-plates"></div>');
     owned.forEach((k) => { const b = skillPlate(x, k.id, k.evo ? `${k.lv}・進化` : k.lv, 'evu-plate-btn'); b.addEventListener('click', () => step2(k, b)); list.appendChild(b); });
     x.body.append(x.html('<div class="evu-spacer"></div>'), note, list);
-    const f = x.foot(x.btn('このままでいい', 'btn-sub', () => x.done()));
+    x.foot(x.back());
     async function step2(k, plate) {
       if (list.classList.contains('chosen')) return;
-      list.classList.add('chosen'); plate.classList.add('on'); f.remove();
+      list.classList.add('chosen'); plate.classList.add('on'); x.foot();
       const pool = x.api.roll({ count: 6, onlySkill: true, noCurse: true, floor: 'rare' }).filter((ch) => ch.kind === 'skill' && !x.s.skills[ch.id]).slice(0, 3);
       await wait(400); list.remove();
-      if (!pool.length) { note.innerHTML = '「…いまは、ふさわしいものが無いようだ」'; x.foot(x.btn('すすむ', 'btn-sub', () => x.done())); return; }
+      if (!pool.length) { note.innerHTML = '「…いまは、ふさわしいものが無いようだ」'; x.foot(x.ok(() => x.done())); return; }
       note.innerHTML = `「<b>${x.skillName(k.id)}</b>（Lv${k.lv}）の代わりに、どれを持っていく？」`;
       const wrap = x.html('<div class="evu-pick3"></div>');
       pool.forEach((ch, i) => {
@@ -1449,7 +1522,7 @@ Object.assign(SCENES, {
           sand = 0.01; x.sfx('ev_wish'); for (let q = 0; q <= 40; q++) { sand = q / 40; await wait(16); }
           x.api.swapSkill(k.id, ch.id); x.flash('#cfe8ff', 0.5, 0.7);
           note.innerHTML = `<b>${x.skillName(k.id)}</b> → <b>${x.skillName(ch.id)}</b>（Lv${Math.max(1, k.lv)}）`;
-          await wait(500); x.foot(x.btn('ありがとう', '', () => x.done()));
+          await wait(500); x.foot(x.ok(() => x.done()));
         });
         wrap.appendChild(card);
       });
