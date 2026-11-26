@@ -2,15 +2,17 @@
 // ゲームの計算は止めたまま、作り物の状態を描画と画面表示に渡すだけ。
 // 仕組みをつなぐときは、ここで作っている形（e.status・state.boss・カードの中身）を game.js が作るようにする。
 
-import { BOOSTS, CURSES } from './talents.js?v=20261126171948';
-import { CONFIG } from './config.js?v=20261126171948';
-import { SKILL_ROADS } from './skilldefs.js?v=20261126171948';
-import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261126171948';
-import { GACHA_POOL } from './skins.js?v=20261126171948';
-import { createGame } from './game.js?v=20261126171948';
-import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261126171948';
-import { createGachaFx } from './gachafx.js?v=20261126171948';
-import { createEndingFx, sampleTrails } from './endingfx.js?v=20261126171948';
+import { BOOSTS, CURSES } from './talents.js?v=20261126173759';
+import { CONFIG } from './config.js?v=20261126173759';
+import { SKILL_ROADS } from './skilldefs.js?v=20261126173759';
+import { createScreens, SCREEN_TABS, SOUND_TABS, LIVE_BG, ITEM_TABS } from './screens.js?v=20261126173759';
+import { GACHA_POOL } from './skins.js?v=20261126173759';
+import { createGame } from './game.js?v=20261126173759';
+import { TUTO_STEPS, TUTO_INTRO } from './tutorial.js?v=20261126173759';
+import { createGachaFx } from './gachafx.js?v=20261126173759';
+import { createEndingFx, sampleTrails } from './endingfx.js?v=20261126173759';
+import { createEventFx } from './eventfx.js?v=20261126173759';
+import { EVENTS } from './events.js?v=20261126173759';
 
 const W = 360, H = 532;
 const rOf = (hp) => 2.2 * Math.sqrt(hp); // 半径＝2.2×√体力
@@ -809,6 +811,7 @@ export const CATS = [
   { id: 'attack', label: '攻撃エフェクト', tabs: [['ghostroad', '巨像'], ['swarmroad', '群体'], ['turretroad', '砲台'], ['guardroad', '守護'], ['bodyroad', '拳闘士']] },
   { id: 'fx', label: 'エフェクト', tabs: [['effects', '共通']] },
   { id: 'items', label: 'ガチャの品', tabs: ITEM_TABS },
+  { id: 'event', label: 'できごと', tabs: [['ev_comet', 'コメット'], ...EVENTS.map((e) => ['ev_' + e.id, e.name])] },
   { id: 'show', label: '演出', tabs: [['fx_g1', 'ガチャ1回'], ['fx_gup', '昇格'], ['fx_gssr', 'SSR'], ['fx_g10', 'ガチャ10回'], ['fx_bossin', 'ボス登場'], ['fx_finalin', 'ラスボス登場'], ['fx_bossdown', 'ボス撃破']] },
   { id: 'ougi', label: '奥義', tabs: OUGI_FX.map((o) => ['og_' + o.id, o.name]) },
   { id: 'mode', label: '描く／動く', tabs: [['md_move', '動くモード'], ['md_draw', '描くモード']] },
@@ -834,6 +837,7 @@ export function createPreview(hud) {
   const screens = createScreens();   // 画面づくりの見本（形だけ）
   const gfx = createGachaFx(document.getElementById('stage'));   // ガチャの演出の見本
   const efx = createEndingFx(document.getElementById('stage'));   // エンディングの見本
+  const evx = createEventFx(document.getElementById('stage'));    // できごとの演出の見本
   let efxTrails = null;
   const pool = (r) => GACHA_POOL.filter((x) => x.rarity === r);
   const GACHA_SAMPLES = {
@@ -919,6 +923,9 @@ export function createPreview(hud) {
     if (id === 's_reroll') { screens.hide(); const set = CARD_SETS.rarity; hud.showSample(set.title, set.sub, set.cards); document.getElementById('skill').classList.add('with-reroll'); marks.attachDom(id); return; }
     document.getElementById('skill').classList.remove('with-reroll');
     efx.stop();
+    evx.stop();
+    // できごと：始まるときの演出をくり返し流す／コメットの見た目
+    if (id.startsWith('ev_')) { gfx.stop(); hud.hideSample(); screens.hide(); if (id === 'ev_comet') evx.comets(); else evx.play(id.slice(3), { replay: true }); marks.attachDom(id); return; }
     // エンディング：見本の線（612本）で「軌跡の絵」を最後まで流し、くり返す
     if (id === 's_ending') { gfx.stop(); hud.hideSample(); screens.hide(); efxTrails = efxTrails || sampleTrails(); efx.play({ trails: efxTrails, world: { w: 420, h: 720 }, phase: 100, time: 4380 }, { replay: true }); marks.attachDom(id); return; }
     if (id.startsWith('s_')) { gfx.stop(); hud.hideSample(); screens.show(id); marks.attachDom(id); return; }
@@ -960,6 +967,7 @@ export function createPreview(hud) {
     screens.hide();
     gfx.stop();
     efx.stop();
+    evx.stop();
   }
 
   // 描画と画面表示に渡す状態（もとの状態の上に、見本の中身をかぶせる）
