@@ -1,10 +1,10 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261126181944';
-import { playSound } from './audio.js?v=20261126181944';
-import { CURSE_BY_ID } from './talents.js?v=20261126181944';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126181944';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261126185639';
+import { playSound } from './audio.js?v=20261126185639';
+import { CURSE_BY_ID } from './talents.js?v=20261126185639';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261126185639';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));

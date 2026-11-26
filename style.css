@@ -1112,11 +1112,17 @@ body.previewing .btn-debug { display: none; }
 }
 
 /* ---------- 見本画面の切り替え欄 ---------- */
+/* 見本の間：舞台（9:16）を比率そのままで小さくして上に置き、その真下にこの欄を置く（欄が画面を隠さない） */
+#pv-dock { display: none; container-type: inline-size; font-family: 'DotGothic16', sans-serif; }
+body.previewing #app { flex-direction: column; }
+body.previewing #stage, body.previewing #pv-dock {
+  --pvw: min(100vw - env(safe-area-inset-left) - env(safe-area-inset-right), (100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) / (16 / 9 + 0.155));
+  width: var(--pvw);
+  flex: none;
+}
+body.previewing #pv-dock { display: block; }
 .preview-bar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: relative;
   z-index: 9;
   display: none;
   align-items: center;
@@ -1621,8 +1627,6 @@ button.ms-set { width: 100%; background: none; border: none; text-align: left; }
 .ms-soonicon .px-icon { fill: var(--gold); }
 .ms-chip .pix { width: 100% !important; height: 100% !important; }
 /* 見本では下の帯に隠れないよう、カード選びを少し縮めて上に寄せる */
-body.previewing .skill.with-reroll { align-items: start; place-items: start center; padding-top: 4cqw; }
-body.previewing .skill.with-reroll .skill-inner { transform: scale(0.84); transform-origin: 50% 0; }
 
 /* スティック（触れた所に出る、見えないコントローラーの目印） */
 .stick { position: fixed; left: 0; top: 0; border-radius: 50%; pointer-events: none; z-index: 50; display: none;
@@ -1686,7 +1690,7 @@ body.previewing .skill.with-reroll .skill-inner { transform: scale(0.84); transf
 .gfx-hint { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; font-size: 3cqw; color: #7f8ab0; transition: opacity 0.3s; pointer-events: none; animation: gfx-blink 1.6s infinite; }
 @keyframes gfx-blink { 50% { color: #4a5478; } }
 /* 見本で見るときは、下の見本のバーに重ならないようにする */
-body.previewing .gfx { z-index: 8; bottom: 13%; }
+body.previewing .gfx { z-index: 8; }
 /* ガチャの演出の中の品：SSRは1回でも10回でも同じ見た目（いつも光る）。NEWの札は右上へ（左上のレア度の文字を隠さない） */
 .gfx-card .ms-scell.r-ssr { animation: ms-shine 1.2s ease-in-out infinite; }
 .gfx-card .ms-newtag { left: auto; right: -1cqw; }
@@ -2082,7 +2086,7 @@ body.previewing .gfx { z-index: 8; bottom: 13%; }
 .efx { position: absolute; inset: 0; z-index: 70; display: none; overflow: hidden; container-type: inline-size; color: #eef3ff; }
 .efx.show { display: block; }
 .efx canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-body.previewing .efx { z-index: 8; bottom: 13%; }
+body.previewing .efx { z-index: 8; }
 .efx-foot { position: absolute; left: 0; right: 0; bottom: 4%; display: flex; flex-direction: column; align-items: center; gap: 3cqw; }
 .efx-title { text-align: center; opacity: 0; transform: translateY(2cqw); transition: opacity 1.4s ease, transform 1.4s ease; }
 .efx-title.on { opacity: 1; transform: none; }
@@ -2211,7 +2215,7 @@ body.previewing .efx { z-index: 8; bottom: 13%; }
 /* できごとの演出（eventfx.js） */
 .evfx { position: absolute; inset: 0; z-index: 70; display: none; overflow: hidden; container-type: inline-size; color: #eef3ff; font-family: 'DotGothic16', sans-serif; }
 .evfx.show { display: block; }
-body.previewing .evfx { z-index: 8; bottom: 13%; }
+body.previewing .evfx { z-index: 8; }
 .evfx > canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .evfx-banner { position: absolute; left: 0; right: 0; top: 14%; text-align: center; font-size: 7cqw; letter-spacing: 0.6cqw; opacity: 0; }
 .evfx-banner.in { animation: evBanner 0.7s 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
@@ -2262,7 +2266,7 @@ body.previewing .evfx { z-index: 8; bottom: 13%; }
 /* ================= できごとの画面（eventui.js） ================= */
 .evu { position: absolute; inset: 0; z-index: 72; display: none; overflow: hidden; container-type: inline-size; color: #eef3ff; font-family: 'DotGothic16', sans-serif; }
 .evu.show { display: flex; flex-direction: column; }
-body.previewing .evu { z-index: 8; bottom: 13%; }
+body.previewing .evu { z-index: 8; }
 .evu-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .evu-head { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 1cqw; padding-top: 5cqw; text-shadow: 0 0.6cqw 0 var(--ink); animation: evuHead 0.6s cubic-bezier(.2, .9, .3, 1.3) both; }
 .evu-tag { font-size: 3cqw; letter-spacing: 0.3em; padding: 0.6cqw 3cqw; border-radius: 9cqw; background: rgba(0, 0, 0, 0.45); border: 0.4cqw solid rgba(255, 255, 255, 0.25); }
@@ -2287,7 +2291,7 @@ body.previewing .evu { z-index: 8; bottom: 13%; }
 .evu-btn:not(.btn-sub) .evu-cost { color: #7a2a00; }
 .evu-danger { background: linear-gradient(180deg, #b0283a, #6a0f1e) !important; color: #fff; }
 @keyframes evuFade { from { opacity: 0; transform: translateY(3cqw); } }
-.evu-card { opacity: 1; transform: none; cursor: default; width: 100%; }
+.evu-card { opacity: 1; transform: none; cursor: default; width: 88cqw; flex: none; align-self: center; }   /* カード選びと同じ大きさ（88cqw）で組み、狭い所では zoom で比率そのまま縮める */
 .evu-toast { position: absolute; z-index: 4; left: 50%; top: 28%; transform: translate(-50%, 0); font-size: 4.2cqw; white-space: nowrap; padding: 1.6cqw 4cqw; border-radius: 2cqw; background: rgba(0, 0, 0, 0.75); border: 0.5cqw solid var(--gold); color: #fff; opacity: 0; pointer-events: none; }
 .evu-toast.bad { border-color: #ff4a4a; color: #ffb0b0; }
 .evu-toast.in { animation: evuToast 1.8s both; }
@@ -2302,7 +2306,7 @@ body.previewing .evu { z-index: 8; bottom: 13%; }
 .evu-body:has(.evu-stall) { padding-top: 26cqw; }
 .evu-stall { display: flex; flex-direction: column; gap: 3cqw; width: 100%; }
 .evu-shelf { display: flex; align-items: stretch; gap: 2cqw; animation: evuShelf 0.5s cubic-bezier(.2, .9, .3, 1.3) both; }
-.evu-shelf .evu-card { flex: 1; }
+.evu-shelf .evu-card { zoom: 0.83; align-self: auto; }   /* 値札の横：73cqw 相当 */
 .evu-shelf.sold .evu-card { filter: grayscale(0.85) brightness(0.6); }
 @keyframes evuShelf { from { opacity: 0; transform: translateX(-12cqw) rotate(-3deg); } }
 .evu-price { flex: 0 0 15cqw; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6cqw; font-family: inherit; color: #3a1a08; background: linear-gradient(180deg, #fff3d4, #f0d49a); border: 0.7cqw solid var(--ink); border-radius: 2cqw; box-shadow: 0 1cqw 0 var(--ink); cursor: pointer; transform: rotate(3deg); position: relative; }
@@ -2337,7 +2341,7 @@ body.previewing .evu { z-index: 8; bottom: 13%; }
 @keyframes evuCurseIn { from { opacity: 0; filter: blur(3cqw) brightness(3); transform: scale(1.3); } }
 @keyframes evuFloat { 50% { transform: translateY(-1.4cqw); } }
 @keyframes evuAbsorb { 30% { transform: scale(1.06); filter: brightness(2) hue-rotate(40deg); } 100% { transform: translateY(40cqw) scale(0.1); opacity: 0; filter: blur(2cqw); } }
-.evu-cursed { width: 88%; align-self: center; }
+.evu-cursed { zoom: 0.9; }
 .evu-cursed + .evu-note { margin-top: 10cqw; }
 .evu-rewards { display: flex; flex-direction: column; gap: 2.4cqw; width: 100%; }
 .evu-facedown { height: 22cqw; border-radius: 3cqw; border: 0.9cqw solid var(--ink); background: repeating-linear-gradient(45deg, #2a1640 0 2cqw, #3a1e58 2cqw 4cqw); box-shadow: 0 0 4cqw -1cqw #ffd84a, 0 1.4cqw 0 var(--ink); display: flex; align-items: center; justify-content: center; animation: evuFade 0.5s 0.9s both, evuGlint 2s 1.4s infinite; }
