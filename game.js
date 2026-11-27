@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127142117';
-import { spawnPop, stepParticle } from './pops.js?v=20261127142117';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127142117';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127142117';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127142117';
+import { CONFIG } from './config.js?v=20261127142542';
+import { spawnPop, stepParticle } from './pops.js?v=20261127142542';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127142542';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127142542';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127142542';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2916,7 +2916,7 @@ export function createGame() {
     const W = types.reduce((v, [, t]) => v + t.weight, 0);
     let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
     for (const [k, t] of types) { const g = t.group || 1, ta = TIERS.noBig.includes(k) ? 1 : tierAvg; hpPer += (t.weight / W) * t.hp * g * ta / PH.crowd; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * ta; }
-    const rate = PH.hpRateBase * growthOf(phase);
+    const rate = PH.hpRateBase * growthOf(phase) * earlyOf(phase);
     return Math.max(1, Math.round((rate * PH.needSec / (hpPer * hpScaleOf(phase))) * shPer * PH.needRatio));
   }
   // 1体ずつの体力の倍率：フェーズ countFrom からは、数の伸びを countGrowth に抑えて、残りを体力にまわす
@@ -2925,6 +2925,8 @@ export function createGame() {
     if (phase < from) return 1;
     return Math.max(1, growthOf(phase) / (growthOf(from - 1) * PH.countGrowth ** (phase - from + 1)));
   }
+  // 序盤（フェーズ1〜4）だけ敵の量を減らす倍率
+  function earlyOf(phase) { return (PH.earlyRate && PH.earlyRate[phase - 1]) || 1; }
   // フェーズ1からの敵の勢いの倍率。1フェーズ進むごとに、その時期の倍率を掛けていく
   function growthOf(phase) {
     let k = 1;
@@ -2942,7 +2944,7 @@ export function createGame() {
       else if (s.mods && s.mods.hoard && s.mods.hoard.t > 0) { /* 宝の山の間は、ふつうの敵は出ない */ }
       else {
         maybeSpawnElite();
-        const rate = PH.hpRateBase * growthOf(s.phase) * T.enemyRate.value;
+        const rate = PH.hpRateBase * growthOf(s.phase) * earlyOf(s.phase) * T.enemyRate.value;
         s.spawnPool += rate * DT;
         if (!s.nextEnemy) s.nextEnemy = pickNextEnemy();
         while (s.nextEnemy && s.spawnPool >= s.nextEnemy.hp) {
