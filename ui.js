@@ -1,9 +1,9 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261127132003';
-import { choiceView, ownedViews } from './talents.js?v=20261127132003';
-import { iconSvg, snapIcons } from './icons.js?v=20261127132003';
-import { drawComet, COMET_HUES } from './events.js?v=20261127132003';
+import { ghostColor } from './theme.js?v=20261127142117';
+import { choiceView, ownedViews } from './talents.js?v=20261127142117';
+import { iconSvg, snapIcons } from './icons.js?v=20261127142117';
+import { drawComet, COMET_HUES } from './events.js?v=20261127142117';
 
 const $ = (id) => document.getElementById(id);
 

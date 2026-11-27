@@ -1813,7 +1813,8 @@ body.previewing .gfx { z-index: 8; }
 .ms-bar.dim i { background: #4a5180; }
 .ms-mt b em { font-style: normal; font-size: 2.6cqw; color: var(--muted); margin-left: 1.6cqw; }
 .ms-yet.got { color: var(--muted); font-size: 2.6cqw; }
-.ms-mrow .ms-get { padding: 1.4cqw 2.4cqw; font-size: 3cqw; }
+.ms-mrow .ms-get { width: 15cqw; box-sizing: border-box; flex-shrink: 0; padding: 1.4cqw 0; font-size: 2.8cqw; white-space: nowrap; }
+.ms-mrow .ms-yet { flex-shrink: 0; }
 .ms-navdot { position: absolute; top: 0.6cqw; right: 2.4cqw; width: 2.4cqw; height: 2.4cqw; border-radius: 50%; background: var(--red); border: 0.4cqw solid var(--ink); }
 
 /* ランキング：表彰台とそれぞれの行に、枠つきのアイコン・称号を出す */

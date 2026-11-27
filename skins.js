@@ -1,9 +1,9 @@
 // 着せ替えの品（色のセット・背景・アイコン）とガチャの決まり。
 //   色のセットは「本体・分身・敵・かけら」の色をまとめて変える（形は変えない）。見た目だけで、強さは変わらない
-import { ICON_ART } from './iconart.js?v=20261127132003';
-import { POP_STYLES } from './pops.js?v=20261127132003';
-import { TITLES } from './titles.js?v=20261127132003';
-import { FRAMES } from './frames.js?v=20261127132003';
+import { ICON_ART } from './iconart.js?v=20261127142117';
+import { POP_STYLES } from './pops.js?v=20261127142117';
+import { TITLES } from './titles.js?v=20261127142117';
+import { FRAMES } from './frames.js?v=20261127142117';
 export const RARITIES = ['N', 'R', 'SR', 'SSR'];
 
 // 色のセット。ghost は分身の色の幅（色相の始まりと終わり、鮮やかさ、明るさ）
@@ -56,8 +56,13 @@ export const AVATAR_ITEMS = [
   { id: 'e_bomber', name: '自爆', rarity: 'SR', enemy: 'bomber' },
   { id: 'e_thief', name: 'かけら泥棒', rarity: 'SR', enemy: 'thief' },
   { id: 'b_shade', name: '影', rarity: 'SR', boss: 'shade' },
-  // SSR：ハンターと、自分で写真を設定できるアイコン
+  { id: 'b_comet', name: '彗星', rarity: 'SR', boss: 'comet' },
+  { id: 'b_mirage', name: '蜃気楼', rarity: 'SR', boss: 'mirage' },
+  { id: 'b_eclipse', name: '日蝕', rarity: 'SR', boss: 'eclipse' },
+  { id: 'b_abyss', name: '深淵', rarity: 'SR', boss: 'abyss' },
+  // SSR：ハンター・終筆と、自分で写真を設定できるアイコン
   { id: 'b_hunter', name: 'ハンター', rarity: 'SSR', boss: 'hunter' },
+  { id: 'b_shuhitsu', name: '終筆', rarity: 'SSR', boss: 'shuhitsu' },
 ];
 
 // ガチャの決まり
