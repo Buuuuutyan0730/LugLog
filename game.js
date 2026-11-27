@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127143650';
-import { spawnPop, stepParticle } from './pops.js?v=20261127143650';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127143650';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127143650';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127143650';
+import { CONFIG } from './config.js?v=20261127164300';
+import { spawnPop, stepParticle } from './pops.js?v=20261127164300';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127164300';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127164300';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127164300';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -1958,8 +1958,12 @@ export function createGame() {
     s.stats.shots++;
     let crit = false;
     if (s.st.crit > 0 && Math.random() < BN.crit.chance + BN.crit.add * (s.st.crit - 1)) { power *= BN.crit.mult; crit = true; }
-    let a;
-    { const aim = leadPoint(g, target); a = Math.atan2(aim.y - g.y, aim.x - g.x) + ghostSpread(g); }   // 分身のぶれはレーザーにも
+    // レーザーは撃った瞬間に当たるので、先読みせず、今いる場所を狙う
+    //   線の曲がりによるぶれは、狙った敵の体からはみ出さない範囲までにする（威力の差は命中率の倍率で付く）。狂った引き金の呪いのときは、そのままぶれる
+    let off = ghostSpread(g);
+    const dist = Math.hypot(target.x - g.x, target.y - g.y);
+    if (!s.st.curse.trigger && dist > 1) { const lim = Math.atan2((target.r || 8) * 0.8, dist); off = clamp(off, -lim, lim); }
+    const a = Math.atan2(target.y - g.y, target.x - g.x) + off;
     const dx = Math.cos(a), dy = Math.sin(a);
     // 画面の端までの長さ
     const W = s.world.w, H = s.world.h;
