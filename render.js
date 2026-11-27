@@ -1,9 +1,9 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127122206';
-import { makeForms } from './forms.js?v=20261127122206';
-import { CONFIG } from './config.js?v=20261127122206';
-import { drawComet } from './events.js?v=20261127122206';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127132003';
+import { makeForms } from './forms.js?v=20261127132003';
+import { CONFIG } from './config.js?v=20261127132003';
+import { drawComet } from './events.js?v=20261127132003';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1716,14 +1716,13 @@ export function createRenderer(canvas, view) {
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8, 10, 24, 0.85)'; ctx.lineJoin = 'round';
     const VW = state.world.w, VH = state.world.h;
     // 軽くする：数字は1回だけ小さな絵に描いておき、あとは貼るだけ（毎回 文字の縁取り＋塗りを描くと、数が多いときに重い）
-    //   同時に描くのは新しい順に最大 70 個まで
     const sc = Math.min(4, Math.max(1, Math.hypot(ctx.getTransform().a, ctx.getTransform().b)));
-    const from = Math.max(0, D.length - 70);
-    for (let i = from; i < D.length; i++) {
+    for (let i = 0; i < D.length; i++) {
       const f = D[i];
       if (f.x < -20 || f.x > VW + 20 || f.y < -20 || f.y > VH + 20) continue;   // 画面の外は描かない
       const k = f.t / f.max, crit = f.kind === 'crit';
-      const base = crit ? 14 : f.kind === 'aim' ? 11 : 10, size = base * (k > 0.85 ? 1 + (k - 0.85) * 2 : 1);
+      const base = crit ? 17 : f.kind === 'aim' ? 13.5 : 12.5,   // 一回り大きく（前は 14／11／10）
+         size = base * (k > 0.85 ? 1 + (k - 0.85) * 2 : 1);
       const sp = dnumSprite(f.text, f.kind, base, sc);
       ctx.globalAlpha = Math.min(1, k / 0.35);
       const w = sp.w * size / base, h = sp.h * size / base;

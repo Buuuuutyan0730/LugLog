@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127122206';
-import { spawnPop, stepParticle } from './pops.js?v=20261127122206';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127122206';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127122206';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127122206';
+import { CONFIG } from './config.js?v=20261127132003';
+import { spawnPop, stepParticle } from './pops.js?v=20261127132003';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127132003';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127132003';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127132003';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2056,9 +2056,9 @@ export function createGame() {
       logTrail(clip);
       // 生まれた分身の上に、命中率を出す
       const ny = Math.max(16, main.y - 14 * s.zoom);
-      s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: ny, text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
+      s.dnums.push({ x: clamp(main.x, 44, s.world.w - 44), y: ny, text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
       // その下に、圧縮の倍率（軌跡の総量が増えて、1本が強くなっているとき）
-      if (comp > 1.001) s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: ny + 13, text: `強さ ×${comp.toFixed(1)}`, kind: 'aim', t: 1.1, max: 1.1 });
+      if (comp > 1.001) s.dnums.push({ x: clamp(main.x, 44, s.world.w - 44), y: ny + 16, text: `強さ ×${comp.toFixed(1)}`, kind: 'aim', t: 1.1, max: 1.1 });
       born = main;
       sfx('born');
       if (s.tuto) { s.tuto.born.push(straight); s.tuto.lastG = main; }   // チュートリアル：生まれた分身を数える
