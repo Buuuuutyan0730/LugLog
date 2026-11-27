@@ -1,11 +1,11 @@
 // できごとの画面（フェーズクリアのあと、カード選びの代わりに出る）
 //   できごとごとに、背景の絵・始まりの動き・中身の遊び方を1つずつ作る（使い回しの型にはしない）
 //   共通なのは、外枠（背景のキャンバス・上のコメットの数・ボタンの見た目）だけ
-import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127120912';
-import { playSound } from './audio.js?v=20261127120912';
-import { CURSE_BY_ID } from './talents.js?v=20261127120912';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127120912';
-import { rarityOfLevel } from './ui.js?v=20261127120912';
+import { EVENT_BY_ID, KIND_LABEL, RAR_LABEL, drawComet, COMET_HUES } from './events.js?v=20261127122206';
+import { playSound } from './audio.js?v=20261127122206';
+import { CURSE_BY_ID } from './talents.js?v=20261127122206';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127122206';
+import { rarityOfLevel } from './ui.js?v=20261127122206';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -160,7 +160,8 @@ export function createEventUI(stage, hud) {
     return ctx;
   }
 
-  return { open, close, get active() { return !!cur; } };
+  // covering：できごとの画面が、ゲームの画面を全部おおっている（始まりの演出の間はゲームが透けて見えるので false）
+  return { open, close, get active() { return !!cur; }, get covering() { return !!cur && !root.classList.contains('intro'); } };
 }
 
 // ================================================================

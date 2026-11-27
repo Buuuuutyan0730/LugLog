@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127120912';
-import { spawnPop, stepParticle } from './pops.js?v=20261127120912';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127120912';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127120912';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127120912';
+import { CONFIG } from './config.js?v=20261127122206';
+import { spawnPop, stepParticle } from './pops.js?v=20261127122206';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127122206';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127122206';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127122206';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -2532,7 +2532,9 @@ export function createGame() {
     return mixAt(s.phase);
   }
   // そのフェーズの敵の割合（CONFIG.enemyMix）を、[種類, {…設定, weight: 割合}] の並びにする
+  const mixMemo = new Map();
   function mixAt(phase) {
+    if (mixMemo.has(phase)) return mixMemo.get(phase);
     const M = CONFIG.enemyMix.filter((m) => phase >= m.from).pop();
     const out = [];
     for (const [k, v] of Object.entries(M.fixed)) if (ET[k] && phase >= ET[k].unlockPhase) out.push([k, { ...ET[k], weight: v }]);
@@ -2540,6 +2542,7 @@ export function createGame() {
       const others = Object.entries(ET).filter(([k, t]) => t.weight > 0 && !(k in M.fixed) && phase >= t.unlockPhase);
       for (const [k, t] of others) out.push([k, { ...t, weight: M.rest / others.length }]);
     }
+    mixMemo.set(phase, out);
     return out;
   }
 
@@ -2895,9 +2898,13 @@ export function createGame() {
   // クリアに必要なかけら：そのフェーズで needSec 秒の間に出てくる敵が落とすかけらの見込み × needRatio
   //   見込み＝出てくる勢い（体力/秒）÷ 1体あたりの体力の平均 × 1体あたりのかけらの平均（出られる種類と、大きい敵の割合から計算）
   // きれいな数字にする：5の倍数に丸め、前のフェーズより必ず5以上多くする（35, 40, 45, …）
+  // 毎フレーム呼ばれるので、フェーズごとに1回だけ計算して覚えておく（前は毎回フェーズ1から計算し直していて、後半ほど重かった）
+  const needMemo = new Map();
   function needOf(phase) {
+    if (needMemo.has(phase)) return needMemo.get(phase);
     let v = 0;
     for (let p = 1; p <= phase; p++) v = Math.max(Math.round(needRaw(p) / 5) * 5, v + 5);
+    needMemo.set(phase, v);
     return v;
   }
   function needRaw(phase) {
@@ -4724,7 +4731,7 @@ export function createGame() {
     for (let k = 0; k < n; k++) {
       if (s.mode === 'ready') s.mode = 'play';
       if (s.mode !== 'play' || s.over) break;
-      clearPhase(!!s.bossPhase); finishReturn();
+      clearPhase(!!s.bossPhase); s.event = null; s.pendingEnding = false; finishReturn();   // 早送りでは、できごと・エンディングは飛ばす
       chooseSkill(autoPickIndex());
     }
     s.bossIntro = s.bossPhase ? s.bossIntro : null;

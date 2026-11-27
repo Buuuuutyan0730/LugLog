@@ -1,9 +1,9 @@
 // 画面上の表示（HTML部分）を状態に合わせて書き換える担当
 
-import { ghostColor } from './theme.js?v=20261127120912';
-import { choiceView, ownedViews } from './talents.js?v=20261127120912';
-import { iconSvg, snapIcons } from './icons.js?v=20261127120912';
-import { drawComet, COMET_HUES } from './events.js?v=20261127120912';
+import { ghostColor } from './theme.js?v=20261127122206';
+import { choiceView, ownedViews } from './talents.js?v=20261127122206';
+import { iconSvg, snapIcons } from './icons.js?v=20261127122206';
+import { drawComet, COMET_HUES } from './events.js?v=20261127122206';
 
 const $ = (id) => document.getElementById(id);
 
@@ -99,6 +99,7 @@ export function createHud() {
   let lastBar = '';
   // コメットの数：1個でも持ったら出す。増えたら少し跳ねる
   let cometShown = -1;
+  let cometTick = 0;
   function updateComets(state) {
     const n = state.comets || 0, on = n > 0 || (state.cometDrops && state.cometDrops.length);
     if (el.cometBox.hidden === !!on) el.cometBox.hidden = !on;
@@ -107,6 +108,8 @@ export function createHud() {
       if (n > cometShown && cometShown >= 0) { el.cometBox.classList.remove('bump'); void el.cometBox.offsetWidth; el.cometBox.classList.add('bump'); }
       cometShown = n; setText(el.cometNum, String(n));
     }
+    // 左上の小さなコメット：ゆっくり回るだけなので、3フレームに1回描けば十分（軽くする）
+    if ((cometTick = (cometTick + 1) % 3) !== 0) return;
     const c = el.cometBox.firstElementChild.getContext('2d'), t = performance.now() / 1000;
     c.clearRect(0, 0, 48, 48); drawComet(c, 24, 24, 15, COMET_HUES[Math.floor(t / 2) % COMET_HUES.length], t);
   }

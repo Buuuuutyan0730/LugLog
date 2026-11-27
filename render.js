@@ -1,9 +1,9 @@
 // 描画担当。game.js が作った状態を読んで描くだけで、状態は書き換えない。
 
-import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127120912';
-import { makeForms } from './forms.js?v=20261127120912';
-import { CONFIG } from './config.js?v=20261127120912';
-import { drawComet } from './events.js?v=20261127120912';
+import { THEME, ghostColor, PREFS, tickRainbow } from './theme.js?v=20261127122206';
+import { makeForms } from './forms.js?v=20261127122206';
+import { CONFIG } from './config.js?v=20261127122206';
+import { drawComet } from './events.js?v=20261127122206';
 const SK_DOOM = CONFIG.skill.doom.time;   // 死の宣告：倒れるまでの秒数（印の輪の減り方）
 
 function particleColor(pt, alpha = 1) {
@@ -1714,20 +1714,42 @@ export function createRenderer(canvas, view) {
     ctx.save();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(8, 10, 24, 0.85)'; ctx.lineJoin = 'round';
-    let font = '';
     const VW = state.world.w, VH = state.world.h;
-    for (const f of D) {
+    // 軽くする：数字は1回だけ小さな絵に描いておき、あとは貼るだけ（毎回 文字の縁取り＋塗りを描くと、数が多いときに重い）
+    //   同時に描くのは新しい順に最大 70 個まで
+    const sc = Math.min(4, Math.max(1, Math.hypot(ctx.getTransform().a, ctx.getTransform().b)));
+    const from = Math.max(0, D.length - 70);
+    for (let i = from; i < D.length; i++) {
+      const f = D[i];
       if (f.x < -20 || f.x > VW + 20 || f.y < -20 || f.y > VH + 20) continue;   // 画面の外は描かない
       const k = f.t / f.max, crit = f.kind === 'crit';
-      const size = Math.round((crit ? 14 : f.kind === 'aim' ? 11 : 10) * (k > 0.85 ? 1 + (k - 0.85) * 2 : 1));
-      const want = `bold ${size}px 'DotGothic16', sans-serif`;
-      if (want !== font) { ctx.font = want; font = want; }
+      const base = crit ? 14 : f.kind === 'aim' ? 11 : 10, size = base * (k > 0.85 ? 1 + (k - 0.85) * 2 : 1);
+      const sp = dnumSprite(f.text, f.kind, base, sc);
       ctx.globalAlpha = Math.min(1, k / 0.35);
-      ctx.strokeText(f.text, f.x, f.y);
-      ctx.fillStyle = DN_COLOR[f.kind] || '#ffffff';
-      ctx.fillText(f.text, f.x, f.y);
+      const w = sp.w * size / base, h = sp.h * size / base;
+      ctx.drawImage(sp.cv, f.x - w / 2, f.y - h / 2, w, h);
     }
     ctx.restore();
+  }
+  const dnumCache = new Map();
+  function dnumSprite(text, kind, base, sc) {
+    const key = `${text}|${kind}|${Math.round(sc * 4)}`;
+    let sp = dnumCache.get(key);
+    if (sp) return sp;
+    if (dnumCache.size > 400) dnumCache.clear();
+    const r = sc * 1.2;   // 少し大きめに描いて、ふくらんだときもぼやけにくく
+    const font = `bold ${Math.round(base * r)}px 'DotGothic16', sans-serif`;
+    const m = document.createElement('canvas').getContext('2d'); m.font = font;
+    const tw = Math.ceil(m.measureText(text).width + 6 * r), th = Math.ceil(base * r * 1.5 + 4 * r);
+    const cv = document.createElement('canvas'); cv.width = tw; cv.height = th;
+    const c2 = cv.getContext('2d');
+    c2.font = font; c2.textAlign = 'center'; c2.textBaseline = 'middle'; c2.lineJoin = 'round';
+    c2.lineWidth = 3 * r; c2.strokeStyle = 'rgba(8, 10, 24, 0.85)'; c2.strokeText(text, tw / 2, th / 2);
+    c2.fillStyle = DN_COLOR[kind] || '#ffffff'; c2.fillText(text, tw / 2, th / 2);
+    sp = { cv, w: tw / r, h: th / r };
+    // 文字の形（DotGothic16）がまだ読みこめていない間は、覚えておかない（読みこめたあとに、正しい形で描き直す）
+    if (!document.fonts || document.fonts.check(font)) dnumCache.set(key, sp);
+    return sp;
   }
   function drawFloats(state) {
     const F = state.floats;

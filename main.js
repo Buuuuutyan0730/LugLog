@@ -1,29 +1,29 @@
 // 入口。毎フレーム「操作の受け取り → 計算 → 描画 → 画面表示の更新」をつなぐ。
 //   流れ：読み込み →（初回だけ名前登録）→ ホーム →（はじめてプレイを押したときだけ遊び方）→ ゲーム ⇄ 一時停止 → 結果 → もう一回／ホーム
 
-import { CONFIG } from './config.js?v=20261127120912';
-import { createGame, DT } from './game.js?v=20261127120912';
-import { applyForms } from './talents.js?v=20261127120912';
-import { createRenderer } from './render.js?v=20261127120912';
-import { createHud } from './ui.js?v=20261127120912';
-import { createInput } from './input.js?v=20261127120912';
-import { setupDebugPanel } from './debug.js?v=20261127120912';
-import { createPreview } from './preview.js?v=20261127120912';
-import { createEventUI } from './eventui.js?v=20261127120912';
-import { createEndingFx } from './endingfx.js?v=20261127120912';
-import { createMenus } from './menus.js?v=20261127120912';
-import { createDemo } from './demo.js?v=20261127120912';
-import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261127120912';
-import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261127120912';
-import { ensureDaily, addRun } from './missions.js?v=20261127120912';
-import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261127120912';
-import { SKILL_ROADS } from './skilldefs.js?v=20261127120912';
-import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261127120912';
-import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261127120912';
-import { setEquipped } from './skinshot.js?v=20261127120912';
-import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261127120912';
-import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261127120912';
-import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261127120912';
+import { CONFIG } from './config.js?v=20261127122206';
+import { createGame, DT } from './game.js?v=20261127122206';
+import { applyForms } from './talents.js?v=20261127122206';
+import { createRenderer } from './render.js?v=20261127122206';
+import { createHud } from './ui.js?v=20261127122206';
+import { createInput } from './input.js?v=20261127122206';
+import { setupDebugPanel } from './debug.js?v=20261127122206';
+import { createPreview } from './preview.js?v=20261127122206';
+import { createEventUI } from './eventui.js?v=20261127122206';
+import { createEndingFx } from './endingfx.js?v=20261127122206';
+import { createMenus } from './menus.js?v=20261127122206';
+import { createDemo } from './demo.js?v=20261127122206';
+import { TUTO_INTRO, TUTO_STEPS, TUTO_END } from './tutorial.js?v=20261127122206';
+import { loadSave, writeSave, recordRun, wipeSave } from './save.js?v=20261127122206';
+import { ensureDaily, addRun } from './missions.js?v=20261127122206';
+import { submitScore, checkDev, submitRun, loadRuns, weekStartMs } from './online.js?v=20261127122206';
+import { SKILL_ROADS } from './skilldefs.js?v=20261127122206';
+import { PREFS, applyColorSet, applyBackground } from './theme.js?v=20261127122206';
+import { COLOR_SETS, BACKGROUNDS } from './skins.js?v=20261127122206';
+import { setEquipped } from './skinshot.js?v=20261127122206';
+import { LIVE_BG, setPhoto, initZoom } from './screens.js?v=20261127122206';
+import { setAudioPrefs, unlockAudio, playSound } from './audio.js?v=20261127122206';
+import { playBgm, stopBgm, bgmNow, setFinalLevel } from './bgm.js?v=20261127122206';
 
 const canvas = document.getElementById('game');
 const renderer = createRenderer(canvas, CONFIG.view);
@@ -417,7 +417,8 @@ function tick(now) {
   const view0 = live && demo ? demo.state : s;
   applyForms(view0);   // 取ったスキルから、本体と分身の形を決める
   const view = preview.active ? preview.view(s) : view0; // 見本を開いている間は見本を映す
-  renderer.draw(view, now / 1000);
+  // できごとの画面がゲームを全部おおっている間は、うしろのゲームを描かない（見えないのに描くのは、むだに重い）
+  if (!evu.covering) renderer.draw(view, now / 1000);
   hud.update(preview.active ? view : s);
   drawStick(!menus.id && !preview.active && !pausedByDebug && !pausedByOwned && CONFIG.experiments.control.value === 'stick' && s.mode === 'play' ? input.stickView() : null);
 }
