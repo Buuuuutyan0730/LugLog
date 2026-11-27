@@ -4,8 +4,8 @@
 //   スキルは state.skills に { lv, evo }（evo＝進化したか）、カースは state.curses に名前（id）の一覧で持つ。
 //   効果の計算は game.js の stats()。ここは「何があって、何が出るか」だけを決める。
 
-import { CONFIG } from './config.js?v=20261127142542';
-import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127142542';
+import { CONFIG } from './config.js?v=20261127143650';
+import { SKILL_ROADS, SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127143650';
 
 // ---------- ブースト ----------
 //   per：1レベルで上がる割合、repeat：Lv5の後もLv1から取り直せる、bonus：「名前：説明」

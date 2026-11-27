@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127142542';
-import { spawnPop, stepParticle } from './pops.js?v=20261127142542';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127142542';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127142542';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127142542';
+import { CONFIG } from './config.js?v=20261127143650';
+import { spawnPop, stepParticle } from './pops.js?v=20261127143650';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127143650';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127143650';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127143650';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -167,7 +167,7 @@ export function createGame() {
       rings: [],             // 広がる光の輪（演出）
       flashes: [],           // 一瞬の光（演出）
 
-      spawnPool: 0,          // 敵を出すための「体力の貯金」
+      spawnPool: 0,          // 敵を出すための貯金（1たまるごとに1体）
       nextEnemy: null,
       spawnDelay: 1.2,
 
@@ -2895,7 +2895,7 @@ export function createGame() {
     ring(best.x, best.y, best.r, best.r + 16, 0.25, 'white', 0, 2);
   }
 
-  // クリアに必要なかけら：そのフェーズで needSec 秒の間に出てくる敵が落とすかけらの見込み × needRatio
+  // クリアに必要なかけら：そのフェーズで clearSec 秒の間に出てくる敵が落とすかけらの見込み × needRatio
   //   見込み＝出てくる勢い（体力/秒）÷ 1体あたりの体力の平均 × 1体あたりのかけらの平均（出られる種類と、大きい敵の割合から計算）
   // きれいな数字にする：5の倍数に丸め、前のフェーズより必ず5以上多くする（35, 40, 45, …）
   // 毎フレーム呼ばれるので、フェーズごとに1回だけ計算して覚えておく（前は毎回フェーズ1から計算し直していて、後半ほど重かった）
@@ -2907,17 +2907,50 @@ export function createGame() {
     needMemo.set(phase, v);
     return v;
   }
-  function needRaw(phase) {
+  // 1回の出現あたりの体力とかけらの平均（群れは固まり全体）。フェーズごとに1回だけ計算
+  const avgMemo = new Map();
+  function avgOf(phase) {
+    if (avgMemo.has(phase)) return avgMemo.get(phase);
     const types = mixAt(phase);
-    const n = phase;
-    const p4 = clamp((n - TIERS.x4.from + 1) * TIERS.x4.perPhase, 0, TIERS.x4.max);
-    const p2 = clamp((n - TIERS.x2.from + 1) * TIERS.x2.perPhase, 0, TIERS.x2.max);
+    const p4 = clamp((phase - TIERS.x4.from + 1) * TIERS.x4.perPhase, 0, TIERS.x4.max);
+    const p2 = clamp((phase - TIERS.x2.from + 1) * TIERS.x2.perPhase, 0, TIERS.x2.max);
     const tierAvg = 4 * p4 + 2 * p2 + 1 * (1 - p4 - p2);
     const W = types.reduce((v, [, t]) => v + t.weight, 0);
-    let hpPer = 0, shPer = 0;   // 1回の出現あたりの体力とかけら（群れは固まり全体）
-    for (const [k, t] of types) { const g = t.group || 1, ta = TIERS.noBig.includes(k) ? 1 : tierAvg; hpPer += (t.weight / W) * t.hp * g * ta / PH.crowd; shPer += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * ta; }
-    const rate = PH.hpRateBase * growthOf(phase) * earlyOf(phase);
-    return Math.max(1, Math.round((rate * PH.needSec / (hpPer * hpScaleOf(phase))) * shPer * PH.needRatio));
+    let hp = 0, sh = 0;
+    for (const [k, t] of types) { const g = t.group || 1, ta = TIERS.noBig.includes(k) ? 1 : tierAvg; hp += (t.weight / W) * t.hp * g * ta / PH.crowd; sh += (t.weight / W) * (g > 1 ? t.packShards || 3 : t.shards || 1) * ta; }
+    const out = { hp: hp * hpScaleOf(phase), sh };
+    avgMemo.set(phase, out);
+    return out;
+  }
+  // 表（[フェーズ, 値] の並び）から、そのフェーズの値をなめらかに読む。表の外は端の値のまま
+  function tableAt(tbl, phase) {
+    if (phase <= tbl[0][0]) return tbl[0][1];
+    for (let i = 1; i < tbl.length; i++) {
+      const [p1, v1] = tbl[i];
+      if (phase <= p1) { const [p0, v0] = tbl[i - 1]; return v0 + (v1 - v0) * (phase - p0) / (p1 - p0); }
+    }
+    return tbl[tbl.length - 1][1];
+  }
+  // 画面にいられる、ふつうの敵の数の上限
+  const capOf = (phase) => Math.round(tableAt(PH.cap, phase));
+  // 上限より少ないとき、1秒に出す数。表の先（フェーズ11から）は、敵の勢い（hpRateBase とその伸び）から計算
+  const flowMemo = new Map();
+  function flowOf(phase) {
+    if (flowMemo.has(phase)) return flowMemo.get(phase);
+    const v = phase <= PH.flow[PH.flow.length - 1][0] ? tableAt(PH.flow, phase) : PH.hpRateBase * growthOf(phase) / avgOf(phase).hp / PH.refill.mul;   // 表の先：速めたときに、今までの出る量になるように
+    flowMemo.set(phase, v);
+    return v;
+  }
+  // 敵1体が上限の何体分か（群れは、固まり全体で packUnits 体分）
+  const unitsOf = (kind) => { const g = (ET[kind] && ET[kind].group) || 1; return g > 1 ? PH.packUnits / g : 1; };
+  function crowdNow() {
+    let n = 0;
+    for (const e of s.enemies) if (e.hp > 0 && !e.boss && !e.elite) n += unitsOf(e.kind);
+    return n;
+  }
+  // クリアに要るかけら：出てきた敵をすぐ倒し続けたとき（画面がいつも半分以下で、速める倍率がかかったまま）、clearSec 秒で出る敵のかけら × needRatio
+  function needRaw(phase) {
+    return Math.max(1, Math.round(flowOf(phase) * PH.refill.mul * tableAt(PH.clearSec, phase) * avgOf(phase).sh * PH.needRatio));
   }
   // 1体ずつの体力の倍率：フェーズ countFrom からは、数の伸びを countGrowth に抑えて、残りを体力にまわす
   function hpScaleOf(phase) {
@@ -2925,8 +2958,6 @@ export function createGame() {
     if (phase < from) return 1;
     return Math.max(1, growthOf(phase) / (growthOf(from - 1) * PH.countGrowth ** (phase - from + 1)));
   }
-  // 序盤（フェーズ1〜4）だけ敵の量を減らす倍率
-  function earlyOf(phase) { return (PH.earlyRate && PH.earlyRate[phase - 1]) || 1; }
   // フェーズ1からの敵の勢いの倍率。1フェーズ進むごとに、その時期の倍率を掛けていく
   function growthOf(phase) {
     let k = 1;
@@ -2935,7 +2966,7 @@ export function createGame() {
   }
 
   function updateEnemies() {
-    // 1秒あたりに出す「敵の体力の合計」をためていき、たまったら1体出す
+    // 画面の敵の数の上限と、そこまで埋まる速さで出す（flowOf・capOf）
     const frozen = s.timeStop > 0;
     if (frozen || s.tuto) { /* 時間停止中は敵が出てこない／チュートリアルでは決まった数だけ出す */ }
     else if (s.spawnDelay > 0) s.spawnDelay -= DT;
@@ -2944,14 +2975,19 @@ export function createGame() {
       else if (s.mods && s.mods.hoard && s.mods.hoard.t > 0) { /* 宝の山の間は、ふつうの敵は出ない */ }
       else {
         maybeSpawnElite();
-        const rate = PH.hpRateBase * growthOf(s.phase) * earlyOf(s.phase) * T.enemyRate.value;
-        s.spawnPool += rate * DT;
-        if (!s.nextEnemy) s.nextEnemy = pickNextEnemy();
-        while (s.nextEnemy && s.spawnPool >= s.nextEnemy.hp) {
-          s.spawnPool -= s.nextEnemy.hp;
-          spawnEnemy(s.nextEnemy);
+        // 画面の敵が上限より少ないあいだ、1秒に flowOf 体ずつ出す（上限の半分を切ったら速める）
+        const lim = capOf(s.phase), alive = crowdNow();
+        const boost = alive < lim * PH.refill.under ? PH.refill.mul : 1;
+        s.spawnPool += flowOf(s.phase) * boost * T.enemyRate.value * DT;
+        let room = lim - alive;
+        while (s.spawnPool >= 1 && room > 0) {
+          const next = s.nextEnemy || pickNextEnemy();
+          s.spawnPool -= 1;
+          spawnEnemy(next);
+          room -= unitsOf(next.kind) * ((ET[next.kind] && ET[next.kind].group) || 1);
           s.nextEnemy = pickNextEnemy();
         }
+        if (room <= 0) s.spawnPool = Math.min(s.spawnPool, 1);   // 上限のあいだに出す予定だった分は捨てる（空いたときにまとめて湧かない）
       }
     }
 
