@@ -1,11 +1,11 @@
 // ゲームの計算・動き担当。画面（canvas や HTML）には一切触れない。
 // 計算は 1秒に60回の一定の刻みで進める（分身の再現がズレないようにするため）
 
-import { CONFIG } from './config.js?v=20261127041327';
-import { spawnPop, stepParticle } from './pops.js?v=20261127041327';
-import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127041327';
-import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127041327';
-import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127041327';
+import { CONFIG } from './config.js?v=20261127120912';
+import { spawnPop, stepParticle } from './pops.js?v=20261127120912';
+import { BOOST_BY_ID, CURSE_BY_ID, stacksOf, completionsOf, rollChoices, takeChoice, cursePool, RARITIES } from './talents.js?v=20261127120912';
+import { SKILL_BY_ID, SKILL_MAX } from './skilldefs.js?v=20261127120912';
+import { EVENTS as EVENT_LIST, COMET_HUES as EVENT_HUES } from './events.js?v=20261127120912';
 
 export const DT = 1 / 60;
 const T = CONFIG.tuning;
@@ -65,6 +65,7 @@ export function createGame() {
       mode: 'ready',
       test: null,       // ボスを試す（調整パネル）の途中なら、その中身
       bossSpawned: false,   // このフェーズでボスが出たか（いなくなったら倒した扱いにする確認用）
+      trailLog: [], pendingEnding: false,   // エンディング「軌跡の絵」用：分身になった線の記録（間引いて小さくしたもの）
       comets: 0, pal: null,            // コメット（このゲームの間だけのお金。できごとで使う）
       cometDrops: [],       // 落ちているコメット
       event: null,          // 起きているできごと（フェーズクリアのあと、カード選びの代わり）
@@ -2012,6 +2013,15 @@ export function createGame() {
     }
   }
 
+  // エンディング用に、分身になった線を覚えておく（1本は最大40点に間引き、全部で1600本を超えたら1本おきに間引く）
+  function logTrail(clip) {
+    if (s.demo || s.test || s.tuto) return;
+    const n = clip.length, step = Math.max(1, Math.ceil(n / 40)), out = [];
+    for (let i = 0; i < n; i += step) out.push(Math.round(clip[i].x), Math.round(clip[i].y));
+    const l = clip[n - 1]; out.push(Math.round(l.x), Math.round(l.y));
+    s.trailLog.push(out);
+    if (s.trailLog.length > 1600) s.trailLog = s.trailLog.filter((_, i) => i % 2 === 0);
+  }
   function finishStroke(atLimit = false) {
     let born = null;
     const r = s.record;
@@ -2043,6 +2053,7 @@ export function createGame() {
       };
       s.ghosts.push(main);
       ghostSpawnFx(main);
+      logTrail(clip);
       // 生まれた分身の上に、命中率を出す
       const ny = Math.max(16, main.y - 14 * s.zoom);
       s.dnums.push({ x: clamp(main.x, 36, s.world.w - 36), y: ny, text: `命中 ${Math.round(straight * 100)}%`, kind: 'aim', t: 1.1, max: 1.1 });
@@ -3374,6 +3385,9 @@ export function createGame() {
     stealHalf() { const n = Math.floor(s.comets / 2); s.comets -= n; return n; },
   };
   // できごとを終える：カードは取らずに、次のフェーズへ
+  // エンディングが終わった（または、もう見たので飛ばした）：いつもどおりカード選びへ。フェーズ101へ続く
+  function finishEnding() { if (s.mode !== 'ending') return; s.pendingEnding = false; s.mode = s.event ? 'event' : 'select'; }
+  function endingData() { return { trails: s.trailLog.length ? s.trailLog : [[s.world.w * 0.3, s.world.h * 0.5, s.world.w * 0.7, s.world.h * 0.5]], world: { w: s.world.w, h: s.world.h }, ghosts: s.ghostCount, phase: s.phase, time: s.time, score: s.score }; }
   function finishEvent() {
     if (s.mode !== 'event') return;
     s.event = null;
@@ -3407,6 +3421,8 @@ export function createGame() {
     const p0 = s.player, big = Math.max(s.world.w, s.world.h);
     // プレイの記録：ボスを倒した／中ボスを倒さずに進んだ
     if (afterBoss) logBoss(true);
+    // ラスボス（終筆）を倒した：カード選びの前に、エンディング「軌跡の絵」を流す（流すかどうか＝初めてか、は外で決める）
+    if (afterBoss && s.bossKills[s.bossKills.length - 1] === 'shuhitsu' && !s.test && !s.demo && !s.tuto) s.pendingEnding = true;
     if (s.enemies.some((e) => e.elite && !e.reinf && e.hp > 0)) s.eliteLog.skipped++;
     for (const e of s.enemies) { enemyDeathFx(e); sparks(e.x, e.y, 'enemy', 6, 260); flash(e.x, e.y, e.r * 3, 0.25, 'white'); }
     flash(p0.x, p0.y, big * 1.2, 0.3, 'white');
@@ -4570,7 +4586,7 @@ export function createGame() {
     const p = s.player;
     p.x = p.tx = s.world.w / 2; p.y = p.ty = s.world.h / 2;
     p.svx = p.svy = 0; p.sspd = 0;
-    s.mode = s.event ? 'event' : 'select';   // できごとが起きるときは、カード選びの代わりにできごと
+    s.mode = s.pendingEnding ? 'ending' : s.event ? 'event' : 'select';   // エンディングが先。できごとが起きるときは、カード選びの代わりにできごと
   }
 
   // ---------- 1刻み分進める ----------
@@ -4583,7 +4599,7 @@ export function createGame() {
     }
     if (s.tuto && tutoWaiting(input)) { updateEffects(); return; }
     if (s.mode === 'returning') { updateReturn(); updateEffects(); return; }
-    if (s.over || s.mode === 'select' || s.mode === 'btdone' || s.mode === 'event') { updateEffects(); return; }
+    if (s.over || s.mode === 'select' || s.mode === 'btdone' || s.mode === 'event' || s.mode === 'ending') { updateEffects(); return; }
     if (s.hitstop > 0) {
       // 当てた・当たった瞬間のほんの一瞬の停止（敵や弾は止まる。本体は止めずに動ける・切り替えも受け付ける）
       s.hitstop -= DT;
@@ -4713,5 +4729,5 @@ export function createGame() {
     }
     s.bossIntro = s.bossPhase ? s.bossIntro : null;
   }
-  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, debugAdvance, firstPick, startTutorial, startBossTest, testAutoRest, endBossTest, eventApi, finishEvent };
+  return { state: s, step, reset, chooseSkill, reroll, debugClearPhase, debugAdvance, firstPick, startTutorial, startBossTest, testAutoRest, endBossTest, eventApi, finishEvent, finishEnding, endingData };
 }
